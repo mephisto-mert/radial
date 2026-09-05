@@ -148,12 +148,13 @@ namespace RadialLauncher.UI.Windows
                 return winItems;
             }
 
-            if (currentCategory != null && currentCategory.Id > 1)
+            if (currentCategory != null && currentCategory.Id > 1 && !currentCategory.Name.Equals("Hepsi", StringComparison.OrdinalIgnoreCase))
             {
                 return _allItems.Where(i => i.CategoryId == currentCategory.Id && i.ParentId == 0).ToList();
             }
 
-            return _allItems.Where(i => i.ParentId == 0).ToList();
+            // Hepsi category: strictly user-added items (isolated from auto-scanned apps)
+            return _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded) && i.ParentId == 0).ToList();
         }
 
         private void GenerateCategoryDots(int totalPages)
@@ -180,6 +181,7 @@ namespace RadialLauncher.UI.Windows
                 : categoryName;
 
             var theme = Services.ThemeManager.GetCurrentTheme();
+            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(60, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
 
             // Dots for categories
             for (int i = 0; i < _categories.Count; i++)
@@ -787,8 +789,15 @@ namespace RadialLauncher.UI.Windows
         private void CenterButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             this.Hide();
-            var mgmt = new ManagementWindow();
-            mgmt.Show();
+            if (Application.Current is App app)
+            {
+                app.OpenSettings();
+            }
+            else
+            {
+                var mgmt = new ManagementWindow();
+                mgmt.Show();
+            }
             e.Handled = true;
         }
     }

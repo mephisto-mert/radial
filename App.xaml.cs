@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Hardcodet.Wpf.TaskbarNotification;
@@ -23,6 +24,32 @@ namespace RadialLauncher
             try
             {
                 base.OnStartup(e);
+
+                if (e.Args.Length > 0 && e.Args[0] == "--test-scan")
+                {
+                    var db = new Data.DatabaseManager();
+                    db.InitializeDatabase();
+                    var apps = Services.PCScannerService.ScanAll();
+                    Console.WriteLine($"DISCOVERED_APPS:{apps.Count}");
+                    foreach (var g in apps.GroupBy(a => a.CategoryName))
+                    {
+                        Console.WriteLine($"GROUP:{g.Key}:{g.Count()}");
+                    }
+                    Current.Shutdown();
+                    return;
+                }
+
+                if (e.Args.Length > 0 && e.Args[0] == "--test-settings")
+                {
+                    var db = new Data.DatabaseManager();
+                    db.InitializeDatabase();
+                    var win = new UI.Windows.ManagementWindow();
+                    win.Show();
+                    win.Close();
+                    Console.WriteLine("SETTINGS_WINDOW_SUCCESS");
+                    Current.Shutdown();
+                    return;
+                }
                 
                 Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -119,10 +146,22 @@ namespace RadialLauncher
             _radialMenu.ShowAt(pt.X, pt.Y);
         }
 
-        private void OpenSettings()
+        private UI.Windows.ManagementWindow? _managementWindow;
+
+        public void OpenSettings()
         {
-            var managementWindow = new UI.Windows.ManagementWindow();
-            managementWindow.Show();
+            if (_managementWindow == null || !_managementWindow.IsLoaded)
+            {
+                _managementWindow = new UI.Windows.ManagementWindow();
+                _managementWindow.Closed += (s, e) => _managementWindow = null;
+                _managementWindow.Show();
+            }
+            else
+            {
+                _managementWindow.Activate();
+                if (_managementWindow.WindowState == WindowState.Minimized)
+                    _managementWindow.WindowState = WindowState.Normal;
+            }
         }
 
         private void ExitApplication()

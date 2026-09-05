@@ -13,6 +13,7 @@ namespace RadialLauncher.Models
         public int Position { get; set; }
         public bool IsFavorite { get; set; }
         public int ParentId { get; set; } = 0; // 0 = root level, >0 = sub-item of a SUBMENU
+        public bool IsUserAdded { get; set; } = true;
     }
 
     public class Category

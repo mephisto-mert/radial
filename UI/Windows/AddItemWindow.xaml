@@ -3,8 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Yeni Öğe Ekle" Height="380" Width="480" 
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="#1E1E24" Foreground="#E6E6E6"
-        Icon="app.ico">
+        Background="#1E1E24" Foreground="#E6E6E6">
     <Window.Resources>
         <Style TargetType="ComboBoxItem">
             <Setter Property="Background" Value="#2A2A32"/>

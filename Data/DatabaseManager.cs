@@ -63,6 +63,10 @@ namespace RadialLauncher.Data
                 try { connection.Execute("ALTER TABLE Items ADD COLUMN ParentId INTEGER DEFAULT 0;"); }
                 catch { /* Column already exists */ }
 
+                // Add IsUserAdded column if it doesn't exist (0 = scanned, 1 = user added)
+                try { connection.Execute("ALTER TABLE Items ADD COLUMN IsUserAdded INTEGER DEFAULT 1;"); }
+                catch { /* Column already exists */ }
+
                 // Check and add "🪟 Açık Pencereler" and "⚡ Sistem" categories
                 try
                 {
@@ -130,17 +134,37 @@ namespace RadialLauncher.Data
                     connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES (@Name, @Color, @Position)", defaultCategories);
                 }
 
+                // Ensure smart categories exist
+                var defaultSmartCats = new[]
+                {
+                    new { Name = "🎮 Oyunlar", Color = "#e74c3c" },
+                    new { Name = "🌐 İnternet & İletişim", Color = "#3498db" },
+                    new { Name = "💼 Geliştirme & İş", Color = "#2ecc71" },
+                    new { Name = "🛠️ Sistem & Araçlar", Color = "#e67e22" }
+                };
+                foreach (var sc in defaultSmartCats)
+                {
+                    string searchKey = sc.Name.Substring(2).Trim();
+                    int exists = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE @Search", new { Search = $"%{searchKey}%" });
+                    if (exists == 0)
+                    {
+                        int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES (@Name, @Color, @Position)",
+                            new { sc.Name, sc.Color, Position = nextPos });
+                    }
+                }
+
                 // Seed default items if empty
                 int count = connection.QuerySingle<int>("SELECT COUNT(*) FROM Items");
                 if (count == 0)
                 {
                     var defaultItems = new[]
                     {
-                        new { Name = "Notepad", Type = "EXE", Target = "notepad.exe", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = 1, Position = 0, IsFavorite = 0 },
-                        new { Name = "Calculator", Type = "EXE", Target = "calc.exe", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = 1, Position = 1, IsFavorite = 0 },
-                        new { Name = "Explorer", Type = "EXE", Target = "explorer.exe", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = 1, Position = 2, IsFavorite = 0 }
+                        new { Name = "Notepad", Type = "EXE", Target = "notepad.exe", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = 1, Position = 0, IsFavorite = 0, IsUserAdded = 1 },
+                        new { Name = "Calculator", Type = "EXE", Target = "calc.exe", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = 1, Position = 1, IsFavorite = 0, IsUserAdded = 1 },
+                        new { Name = "Explorer", Type = "EXE", Target = "explorer.exe", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = 1, Position = 2, IsFavorite = 0, IsUserAdded = 1 }
                     };
-                    connection.Execute("INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite) VALUES (@Name, @Type, @Target, @Arguments, @WorkingDirectory, @IconPath, @CategoryId, @Position, @IsFavorite)", defaultItems);
+                    connection.Execute("INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, IsUserAdded) VALUES (@Name, @Type, @Target, @Arguments, @WorkingDirectory, @IconPath, @CategoryId, @Position, @IsFavorite, @IsUserAdded)", defaultItems);
                 }
             }
         }
@@ -159,9 +183,9 @@ namespace RadialLauncher.Data
         {
             using (var connection = new SqliteConnection(GetConnectionString()))
             {
-                if (categoryId <= 1) // "Hepsi" category or 0
-                    return connection.Query<LauncherItem>("SELECT * FROM Items ORDER BY Position").ToList();
-                return connection.Query<LauncherItem>("SELECT * FROM Items WHERE CategoryId = @CategoryId ORDER BY Position", new { CategoryId = categoryId }).ToList();
+                if (categoryId <= 1) // "Hepsi" category or 0: ONLY user-added items!
+                    return connection.Query<LauncherItem>("SELECT * FROM Items WHERE (CategoryId <= 1 OR IsUserAdded = 1) AND ParentId = 0 ORDER BY Position").ToList();
+                return connection.Query<LauncherItem>("SELECT * FROM Items WHERE CategoryId = @CategoryId AND ParentId = 0 ORDER BY Position", new { CategoryId = categoryId }).ToList();
             }
         }
 
@@ -185,7 +209,7 @@ namespace RadialLauncher.Data
         {
             using (var connection = new SqliteConnection(GetConnectionString()))
             {
-                string query = "INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId) VALUES (@Name, @Type, @Target, @Arguments, @WorkingDirectory, @IconPath, @CategoryId, @Position, @IsFavorite, @ParentId)";
+                string query = "INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded) VALUES (@Name, @Type, @Target, @Arguments, @WorkingDirectory, @IconPath, @CategoryId, @Position, @IsFavorite, @ParentId, @IsUserAdded)";
                 connection.Execute(query, item);
             }
         }
@@ -194,7 +218,7 @@ namespace RadialLauncher.Data
         {
             using (var connection = new SqliteConnection(GetConnectionString()))
             {
-                connection.Execute("UPDATE Items SET Name=@Name, Type=@Type, Target=@Target, Arguments=@Arguments, WorkingDirectory=@WorkingDirectory, IconPath=@IconPath, CategoryId=@CategoryId, Position=@Position, IsFavorite=@IsFavorite, ParentId=@ParentId WHERE Id=@Id", item);
+                connection.Execute("UPDATE Items SET Name=@Name, Type=@Type, Target=@Target, Arguments=@Arguments, WorkingDirectory=@WorkingDirectory, IconPath=@IconPath, CategoryId=@CategoryId, Position=@Position, IsFavorite=@IsFavorite, ParentId=@ParentId, IsUserAdded=@IsUserAdded WHERE Id=@Id", item);
             }
         }
 
@@ -255,6 +279,28 @@ namespace RadialLauncher.Data
                 // Move items in this category to "Hepsi" (id=1)
                 connection.Execute("UPDATE Items SET CategoryId = 1 WHERE CategoryId = @Id", new { Id = id });
                 connection.Execute("DELETE FROM Categories WHERE Id = @Id", new { Id = id });
+            }
+        }
+
+        public void UpdateCategory(Category cat)
+        {
+            using (var connection = new SqliteConnection(GetConnectionString()))
+            {
+                connection.Execute("UPDATE Categories SET Name = @Name, Color = @Color, Position = @Position WHERE Id = @Id", cat);
+            }
+        }
+
+        public int GetOrCreateCategory(string name, string defaultColor)
+        {
+            using (var connection = new SqliteConnection(GetConnectionString()))
+            {
+                var existing = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE Name LIKE @Name", new { Name = $"%{name}%" });
+                if (existing != null) return existing.Id;
+
+                int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
+                connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES (@Name, @Color, @Position)",
+                    new { Name = name, Color = defaultColor, Position = nextPos });
+                return connection.QuerySingle<int>("SELECT last_insert_rowid()");
             }
         }
     }

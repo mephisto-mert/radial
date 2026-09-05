@@ -16,6 +16,12 @@ namespace RadialLauncher.UI.Windows
         public EditItemWindow(LauncherItem item)
         {
             InitializeComponent();
+            try
+            {
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+                if (File.Exists(iconPath)) this.Icon = Services.IconExtractor.GetIconForFile(iconPath);
+            }
+            catch { }
             Item = item;
             LoadCategories();
             ActionSelectComboBox.ItemsSource = Services.SystemActionService.AvailableActions;

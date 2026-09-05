@@ -1,8 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Microsoft.Win32;
 using RadialLauncher.Data;
 using RadialLauncher.Models;
@@ -33,11 +36,20 @@ namespace RadialLauncher.UI.Windows
         private readonly DataExporter _exporter;
         private List<LauncherItem> _allItems = new();
         private List<Category> _categories = new();
+        private List<ScannedApp> _scannedApps = new();
         private bool _isInitializing = true;
 
         public ManagementWindow()
         {
             InitializeComponent();
+
+            try
+            {
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+                if (File.Exists(iconPath)) this.Icon = IconExtractor.GetIconForFile(iconPath);
+            }
+            catch { }
+
             _exporter = new DataExporter(_dbManager);
 
             LoadThemes();
@@ -53,6 +65,19 @@ namespace RadialLauncher.UI.Windows
             ThemeComboBox.ItemsSource = themes.Select(t => t.Name).ToList();
             var current = ThemeManager.GetCurrentTheme();
             ThemeComboBox.SelectedItem = current.Name;
+            UpdateThemePreview(current);
+        }
+
+        private void UpdateThemePreview(Theme theme)
+        {
+            try
+            {
+                PreviewBgColor.Fill = new SolidColorBrush(theme.BackgroundColor);
+                PreviewAccentColor.Fill = new SolidColorBrush(theme.AccentColor);
+                PreviewIconBgColor.Fill = new SolidColorBrush(theme.IconBackgroundColor);
+                PreviewCenterColor.Fill = new SolidColorBrush(theme.CenterButtonColor);
+            }
+            catch { }
         }
 
         private void LoadStartupState()
@@ -65,13 +90,27 @@ namespace RadialLauncher.UI.Windows
             _categories = _dbManager.GetAllCategories();
             _allItems = _dbManager.GetAllItems();
 
-            if (CategoryFilterComboBox.ItemsSource == null)
+            // Populate category filter
+            int previousFilterId = -1;
+            if (CategoryFilterComboBox.SelectedValue is int prevId)
+                previousFilterId = prevId;
+
+            var filterList = new List<Category> { new Category { Id = -1, Name = "Tümü" } };
+            filterList.AddRange(_categories);
+            CategoryFilterComboBox.ItemsSource = filterList;
+
+            if (previousFilterId != -1 && filterList.Any(c => c.Id == previousFilterId))
             {
-                var filterList = new List<Category> { new Category { Id = -1, Name = "Tümü" } };
-                filterList.AddRange(_categories);
-                CategoryFilterComboBox.ItemsSource = filterList;
+                CategoryFilterComboBox.SelectedValue = previousFilterId;
+            }
+            else
+            {
                 CategoryFilterComboBox.SelectedIndex = 0;
             }
+
+            // Populate category manager list
+            CategoriesListView.ItemsSource = null;
+            CategoriesListView.ItemsSource = _categories;
 
             ApplyFilter();
         }
@@ -88,7 +127,7 @@ namespace RadialLauncher.UI.Windows
             }
 
             var filtered = _allItems
-                .Where(i => selectedCatId <= 0 || (selectedCatId == 1 ? true : i.CategoryId == selectedCatId))
+                .Where(i => selectedCatId <= 0 || (selectedCatId == 1 ? (i.CategoryId <= 1 || i.IsUserAdded) : i.CategoryId == selectedCatId))
                 .Where(i => string.IsNullOrEmpty(query) || i.Name.ToLower().Contains(query) || i.Target.ToLower().Contains(query))
                 .Select(i => new LauncherItemViewModel(i, categoryMap.TryGetValue(i.CategoryId, out var name) ? name : "Genel"))
                 .ToList();
@@ -113,6 +152,8 @@ namespace RadialLauncher.UI.Windows
             if (ThemeComboBox.SelectedItem is string selectedTheme)
             {
                 ThemeManager.SetCurrentTheme(selectedTheme);
+                var theme = ThemeManager.GetTheme(selectedTheme);
+                UpdateThemePreview(theme);
             }
         }
 
@@ -121,6 +162,8 @@ namespace RadialLauncher.UI.Windows
             if (_isInitializing) return;
             StartupManager.SetRunOnStartup(StartupCheckBox.IsChecked == true);
         }
+
+        // ==================== TAB 1: ITEM OPERATIONS ====================
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
@@ -133,6 +176,7 @@ namespace RadialLauncher.UI.Windows
             {
                 int maxPos = _allItems.Count > 0 ? _allItems.Max(i => i.Position) : -1;
                 addWin.CreatedItem.Position = maxPos + 1;
+                addWin.CreatedItem.IsUserAdded = true;
 
                 _dbManager.InsertItem(addWin.CreatedItem);
                 LoadCategoriesAndItems();
@@ -245,79 +289,167 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
-        private void ScanSteam_Click(object sender, RoutedEventArgs e)
+        // ==================== TAB 2: CATEGORY MANAGEMENT ====================
+
+        private void CategoriesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var games = GameDetector.DetectSteamGames();
-            if (games.Count == 0)
+            if (CategoriesListView.SelectedItem is Category cat)
             {
-                MessageBox.Show("Steam veya yüklü Steam oyunu bulunamadı.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
+                EditCategoryNameBox.Text = cat.Name;
+                EditCategoryColorBox.Text = cat.Color;
+            }
+        }
+
+        private void UpdateCategory_Click(object sender, RoutedEventArgs e)
+        {
+            if (CategoriesListView.SelectedItem is Category cat)
+            {
+                string newName = EditCategoryNameBox.Text.Trim();
+                string newColor = EditCategoryColorBox.Text.Trim();
+
+                if (string.IsNullOrEmpty(newName))
+                {
+                    MessageBox.Show("Kategori adı boş olamaz!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                cat.Name = newName;
+                if (!string.IsNullOrEmpty(newColor)) cat.Color = newColor;
+
+                _dbManager.UpdateCategory(cat);
+                LoadCategoriesAndItems();
+                MessageBox.Show($"'{cat.Name}' kategorisi başarıyla güncellendi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("Lütfen önce listeden güncellenecek bir kategori seçin.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void AddCategory_Click(object sender, RoutedEventArgs e)
+        {
+            string name = NewCategoryNameBox.Text.Trim();
+            string color = NewCategoryColorBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(name))
+            {
+                MessageBox.Show("Lütfen kategori adı girin!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            // Find or create "Oyunlar" category
-            int gamesCatId = _categories.FirstOrDefault(c => c.Name.Contains("Oyun", StringComparison.OrdinalIgnoreCase))?.Id ?? 3;
+            if (string.IsNullOrEmpty(color)) color = "#3498db";
 
-            int addedCount = 0;
-            int maxPos = _allItems.Count > 0 ? _allItems.Max(i => i.Position) : 0;
-
-            foreach (var g in games)
+            int nextPos = _categories.Count > 0 ? _categories.Max(c => c.Position) + 1 : 0;
+            _dbManager.InsertCategory(new Category
             {
-                // Check if already added
-                if (!_allItems.Any(i => i.Target.Equals(g.ExePath, StringComparison.OrdinalIgnoreCase) || i.Name.Equals(g.Name, StringComparison.OrdinalIgnoreCase)))
-                {
-                    maxPos++;
-                    _dbManager.InsertItem(new LauncherItem
-                    {
-                        Name = g.Name,
-                        Type = "EXE",
-                        Target = g.ExePath,
-                        CategoryId = gamesCatId,
-                        Position = maxPos,
-                        IsFavorite = false
-                    });
-                    addedCount++;
-                }
-            }
+                Name = name,
+                Color = color,
+                Position = nextPos
+            });
 
+            NewCategoryNameBox.Text = "";
             LoadCategoriesAndItems();
-            MessageBox.Show($"{addedCount} yeni Steam oyunu 'Oyunlar' kategorisine başarıyla eklendi!", "Steam Taraması Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"'{name}' kategorisi başarıyla oluşturuldu!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void ScanEpic_Click(object sender, RoutedEventArgs e)
+        private void DeleteCategory_Click(object sender, RoutedEventArgs e)
         {
-            var games = GameDetector.DetectEpicGames();
-            if (games.Count == 0)
+            if (CategoriesListView.SelectedItem is Category cat)
             {
-                MessageBox.Show("Epic Games veya yüklü Epic oyunu bulunamadı.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (cat.Id <= 1 || cat.Name.Equals("Hepsi", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show("'Hepsi' ana kategorisi silinemez!", "Engellendi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var confirm = MessageBox.Show($"'{cat.Name}' kategorisini silmek istediğinize emin misiniz?\n\nBu kategorideki tüm öğeler 'Hepsi'ne aktarılacaktır.", "Kategori Silme", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (confirm == MessageBoxResult.Yes)
+                {
+                    _dbManager.DeleteCategory(cat.Id);
+                    EditCategoryNameBox.Text = "";
+                    EditCategoryColorBox.Text = "";
+                    LoadCategoriesAndItems();
+                    MessageBox.Show("Kategori başarıyla silindi.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Lütfen silmek için bir kategori seçin.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        // ==================== TAB 3: SMART PC SCANNER ====================
+
+        private async void RunFullScan_Click(object sender, RoutedEventArgs e)
+        {
+            ScanStatusText.Text = "⏳ Bilgisayar taranıyor, lütfen bekleyin...";
+            var button = sender as Button;
+            if (button != null) button.IsEnabled = false;
+
+            try
+            {
+                _scannedApps = await Task.Run(() => PCScannerService.ScanAll());
+                ScannedAppsListView.ItemsSource = null;
+                ScannedAppsListView.ItemsSource = _scannedApps;
+
+                int gamesCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatGames);
+                int internetCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatInternet);
+                int devCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatDev);
+                int toolsCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatTools);
+
+                ScanStatusText.Text = $"✅ {_scannedApps.Count} uygulama bulundu ({gamesCount} Oyun, {internetCount} İnternet, {devCount} Geliştirme, {toolsCount} Sistem)";
+            }
+            catch (Exception ex)
+            {
+                ScanStatusText.Text = "❌ Tarama sırasında hata oluştu: " + ex.Message;
+            }
+            finally
+            {
+                if (button != null) button.IsEnabled = true;
+            }
+        }
+
+        private void SelectAllScanned_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var app in _scannedApps) app.IsSelected = true;
+            ScannedAppsListView.Items.Refresh();
+        }
+
+        private void DeselectAllScanned_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var app in _scannedApps) app.IsSelected = false;
+            ScannedAppsListView.Items.Refresh();
+        }
+
+        private void ImportScanned_Click(object sender, RoutedEventArgs e)
+        {
+            if (_scannedApps.Count == 0)
+            {
+                MessageBox.Show("Önce 'Tüm Bilgisayarı Tara' butonuna basarak tarama yapmalısınız.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            int gamesCatId = _categories.FirstOrDefault(c => c.Name.Contains("Oyun", StringComparison.OrdinalIgnoreCase))?.Id ?? 3;
-
-            int addedCount = 0;
-            int maxPos = _allItems.Count > 0 ? _allItems.Max(i => i.Position) : 0;
-
-            foreach (var g in games)
+            var selected = _scannedApps.Where(a => a.IsSelected).ToList();
+            if (selected.Count == 0)
             {
-                if (!_allItems.Any(i => i.Target.Equals(g.ExePath, StringComparison.OrdinalIgnoreCase) || i.Name.Equals(g.Name, StringComparison.OrdinalIgnoreCase)))
-                {
-                    maxPos++;
-                    _dbManager.InsertItem(new LauncherItem
-                    {
-                        Name = g.Name,
-                        Type = "EXE",
-                        Target = g.ExePath,
-                        CategoryId = gamesCatId,
-                        Position = maxPos,
-                        IsFavorite = false
-                    });
-                    addedCount++;
-                }
+                MessageBox.Show("Lütfen aktarılacak en az bir uygulama seçin.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
+            var summary = PCScannerService.ImportToDatabase(_dbManager, selected);
             LoadCategoriesAndItems();
-            MessageBox.Show($"{addedCount} yeni Epic Games oyunu 'Oyunlar' kategorisine başarıyla eklendi!", "Epic Taraması Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            MessageBox.Show(
+                $"Toplam {summary.TotalAdded} yeni uygulama başarıyla eklendi!\n\n" +
+                $"🎮 Oyunlar: {summary.GamesCount}\n" +
+                $"🌐 İnternet & İletişim: {summary.InternetCount}\n" +
+                $"💼 Geliştirme & İş: {summary.DevCount}\n" +
+                $"🛠️ Sistem & Araçlar: {summary.SystemCount}\n\n" +
+                $"💡 Not: Ana 'Hepsi' menünüz tertemiz kaldı; tarananlar yalnızca kendi sekmelerinde listelenir.",
+                "Aktarım Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+
+        // ==================== TAB 5: BACKUP & GENERAL ====================
 
         private void ExportButton_Click(object sender, RoutedEventArgs e)
         {
@@ -351,7 +483,7 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
-        // --- Drag & Drop Reordering ---
+        // --- Drag & Drop Reordering in Tab 1 ---
         private Point _startPoint;
         private LauncherItemViewModel? _draggedItem;
 
@@ -417,7 +549,7 @@ namespace RadialLauncher.UI.Windows
 
         private LauncherItemViewModel? GetItemAtPoint(Point point)
         {
-            var hitTest = System.Windows.Media.VisualTreeHelper.HitTest(ItemsListView, point);
+            var hitTest = VisualTreeHelper.HitTest(ItemsListView, point);
             if (hitTest == null) return null;
 
             var visual = hitTest.VisualHit;
@@ -427,7 +559,7 @@ namespace RadialLauncher.UI.Windows
                 {
                     return vm;
                 }
-                visual = System.Windows.Media.VisualTreeHelper.GetParent(visual);
+                visual = VisualTreeHelper.GetParent(visual);
             }
             return null;
         }
