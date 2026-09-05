@@ -27,6 +27,9 @@ namespace RadialLauncher.UI.Controls
 
         public void UpdatePreview()
         {
+            if (BaseFill == null || BaseStroke == null || GlowEffect == null || GlowStop == null || CenterFill == null || BubblesCanvas == null)
+                return;
+
             var t = Theme ?? Services.Themes.ThemeService.Instance.GetCurrentTheme();
             if (t == null) return;
 

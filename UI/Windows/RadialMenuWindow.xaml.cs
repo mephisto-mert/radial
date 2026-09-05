@@ -425,8 +425,7 @@ namespace RadialLauncher.UI.Windows
         private void CenterButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             this.Hide();
-            var mgmt = new ManagementWindow();
-            mgmt.Show();
+            ((App)Application.Current).OpenSettings();
         }
 
         private void CategoryPill_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)

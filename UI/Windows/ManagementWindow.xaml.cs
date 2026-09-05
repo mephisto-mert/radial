@@ -102,6 +102,7 @@ namespace RadialLauncher.UI.Windows
             RefreshGrid();
             LoadStartupState();
             LoadShortcutState();
+            LoadDensityState();
         }
 
         private void LoadCategories()
@@ -124,10 +125,21 @@ namespace RadialLauncher.UI.Windows
                 ThemesListBox.Items.Add(t.Name);
             }
             ThemesListBox.SelectedItem = _viewModel.SelectedTheme?.Name ?? "Dark";
-            LivePreviewControl.Theme = _viewModel.SelectedTheme;
+            if (LivePreviewControl != null)
+            {
+                LivePreviewControl.Theme = _viewModel.SelectedTheme;
+            }
 
             FollowWindowsThemeCheck.IsChecked = _viewModel.FollowWindowsTheme;
             ExtractAccentCheck.IsChecked = _viewModel.ExtractAccentFromWallpaper;
+            ReduceMotionCheck.IsChecked = _viewModel.ReduceMotion;
+        }
+
+        private void LoadDensityState()
+        {
+            if (DensityCombo == null) return;
+            string mode = _viewModel.SelectedTheme?.DensityMode ?? _viewModel.DensityMode;
+            DensityCombo.SelectedIndex = (mode == "Compact") ? 1 : 0;
         }
 
         private void LoadShortcutState()
@@ -154,8 +166,9 @@ namespace RadialLauncher.UI.Windows
 
         private void RefreshGrid()
         {
-            var catMap = _viewModel.Categories.ToDictionary(c => c.Id, c => c.Name);
-            var query = SearchBox.Text?.Trim().ToLowerInvariant() ?? "";
+            if (_viewModel == null || CategoryFilterCombo == null || ItemsGrid == null || StatusText == null) return;
+            var catMap = _viewModel.Categories?.GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First().Name) ?? new Dictionary<int, string>();
+            var query = SearchBox?.Text?.Trim().ToLowerInvariant() ?? "";
             int selectedCatId = 0;
             if (CategoryFilterCombo.SelectedItem is ComboBoxItem cbi && cbi.Tag is int id)
             {
@@ -227,8 +240,9 @@ namespace RadialLauncher.UI.Windows
 
         private void ThemesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_viewModel == null) return;
-            if (ThemesListBox.SelectedItem is string themeName)
+            if (_viewModel == null || LivePreviewControl == null) return;
+            var lb = sender as ListBox ?? ThemesListBox;
+            if (lb?.SelectedItem is string themeName)
             {
                 var theme = _viewModel.Themes.FirstOrDefault(t => t.Name == themeName);
                 if (theme != null)
@@ -241,6 +255,7 @@ namespace RadialLauncher.UI.Windows
 
         private void CustomColor_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (LivePreviewControl == null || CustomAccentBox == null || CustomBgBox == null || CustomCardBox == null || CustomThemeNameBox == null) return;
             try
             {
                 var accent = (Color)ColorConverter.ConvertFromString(CustomAccentBox.Text.Trim());
@@ -287,43 +302,60 @@ namespace RadialLauncher.UI.Windows
 
         private void FollowWindowsTheme_Click(object sender, RoutedEventArgs e)
         {
+            if (_viewModel == null || _themeService == null) return;
             _viewModel.FollowWindowsTheme = FollowWindowsThemeCheck.IsChecked ?? false;
             _themeService.SetFollowWindowsTheme(_viewModel.FollowWindowsTheme);
-            LivePreviewControl.Theme = _themeService.GetCurrentTheme();
+            if (LivePreviewControl != null)
+            {
+                LivePreviewControl.Theme = _themeService.GetCurrentTheme();
+            }
         }
 
         private void ExtractAccent_Click(object sender, RoutedEventArgs e)
         {
+            if (_viewModel == null || _themeService == null) return;
             _viewModel.ExtractAccentFromWallpaper = ExtractAccentCheck.IsChecked ?? false;
             _themeService.SetExtractAccentFromWallpaper(_viewModel.ExtractAccentFromWallpaper);
-            LivePreviewControl.Theme = _themeService.GetCurrentTheme();
+            if (LivePreviewControl != null)
+            {
+                LivePreviewControl.Theme = _themeService.GetCurrentTheme();
+            }
         }
 
         private void ReduceMotion_Click(object sender, RoutedEventArgs e)
         {
+            if (_viewModel == null || _themeService == null) return;
             _viewModel.ReduceMotion = ReduceMotionCheck.IsChecked ?? false;
             var t = _themeService.GetCurrentTheme();
-            t.ReduceMotion = _viewModel.ReduceMotion;
-            _themeService.SaveCustomTheme(t);
+            if (t != null)
+            {
+                t.ReduceMotion = _viewModel.ReduceMotion;
+                _themeService.SaveCustomTheme(t);
+            }
         }
 
         private void DensityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_viewModel == null || _themeService == null) return;
-            if (DensityCombo.SelectedItem is ComboBoxItem cbi)
+            var cb = sender as ComboBox ?? DensityCombo;
+            if (cb?.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 string mode = cbi.Content.ToString()!.Contains("Kompakt") ? "Compact" : "Expanded";
                 _viewModel.DensityMode = mode;
                 var t = _themeService.GetCurrentTheme();
-                t.DensityMode = mode;
-                _themeService.SaveCustomTheme(t);
+                if (t != null)
+                {
+                    t.DensityMode = mode;
+                    _themeService.SaveCustomTheme(t);
+                }
             }
         }
 
         private void ShortcutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_viewModel == null || _themeService == null) return;
-            if (ShortcutCombo.SelectedItem is ComboBoxItem cbi)
+            var cb = sender as ComboBox ?? ShortcutCombo;
+            if (cb?.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 string sc = cbi.Content.ToString() switch
                 {
