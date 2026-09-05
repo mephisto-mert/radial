@@ -282,29 +282,39 @@ namespace RadialLauncher.Data
                     connection.Execute("UPDATE Categories SET Position = 4 WHERE Id = @sysCatId;", new { sysCatId });
                     connection.Execute("UPDATE Categories SET Position = 5 WHERE Name LIKE '%Açık Pencereler%';");
 
-                    // 8. Ensure the user's top desktop apps, games, and web shortcuts have IsUserAdded = 1
+                    // 8. Ensure only user's configured items, websites, and favorites appear in ⭐ En Çok Kullanılanlar
                     connection.Execute(@"
                         UPDATE Items SET IsUserAdded = 0;
 
                         UPDATE Items 
                         SET IsUserAdded = 1 
                         WHERE Type = 'URL' 
-                           OR Target LIKE '%Desktop%'
-                           OR Target LIKE '%Masaüstü%'
-                           OR Target LIKE 'steam://rungameid/%'
-                           OR Target LIKE 'com.epicgames.%'
-                           OR LOWER(Target) LIKE '%brave%' 
-                           OR LOWER(Target) LIKE '%discord%' 
-                           OR LOWER(Target) LIKE '%spotify%'
-                           OR LOWER(Target) LIKE '%rave%'
-                           OR LOWER(Target) LIKE '%blitz%'
-                           OR LOWER(Target) LIKE '%opencode%'
-                           OR LOWER(Target) LIKE '%mpc-hc%'
-                           OR LOWER(Target) LIKE '%wo mic%'
-                           OR LOWER(Target) LIKE '%minecraft%'
-                           OR LOWER(Target) LIKE '%battlefront%'
-                           OR LOWER(Name) LIKE '%belgeler%'
-                           OR IsFavorite = 1;");
+                           OR IsFavorite = 1
+                           OR Id IN (8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 23, 24, 36, 48, 49, 51, 54, 55, 58, 69, 70);
+
+                        -- Arrange user's primary items so Page 1 contains exactly their handpicked shortcuts
+                        UPDATE Items SET Position = 0 WHERE Id = 8;  -- youtube
+                        UPDATE Items SET Position = 1 WHERE Id = 48; -- Ses Aç
+                        UPDATE Items SET Position = 2 WHERE Id = 9;  -- ChatGpt
+                        UPDATE Items SET Position = 3 WHERE Id = 49; -- Ses Kıs
+                        UPDATE Items SET Position = 4 WHERE Id = 10; -- Github
+                        UPDATE Items SET Position = 5 WHERE Id = 11; -- Gmail
+                        UPDATE Items SET Position = 6 WHERE Id = 51; -- Oynat/Durdur
+                        UPDATE Items SET Position = 7 WHERE Id = 13; -- Mephisto Mail
+                        UPDATE Items SET Position = 8 WHERE Id = 14; -- Mephisto Shares
+                        UPDATE Items SET Position = 9 WHERE Id = 12; -- Analytics
+                        UPDATE Items SET Position = 10 WHERE Id = 54; -- Masaüstü
+                        UPDATE Items SET Position = 11 WHERE Id = 18; -- Brave
+                        UPDATE Items SET Position = 12 WHERE Id = 55; -- Ekran Alıntısı
+                        UPDATE Items SET Position = 13 WHERE Id = 15; -- Rave
+                        UPDATE Items SET Position = 14 WHERE Id = 36; -- Counter-Strike 2
+                        UPDATE Items SET Position = 15 WHERE Id = 16; -- Antigravity
+                        UPDATE Items SET Position = 16 WHERE Id = 23; -- Steam
+                        UPDATE Items SET Position = 17 WHERE Id = 24; -- Epic Games
+                        UPDATE Items SET Position = 18 WHERE Id = 58; -- Discord
+                        UPDATE Items SET Position = 19 WHERE Id = 69; -- Spotify
+                        UPDATE Items SET Position = 20 WHERE Id = 70; -- Blitz
+                    ");
                 }
                 catch { }
 

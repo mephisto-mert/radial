@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -51,7 +52,9 @@ namespace RadialLauncher.Services
 
         public static ImageSource? GetBrandIcon(string name, string target)
         {
-            string key = (name + " " + target).ToLowerInvariant();
+            string nameLower = (name ?? "").Trim().ToLowerInvariant();
+            string targetLower = (target ?? "").Trim().ToLowerInvariant();
+            string key = (nameLower + " " + targetLower);
 
             if (key.Contains("youtube") || key.Contains("youtu.be"))
                 return GetOrCache("youtube", CreateYouTubeIcon);
@@ -73,10 +76,21 @@ namespace RadialLauncher.Services
                 return GetOrCache("telegram", CreateTelegramIcon);
             if (key.Contains("whatsapp"))
                 return GetOrCache("whatsapp", CreateWhatsAppIcon);
-            if (key.Contains("steam"))
+
+            // Steam client only (NOT steam:// games!)
+            if (!targetLower.StartsWith("steam://", StringComparison.OrdinalIgnoreCase) && 
+                (nameLower == "steam" || targetLower.EndsWith("steam.exe", StringComparison.OrdinalIgnoreCase)))
+            {
                 return GetOrCache("steam", CreateSteamIcon);
-            if (key.Contains("mail") || key.Contains("eposta"))
+            }
+
+            // General mail client only (NOT custom domains like mephistomail)
+            if (nameLower == "mail" || nameLower == "eposta" || nameLower == "e-posta" ||
+                targetLower.Contains("mail.google.com") || targetLower.Contains("outlook.live.com"))
+            {
                 return GetOrCache("mail", CreateMailIcon);
+            }
+
             if (key.Contains("chrome"))
                 return GetOrCache("chrome", CreateChromeIcon);
             if (key.Contains("edge"))
@@ -87,23 +101,21 @@ namespace RadialLauncher.Services
                 return GetOrCache("opera", CreateOperaIcon);
             if (key.Contains("minecraft"))
                 return GetOrCache("minecraft", CreateMinecraftIcon);
-            if (key.Contains("blitz") || key.Contains("riot") || key.Contains("league"))
+            if (nameLower.Contains("blitz") || nameLower.Contains("riot client") || nameLower.Contains("league of legends"))
                 return GetOrCache("blitz", CreateBlitzIcon);
-            if (key.Contains("code") || key.Contains("visual studio"))
+            if (nameLower.Contains("visual studio code") || nameLower == "vscode" || targetLower.Contains("code.exe"))
                 return GetOrCache("vscode", CreateVsCodeIcon);
             if (key.Contains("notepad"))
                 return GetOrCache("notepad", CreateNotepadPlusIcon);
-            if (key.Contains("mpc") || key.Contains("player") || key.Contains("vlc"))
+            if (key.Contains("mpc") || key.Contains("vlc"))
                 return GetOrCache("mpc", CreateMpcIcon);
-            if (key.Contains("rave"))
+            if (nameLower == "rave" || targetLower.Contains("rave.exe"))
                 return GetOrCache("rave", CreateRaveIcon);
-            if (key.Contains("wo mic") || key.Contains("womic"))
-                return GetOrCache("womic", CreateWoMicIcon);
-            if (key.Contains("belgeler") || key.Contains("document") || key.Contains("klasör"))
+            if (nameLower.Contains("belgeler") || nameLower.Contains("klasör"))
                 return GetOrCache("folder", CreateFolderIcon);
-            if (key.Contains("ayar") || key.Contains("setting") || key.Contains("control"))
+            if (nameLower.Contains("ayar") || nameLower.Contains("setting"))
                 return GetOrCache("settings", CreateSettingsIcon);
-            if (key.Contains("google"))
+            if (nameLower == "google" || targetLower.Contains("google.com/search"))
                 return GetOrCache("google", CreateGoogleIcon);
 
             return null;
@@ -700,6 +712,31 @@ namespace RadialLauncher.Services
             try
             {
                 if (!File.Exists(path)) return null;
+
+                string ext = Path.GetExtension(path).ToLowerInvariant();
+                if (ext == ".ico")
+                {
+                    try
+                    {
+                        var decoder = new IconBitmapDecoder(
+                            new Uri(path, UriKind.Absolute),
+                            BitmapCreateOptions.None,
+                            BitmapCacheOption.OnLoad);
+
+                        if (decoder.Frames.Count > 0)
+                        {
+                            // Prefer crisp 48-128px frame, or highest resolution available
+                            var best = decoder.Frames
+                                .OrderByDescending(f => f.PixelWidth)
+                                .FirstOrDefault(f => f.PixelWidth <= 128)
+                                ?? decoder.Frames.OrderByDescending(f => f.PixelWidth).First();
+
+                            return best;
+                        }
+                    }
+                    catch { }
+                }
+
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
@@ -736,6 +773,8 @@ namespace RadialLauncher.Services
             {
                 var img = LoadImageFromFile(path);
                 if (img != null) return img;
+                // Never fall through to SHGetFileInfo for image/ico files to prevent generic file association icons
+                return null;
             }
 
             // URL files (Desktop / Steam shortcuts)
@@ -766,9 +805,10 @@ namespace RadialLauncher.Services
                     }
                 }
                 catch { }
+                return null;
             }
 
-            // Steam URL lookup
+            // Steam URL lookup (e.g. steam://rungameid/1174180)
             if (path.StartsWith("steam://rungameid/", StringComparison.OrdinalIgnoreCase))
             {
                 string appId = path.Substring("steam://rungameid/".Length).Trim();
@@ -778,6 +818,40 @@ namespace RadialLauncher.Services
                     var img = LoadImageFromFile(iconFile);
                     if (img != null) return img;
                 }
+
+                // Check desktop shortcuts for matching Steam app id
+                var desktopFolders = new[]
+                {
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)
+                };
+                foreach (var df in desktopFolders)
+                {
+                    if (!Directory.Exists(df)) continue;
+                    foreach (var uf in Directory.GetFiles(df, "*.url"))
+                    {
+                        try
+                        {
+                            var lines = File.ReadAllLines(uf);
+                            bool match = false;
+                            string? ico = null;
+                            foreach (var line in lines)
+                            {
+                                if (line.IndexOf("steam://rungameid/" + appId, StringComparison.OrdinalIgnoreCase) >= 0) match = true;
+                                if (line.StartsWith("IconFile=", StringComparison.OrdinalIgnoreCase)) ico = line.Substring(9).Trim();
+                            }
+                            if (match && !string.IsNullOrEmpty(ico) && File.Exists(ico))
+                            {
+                                var img = LoadImageFromFile(ico);
+                                if (img != null) return img;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                // Never call SHGetFileInfo on steam:// protocol URLs to prevent blue globe icon
+                return null;
             }
 
             SHFILEINFO shinfo = new SHFILEINFO();

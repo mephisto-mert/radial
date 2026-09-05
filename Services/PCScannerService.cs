@@ -22,10 +22,13 @@ namespace RadialLauncher.Services
         {
             get
             {
+                if (!string.IsNullOrEmpty(IconPath) && File.Exists(IconPath))
+                {
+                    var fileIcon = IconExtractor.GetIconForFile(IconPath);
+                    if (fileIcon != null) return fileIcon;
+                }
                 var brand = IconExtractor.GetBrandIcon(Name, Target);
                 if (brand != null) return brand;
-                if (!string.IsNullOrEmpty(IconPath) && File.Exists(IconPath))
-                    return IconExtractor.GetIconForFile(IconPath);
                 if (!string.IsNullOrEmpty(Target))
                 {
                     var targetIcon = IconExtractor.GetIconForFile(Target);
@@ -412,14 +415,6 @@ namespace RadialLauncher.Services
                 };
 
                 maxPos++;
-                bool isUserApp = app.Source == "Masaüstü" || 
-                                 app.Source == "Steam" || 
-                                 app.Source == "Epic" ||
-                                 app.CategoryName == CatGames ||
-                                 (app.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) && 
-                                  (app.Target.IndexOf("Desktop", StringComparison.OrdinalIgnoreCase) >= 0 || 
-                                   app.Target.IndexOf("Masaüstü", StringComparison.OrdinalIgnoreCase) >= 0));
-
                 db.InsertItem(new LauncherItem
                 {
                     Name = app.Name,
@@ -431,7 +426,7 @@ namespace RadialLauncher.Services
                     Position = maxPos,
                     IsFavorite = false,
                     ParentId = 0,
-                    IsUserAdded = isUserApp
+                    IsUserAdded = false
                 });
 
                 existingTargets.Add(app.Target);

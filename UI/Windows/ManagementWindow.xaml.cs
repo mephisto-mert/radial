@@ -27,19 +27,32 @@ namespace RadialLauncher.UI.Windows
         {
             get
             {
+                // 1. Explicit valid icon file takes top precedence (e.g. Steam game .ico, custom app icon)
+                if (!string.IsNullOrEmpty(Item.IconPath) && File.Exists(Item.IconPath))
+                {
+                    var fileIcon = IconExtractor.GetIconForFile(Item.IconPath);
+                    if (fileIcon != null) return fileIcon;
+                }
+
+                // 2. Vector brand icon (YouTube, ChatGPT, Discord, Spotify, etc.)
                 var brand = IconExtractor.GetBrandIcon(Item.Name, Item.Target);
                 if (brand != null) return brand;
-                if (!string.IsNullOrEmpty(Item.IconPath) && File.Exists(Item.IconPath))
-                    return IconExtractor.GetIconForFile(Item.IconPath);
+
+                // 3. Target file / shortcut extraction
                 if (!string.IsNullOrEmpty(Item.Target))
                 {
                     var targetIcon = IconExtractor.GetIconForFile(Item.Target);
                     if (targetIcon != null) return targetIcon;
                 }
+
+                // 4. Web Favicon
                 if (Item.Type == "URL")
                 {
-                    return IconExtractor.GetFaviconForUrl(Item.Target);
+                    var favicon = IconExtractor.GetFaviconForUrl(Item.Target);
+                    if (favicon != null) return favicon;
                 }
+
+                // 5. High-quality monogram
                 return IconExtractor.CreateMonogramIcon(Item.Name, Color.FromRgb(88, 140, 236));
             }
         }

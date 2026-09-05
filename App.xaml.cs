@@ -103,14 +103,15 @@ namespace RadialLauncher
                         Console.WriteLine($"CAT_ID={c.Id}, NAME='{c.Name}', POS={c.Position}, ITEMS={cCount}");
                     }
                     Console.WriteLine($"TOTAL_ITEMS:{items.Count}");
-                    var topCategoryItems = items.Where(i => i.CategoryId <= 1 || i.IsUserAdded)
-                                                .OrderBy(i => i.IsFavorite ? 0 : 1)
-                                                .ThenBy(i => i.Type == "URL" ? 0 : 1)
+                    var topCategoryItems = items.Where(i => (i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite) && i.ParentId == 0)
+                                                .OrderBy(i => i.Position)
+                                                .ThenBy(i => i.Id)
                                                 .Take(15);
-                    Console.WriteLine("PAGE_1_MOST_USED_ITEMS:");
+                    Console.WriteLine("PAGE_1_PRIMARY_ITEMS:");
+                    int idx = 1;
                     foreach (var it in topCategoryItems)
                     {
-                        Console.WriteLine($"  [{it.Type}] {it.Name} (CatId={it.CategoryId}, UserAdded={it.IsUserAdded}, Fav={it.IsFavorite})");
+                        Console.WriteLine($"  {idx++}. [{it.Type}] {it.Name} (Pos={it.Position}, Fav={it.IsFavorite})");
                     }
                     Current.Shutdown();
                     return;
@@ -122,26 +123,23 @@ namespace RadialLauncher
                     db.InitializeDatabase();
                     var items = db.GetAllItems();
                     Console.WriteLine($"TOTAL_ITEMS_TO_CHECK:{items.Count}");
-                    int hasIcon = 0;
-                    int missingIcon = 0;
-                    foreach (var it in items)
+
+                    string[] testGames = new[] { "Red Dead Redemption 2", "Hitman: Absolution", "Kenshi", "Half Sword", "Project Zomboid", "Sons Of The Forest", "Marvel's Spider-Man 2", "Mephisto Mail", "Mephisto Shares" };
+                    foreach (var gameName in testGames)
                     {
-                        var brand = Services.IconExtractor.GetBrandIcon(it.Name, it.Target);
-                        var fileIcon = !string.IsNullOrEmpty(it.IconPath) && System.IO.File.Exists(it.IconPath) ? Services.IconExtractor.GetIconForFile(it.IconPath) : null;
-                        var targetIcon = Services.IconExtractor.GetIconForFile(it.Target);
-                        var favicon = it.Type == "URL" ? Services.IconExtractor.GetFaviconForUrl(it.Target) : null;
-                        bool found = brand != null || fileIcon != null || targetIcon != null || favicon != null;
-                        if (found) hasIcon++;
+                        var it = items.FirstOrDefault(i => i.Name.Equals(gameName, StringComparison.OrdinalIgnoreCase));
+                        if (it != null)
+                        {
+                            var vm = new UI.Windows.LauncherItemViewModel(it, "Test");
+                            var icon = vm.Icon;
+                            Console.WriteLine($"ICON_CHECK: '{it.Name}', Target='{it.Target}', HasIcon={icon != null}, IconType={icon?.GetType().Name}");
+                        }
                         else
                         {
-                            missingIcon++;
-                            if (missingIcon <= 30)
-                            {
-                                Console.WriteLine($"MISSING_ICON: Id={it.Id}, Name='{it.Name}', Target='{it.Target}', IconPath='{it.IconPath}', Type={it.Type}");
-                            }
+                            Console.WriteLine($"ITEM_NOT_FOUND: '{gameName}'");
                         }
                     }
-                    Console.WriteLine($"ICON_SUMMARY: Found={hasIcon}, Missing={missingIcon}");
+
                     Current.Shutdown();
                     return;
                 }

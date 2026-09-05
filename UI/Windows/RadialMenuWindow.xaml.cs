@@ -68,6 +68,8 @@ namespace RadialLauncher.UI.Windows
                 _searchQuery = "";
                 _isSearchMode = false;
                 _navStack.Clear();
+                _currentCategoryIndex = 0;
+                _currentPageIndex = 0;
                 SearchBorder.Visibility = Visibility.Collapsed;
                 SearchText.Text = "";
                 HoverInfoText.Text = "";
@@ -185,21 +187,20 @@ namespace RadialLauncher.UI.Windows
                 !currentCategory.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase))
             {
                 return _allItems.Where(i => i.CategoryId == currentCategory.Id && i.ParentId == 0)
-                                .OrderBy(i => i.IsFavorite ? 0 : 1)
-                                .ThenBy(i => i.Position)
+                                .OrderBy(i => i.Position)
+                                .ThenBy(i => i.Id)
                                 .ToList();
             }
 
-            // ⭐ En Çok Kullanılanlar: User's top desktop apps, games, websites, and favorites
-            var primaryItems = _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded) && i.ParentId == 0)
-                                        .OrderBy(i => i.IsFavorite ? 0 : 1)
-                                        .ThenBy(i => i.Type == "URL" ? 0 : 1)
-                                        .ThenBy(i => i.Position)
+            // ⭐ En Çok Kullanılanlar: User's top desktop apps, websites, and favorites in exact configured Position order
+            var primaryItems = _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite) && i.ParentId == 0)
+                                        .OrderBy(i => i.Position)
+                                        .ThenBy(i => i.Id)
                                         .ToList();
 
             if (primaryItems.Count == 0)
             {
-                primaryItems = _allItems.Where(i => i.ParentId == 0).Take(15).ToList();
+                primaryItems = _allItems.Where(i => i.ParentId == 0).OrderBy(i => i.Position).Take(15).ToList();
             }
 
             return primaryItems;
@@ -297,9 +298,9 @@ namespace RadialLauncher.UI.Windows
             if (count == 0) return;
 
             var theme = Services.ThemeManager.GetCurrentTheme();
-            double centerX = 210;
-            double centerY = 210;
-            double radius = 146;
+            double centerX = 250;
+            double centerY = 250;
+            double radius = 168;
 
             for (int i = 0; i < count; i++)
             {
@@ -326,13 +327,16 @@ namespace RadialLauncher.UI.Windows
                 }
                 else
                 {
-                    // 1. Sleek vector dark brand icon first
-                    icon = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
-
-                    // 2. Custom icon path
-                    if (icon == null && !string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
+                    // 1. Explicit valid icon file takes top precedence (Steam game .ico, custom file icon)
+                    if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
                     {
                         icon = Services.IconExtractor.GetIconForFile(item.IconPath);
+                    }
+
+                    // 2. Sleek vector dark brand icon (for YouTube, Discord, Spotify, etc.)
+                    if (icon == null)
+                    {
+                        icon = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
                     }
 
                     // 3. Web favicon or executable icon
@@ -342,15 +346,15 @@ namespace RadialLauncher.UI.Windows
                         {
                             icon = Services.IconExtractor.GetFaviconForUrl(item.Target);
                         }
-                        else if (item.Type == "EXE" || item.Type == "FILE" || item.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+                        else if (!string.IsNullOrEmpty(item.Target))
                         {
                             icon = Services.IconExtractor.GetIconForFile(item.Target);
                         }
                     }
                 }
 
-                int circleSize = 52;
-                int iconSize = 32;
+                int circleSize = 50;
+                int iconSize = 30;
 
                 // Dark-glass circular border
                 var iconBorder = new Border
@@ -477,7 +481,11 @@ namespace RadialLauncher.UI.Windows
                     iconWrapper.Children.Add(star);
                 }
 
-                // Compact name label below icon
+                // Outward radial name label to completely prevent overlap with bubbles
+                double labelRadius = radius + 36;
+                double lx = centerX + labelRadius * Math.Cos(angle);
+                double ly = centerY + labelRadius * Math.Sin(angle);
+
                 var nameLabel = new TextBlock
                 {
                     Text = item.Name,
@@ -488,26 +496,21 @@ namespace RadialLauncher.UI.Windows
                     HorizontalAlignment = HorizontalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = 66,
-                    MaxHeight = 26,
-                    Margin = new Thickness(0, 3, 0, 0)
+                    Width = 74,
+                    MaxWidth = 74,
+                    MaxHeight = 28,
+                    IsHitTestVisible = false
                 };
                 nameLabel.Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
-                    BlurRadius = 4,
+                    BlurRadius = 5,
                     ShadowDepth = 1,
-                    Opacity = 0.8,
+                    Opacity = 0.9,
                     Color = Colors.Black
                 };
-
-                var stack = new StackPanel
-                {
-                    Orientation = Orientation.Vertical,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Width = 66
-                };
-                stack.Children.Add(iconWrapper);
-                stack.Children.Add(nameLabel);
+                Canvas.SetLeft(nameLabel, lx - 37);
+                Canvas.SetTop(nameLabel, ly - 14);
+                Panel.SetZIndex(nameLabel, 25);
 
                 string tooltipText = item.Type switch
                 {
@@ -519,7 +522,9 @@ namespace RadialLauncher.UI.Windows
 
                 var btn = new Button
                 {
-                    Content = stack,
+                    Content = iconWrapper,
+                    Width = circleSize,
+                    Height = circleSize,
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
                     Padding = new Thickness(0),
@@ -527,11 +532,12 @@ namespace RadialLauncher.UI.Windows
                     ToolTip = tooltipText
                 };
                 btn.Style = CreateTransparentButtonStyle();
-                btn.RenderTransformOrigin = new Point(0.5, 0.4);
+                btn.RenderTransformOrigin = new Point(0.5, 0.5);
 
                 var scaleTransform = new ScaleTransform(0, 0);
                 btn.RenderTransform = scaleTransform;
                 btn.Opacity = 0;
+                nameLabel.Opacity = 0;
 
                 // Hover animation
                 var capturedBorder = iconBorder;
@@ -540,7 +546,8 @@ namespace RadialLauncher.UI.Windows
                 btn.MouseEnter += (s, e) =>
                 {
                     HoverInfoText.Text = itemName;
-                    var grow = new DoubleAnimation(1.22, TimeSpan.FromMilliseconds(130))
+                    nameLabel.Foreground = new SolidColorBrush(theme.AccentColor);
+                    var grow = new DoubleAnimation(1.18, TimeSpan.FromMilliseconds(130))
                     {
                         EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
                     };
@@ -556,6 +563,7 @@ namespace RadialLauncher.UI.Windows
                 btn.MouseLeave += (s, e) =>
                 {
                     if (HoverInfoText.Text == itemName) HoverInfoText.Text = "";
+                    nameLabel.Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor);
                     var shrink = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180))
                     {
                         EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
@@ -569,8 +577,9 @@ namespace RadialLauncher.UI.Windows
                     capturedShadow.Opacity = 0.5;
                 };
 
-                Canvas.SetLeft(btn, x - 33);
-                Canvas.SetTop(btn, y - 26);
+                Canvas.SetLeft(btn, x - (circleSize / 2.0));
+                Canvas.SetTop(btn, y - (circleSize / 2.0));
+                Panel.SetZIndex(btn, 15);
 
                 // Left click trigger
                 btn.Click += (s, e) =>
@@ -635,6 +644,7 @@ namespace RadialLauncher.UI.Windows
                 }
 
                 ItemsCanvas.Children.Add(btn);
+                ItemsCanvas.Children.Add(nameLabel);
                 _visibleButtons.Add((btn, item));
 
                 // Entry animation
@@ -657,9 +667,14 @@ namespace RadialLauncher.UI.Windows
                 Storyboard.SetTarget(fadeAnim, btn);
                 Storyboard.SetTargetProperty(fadeAnim, new PropertyPath("Opacity"));
 
+                var fadeLabelAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+                Storyboard.SetTarget(fadeLabelAnim, nameLabel);
+                Storyboard.SetTargetProperty(fadeLabelAnim, new PropertyPath("Opacity"));
+
                 sb.Children.Add(scaleXAnim);
                 sb.Children.Add(scaleYAnim);
                 sb.Children.Add(fadeAnim);
+                sb.Children.Add(fadeLabelAnim);
                 sb.BeginTime = TimeSpan.FromMilliseconds(i * 22);
                 sb.Begin();
             }
