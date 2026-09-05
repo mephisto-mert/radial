@@ -86,17 +86,16 @@ namespace RadialLauncher
                 {
                     var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                     var icoPath = Path.Combine(baseDir, "app.ico");
-                    var icon = RadialLauncher.Services.IconExtractor.GetIconForFile(icoPath);
-                    if (icon != null)
+                    if (File.Exists(icoPath))
                     {
-                        notifyIcon.IconSource = icon;
+                        notifyIcon.Icon = new System.Drawing.Icon(icoPath);
                     }
                     else
                     {
                         var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
                         if (exePath.EndsWith(".dll")) exePath = exePath.Replace(".dll", ".exe");
-                        var fallbackIcon = RadialLauncher.Services.IconExtractor.GetIconForFile(exePath);
-                        if (fallbackIcon != null) notifyIcon.IconSource = fallbackIcon;
+                        var icon = RadialLauncher.Services.IconExtractor.GetIconForFile(exePath);
+                        if (icon != null) notifyIcon.IconSource = icon;
                     }
                 }
                 catch (Exception ex)
