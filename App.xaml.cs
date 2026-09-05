@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,24 @@ namespace RadialLauncher
         {
             try
             {
+                var diagFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
+                if (!System.IO.Directory.Exists(diagFolder)) System.IO.Directory.CreateDirectory(diagFolder);
+
+                AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+                {
+                    try { System.IO.File.WriteAllText(System.IO.Path.Combine(diagFolder, "unhandled.log"), args.ExceptionObject?.ToString() ?? "null"); } catch { }
+                };
+
+                DispatcherUnhandledException += (s, args) =>
+                {
+                    try { System.IO.File.WriteAllText(System.IO.Path.Combine(diagFolder, "dispatcher_unhandled.log"), args.Exception?.ToString() ?? "null"); } catch { }
+                };
+
+                Exit += (s, args) =>
+                {
+                    try { System.IO.File.WriteAllText(System.IO.Path.Combine(diagFolder, "exit.log"), $"ExitCode={args.ApplicationExitCode}\nStackTrace:\n{Environment.StackTrace}"); } catch { }
+                };
+
                 base.OnStartup(e);
 
                 if (e.Args.Length > 0 && e.Args[0] == "--test-scan")
@@ -162,18 +181,26 @@ namespace RadialLauncher
                     return;
                 }
                 
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 1: OnStartup entered\n");
+
                 Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
                 var serviceCollection = new ServiceCollection();
                 ConfigureServices(serviceCollection);
                 ServiceProvider = serviceCollection.BuildServiceProvider();
 
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 2: Services configured\n");
+
                 var dbManager = new Data.DatabaseManager();
                 dbManager.InitializeDatabase();
+
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 3: DB initialized\n");
 
                 _radialMenu = new UI.Windows.RadialMenuWindow();
                 _radialMenu.Show();
                 _radialMenu.Hide();
+
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 4: RadialMenu initialized\n");
 
                 // Setup Tray Icon
                 notifyIcon = new TaskbarIcon();
@@ -221,6 +248,8 @@ namespace RadialLauncher
                 notifyIcon.ContextMenu = menu;
                 notifyIcon.TrayMouseDoubleClick += (s, args) => OpenLauncher();
                 
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 5: Tray icon configured\n");
+
                 // Setup Global Mouse Hook
                 mouseHook = new Hooks.GlobalMouseHook();
                 mouseHook.TriggerMode = Services.ThemeManager.GetActivationShortcut();
@@ -230,6 +259,8 @@ namespace RadialLauncher
                     Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt)));
                 };
                 mouseHook.Start();
+
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 6: Mouse hook started\n");
 
                 // Setup Keyboard HotKey
                 SetupHotKey(Services.ThemeManager.GetActivationShortcut());
@@ -243,6 +274,8 @@ namespace RadialLauncher
                     }
                     SetupHotKey(newShortcut);
                 };
+
+                File.AppendAllText(Path.Combine(diagFolder, "live_startup.log"), $"[{DateTime.Now:HH:mm:ss.fff}] Step 7: Hotkey setup complete, app fully running!\n");
             }
             catch (Exception ex)
             {
