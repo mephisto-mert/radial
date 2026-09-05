@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Dapper;
 using RadialLauncher.Models;
 using RadialLauncher.Data.Repositories;
+using RadialLauncher.Services.Games;
 using Serilog;
 
 namespace RadialLauncher.Data
@@ -15,8 +16,13 @@ namespace RadialLauncher.Data
         private readonly string _dbPath;
         private readonly IItemRepository _itemRepo;
         private readonly ICategoryRepository _categoryRepo;
+        private readonly IGameDetector _gameDetector;
 
-        public DatabaseManager()
+        public DatabaseManager() : this((IGameDetector?)null)
+        {
+        }
+
+        public DatabaseManager(IGameDetector? gameDetector)
         {
             var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
             if (!Directory.Exists(folder))
@@ -25,13 +31,15 @@ namespace RadialLauncher.Data
             _dbPath = Path.Combine(folder, "launcher.db");
             _itemRepo = new ItemRepository(this);
             _categoryRepo = new CategoryRepository(this);
+            _gameDetector = gameDetector ?? new GameDetector();
         }
 
-        public DatabaseManager(string dbPath)
+        public DatabaseManager(string dbPath, IGameDetector? gameDetector = null)
         {
             _dbPath = dbPath;
             _itemRepo = new ItemRepository(this);
             _categoryRepo = new CategoryRepository(this);
+            _gameDetector = gameDetector ?? new GameDetector();
         }
 
         public string GetConnectionString() => $"Data Source={_dbPath}";
@@ -211,7 +219,7 @@ namespace RadialLauncher.Data
                     gamesCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE Name LIKE '%Oyun%'");
                 }
 
-                var detectedGames = Services.GameDetector.DetectAllGames();
+                var detectedGames = _gameDetector.DetectAll();
                 var existingItems = connection.Query<LauncherItem>("SELECT * FROM Items").ToList();
 
                 int currentMaxPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) FROM Items WHERE CategoryId = @gamesCatId", new { gamesCatId });

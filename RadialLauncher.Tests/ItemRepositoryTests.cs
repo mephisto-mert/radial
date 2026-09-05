@@ -27,7 +27,10 @@ namespace RadialLauncher.Tests
             {
                 if (File.Exists(_testDbPath)) File.Delete(_testDbPath);
             }
-            catch { }
+            catch (IOException)
+            {
+                // Best-effort test cleanup: temporary file may still be briefly locked by SQLite connection pool.
+            }
         }
 
         [Fact]

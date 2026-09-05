@@ -94,7 +94,8 @@ namespace RadialLauncher
                     {
                         var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
                         if (exePath.EndsWith(".dll")) exePath = exePath.Replace(".dll", ".exe");
-                        var icon = RadialLauncher.Services.IconExtractor.GetIconForFile(exePath);
+                        var iconExtractor = ServiceProvider.GetRequiredService<IIconExtractor>();
+                        var icon = iconExtractor.GetIconForFile(exePath);
                         if (icon != null) notifyIcon.IconSource = icon;
                     }
                 }
@@ -168,6 +169,9 @@ namespace RadialLauncher
             services.AddSingleton<ICategoryRepository, CategoryRepository>();
 
             // Core Services
+            services.AddSingleton<FileIconService>();
+            services.AddSingleton<FaviconService>();
+            services.AddSingleton<IIconExtractor, IconExtractor>();
             services.AddSingleton<IThemeService>(sp => ThemeService.Instance);
             services.AddSingleton<ISystemActionService>(sp => SystemActionService.Instance);
             services.AddSingleton<IProcessRunner, ProcessRunner>();

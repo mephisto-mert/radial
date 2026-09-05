@@ -2,28 +2,56 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using RadialLauncher.Data;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Actions;
+using RadialLauncher.Services.Icons;
+using Serilog;
 
 namespace RadialLauncher.UI.Windows
 {
     public partial class AddItemWindow : Window
     {
         public LauncherItem? CreatedItem { get; private set; }
-        private readonly DatabaseManager _dbManager = new();
+        private readonly IDatabaseManager _dbManager;
+        private readonly IIconExtractor? _iconExtractor;
+        private readonly ISystemActionService _actionService;
 
-        public AddItemWindow()
+        public AddItemWindow(
+            IDatabaseManager? dbManager = null,
+            IIconExtractor? iconExtractor = null,
+            ISystemActionService? actionService = null)
         {
             InitializeComponent();
+
+            _dbManager = dbManager 
+                         ?? App.ServiceProvider?.GetService<IDatabaseManager>() 
+                         ?? new DatabaseManager();
+
+            _iconExtractor = iconExtractor 
+                             ?? App.ServiceProvider?.GetService<IIconExtractor>();
+
+            _actionService = actionService 
+                             ?? App.ServiceProvider?.GetService<ISystemActionService>()
+                             ?? SystemActionService.Instance;
+
             try
             {
                 string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
-                if (File.Exists(iconPath)) this.Icon = Services.IconExtractor.GetIconForFile(iconPath);
+                if (File.Exists(iconPath) && _iconExtractor != null)
+                {
+                    this.Icon = _iconExtractor.GetIconForFile(iconPath);
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Could not set AddItemWindow icon");
+            }
+
             LoadCategories();
-            ActionSelectComboBox.ItemsSource = Services.SystemActionService.AvailableActions;
+            ActionSelectComboBox.ItemsSource = _actionService.GetAvailableActions();
         }
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -56,7 +84,7 @@ namespace RadialLauncher.UI.Windows
 
         private void ActionSelectComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (ActionSelectComboBox.SelectedItem is Services.SystemActionInfo action)
+            if (ActionSelectComboBox.SelectedItem is SystemActionInfo action)
             {
                 TargetTextBox.Text = action.ActionKey;
                 if (string.IsNullOrWhiteSpace(NameTextBox.Text))

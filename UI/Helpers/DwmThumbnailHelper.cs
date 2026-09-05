@@ -73,7 +73,10 @@ namespace RadialLauncher.UI.Helpers
                 {
                     DwmUnregisterThumbnail(thumbHandle);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Failed to unregister DWM thumbnail handle {ThumbHandle}", thumbHandle);
+                }
             }
         }
     }

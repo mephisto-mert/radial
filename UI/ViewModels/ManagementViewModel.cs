@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RadialLauncher.Data;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Scanning;
@@ -22,6 +23,7 @@ namespace RadialLauncher.UI.ViewModels
         private readonly IThemeService _themeService;
         private readonly IPCScannerService _scannerService;
         private readonly ISyncService _syncService;
+        private readonly IDatabaseManager _db;
 
         [ObservableProperty]
         private ObservableCollection<Category> _categories = new();
@@ -89,13 +91,15 @@ namespace RadialLauncher.UI.ViewModels
             ICategoryRepository categoryRepo,
             IThemeService themeService,
             IPCScannerService scannerService,
-            ISyncService syncService)
+            ISyncService syncService,
+            IDatabaseManager db)
         {
             _itemRepo = itemRepo;
             _categoryRepo = categoryRepo;
             _themeService = themeService;
             _scannerService = scannerService;
             _syncService = syncService;
+            _db = db;
 
             LoadInitialData();
         }
@@ -215,8 +219,7 @@ namespace RadialLauncher.UI.ViewModels
             await Task.Run(() =>
             {
                 var scanned = _scannerService.ScanAllApps();
-                var db = new Data.DatabaseManager();
-                var summary = _scannerService.SaveScannedApps(scanned, db);
+                var summary = _scannerService.SaveScannedApps(scanned, _db);
                 StatusMessage = $"Tarama tamamlandı: {summary.TotalAdded} yeni uygulama eklendi.";
             });
             RefreshItems();

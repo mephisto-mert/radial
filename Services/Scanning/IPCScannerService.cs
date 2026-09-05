@@ -6,6 +6,6 @@ namespace RadialLauncher.Services.Scanning
     public interface IPCScannerService
     {
         List<ScannedApp> ScanAllApps();
-        ScanSummary SaveScannedApps(IEnumerable<ScannedApp> apps, DatabaseManager db);
+        ScanSummary SaveScannedApps(IEnumerable<ScannedApp> apps, IDatabaseManager db);
     }
 }

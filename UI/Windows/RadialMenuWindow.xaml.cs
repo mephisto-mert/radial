@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Icons;
 using RadialLauncher.UI.Animations;
 using RadialLauncher.UI.Helpers;
 using RadialLauncher.UI.ViewModels;
@@ -17,25 +18,35 @@ namespace RadialLauncher.UI.Windows
     public partial class RadialMenuWindow : Window
     {
         private readonly RadialMenuViewModel _viewModel;
+        private readonly IIconExtractor? _iconExtractor;
         private readonly List<(Button btn, Border labelBorder, LauncherItem item)> _visibleButtons = new();
         private readonly List<IntPtr> _activeDwmThumbs = new();
         private int _keyboardFocusIndex = -1;
 
         public RadialMenuViewModel ViewModel => _viewModel;
 
-        public RadialMenuWindow()
+        public RadialMenuWindow() : this(
+            App.ServiceProvider?.GetService(typeof(RadialMenuViewModel)) as RadialMenuViewModel,
+            App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor)
+        {
+        }
+
+        public RadialMenuWindow(RadialMenuViewModel? viewModel, IIconExtractor? iconExtractor = null)
         {
             InitializeComponent();
 
-            // Resolve ViewModel from DI or create default
-            _viewModel = (App.ServiceProvider?.GetService(typeof(RadialMenuViewModel)) as RadialMenuViewModel) 
+            _iconExtractor = iconExtractor ?? (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor);
+
+            _viewModel = viewModel 
+                         ?? (App.ServiceProvider?.GetService(typeof(RadialMenuViewModel)) as RadialMenuViewModel) 
                          ?? new RadialMenuViewModel(
                              new Data.Repositories.ItemRepository(new Data.DatabaseManager()),
                              new Data.Repositories.CategoryRepository(new Data.DatabaseManager()),
                              new Services.Processes.ProcessRunner(),
                              Services.Themes.ThemeService.Instance,
                              new Services.Clipboard.ClipboardService(),
-                             new Services.VirtualDesktop.VirtualDesktopService());
+                             new Services.VirtualDesktop.VirtualDesktopService(),
+                             Services.Actions.SystemActionService.Instance);
 
             DataContext = _viewModel;
 
@@ -44,12 +55,6 @@ namespace RadialLauncher.UI.Windows
 
             Loaded += (s, e) => WindowAcrylicHelper.EnableBlur(this);
             MouseMove += Window_MouseMove;
-        }
-
-        public RadialMenuWindow(RadialMenuViewModel viewModel) : this()
-        {
-            _viewModel = viewModel;
-            DataContext = _viewModel;
         }
 
         public void ShowAt(int screenX, int screenY)
@@ -266,25 +271,28 @@ namespace RadialLauncher.UI.Windows
 
         private ImageSource? ResolveItemIcon(LauncherItem item)
         {
+            var extractor = _iconExtractor ?? (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor);
+            if (extractor == null) return null;
+
             if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
             {
-                var f = Services.IconExtractor.GetIconForFile(item.IconPath);
+                var f = extractor.GetIconForFile(item.IconPath);
                 if (f != null) return f;
             }
             if (item.Type == "URL")
             {
-                var fav = Services.IconExtractor.GetFaviconForUrl(item.Target);
+                var fav = extractor.GetFaviconForUrl(item.Target);
                 if (fav != null) return fav;
             }
-            var brand = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
+            var brand = extractor.GetBrandIcon(item.Name, item.Target);
             if (brand != null) return brand;
 
             if (!string.IsNullOrEmpty(item.Target))
             {
-                var t = Services.IconExtractor.GetIconForFile(item.Target);
+                var t = extractor.GetIconForFile(item.Target);
                 if (t != null) return t;
             }
-            return Services.IconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(88, 140, 236));
+            return extractor.CreateMonogramIcon(item.Name, Color.FromRgb(88, 140, 236));
         }
 
         private void RenderCategoryDots()

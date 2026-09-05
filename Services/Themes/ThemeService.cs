@@ -352,7 +352,10 @@ namespace RadialLauncher.Services.Themes
                 var val = key?.GetValue("AppsUseLightTheme");
                 if (val is int intVal) return intVal == 0;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed querying AppsUseLightTheme registry value");
+            }
             return true;
         }
 
@@ -371,7 +374,10 @@ namespace RadialLauncher.Services.Themes
                     return Color.FromRgb(r, g, b);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed querying DWM ColorizationColor registry value");
+            }
             return null;
         }
 

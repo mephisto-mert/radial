@@ -6,6 +6,8 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media;
+using RadialLauncher.Services.Icons;
+using Serilog;
 
 namespace RadialLauncher.Services.Windows
 {
@@ -19,6 +21,13 @@ namespace RadialLauncher.Services.Windows
 
     public class WindowSwitcherService : IWindowSwitcherService
     {
+        private readonly IIconExtractor _iconExtractor;
+
+        public WindowSwitcherService(IIconExtractor iconExtractor)
+        {
+            _iconExtractor = iconExtractor ?? throw new ArgumentNullException(nameof(iconExtractor));
+        }
+
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         [DllImport("user32.dll")]
@@ -121,13 +130,16 @@ namespace RadialLauncher.Services.Windows
                         var proc = Process.GetProcessById((int)processId);
                         procName = proc.ProcessName;
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Failed to get process name for PID {ProcessId}", processId);
+                    }
                 }
 
                 ImageSource? icon = null;
                 if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
                 {
-                    icon = IconExtractor.GetIconForFile(exePath);
+                    icon = _iconExtractor.GetIconForFile(exePath);
                 }
 
                 windows.Add(new WindowInfo

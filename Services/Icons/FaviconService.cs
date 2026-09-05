@@ -10,14 +10,14 @@ namespace RadialLauncher.Services.Icons
 {
     public class FaviconService
     {
-        private readonly IHttpClientFactory? _httpClientFactory;
+        private readonly IHttpClientFactory _httpClientFactory;
         private static readonly string CacheDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RadialLauncher", "FaviconCache");
 
-        public FaviconService(IHttpClientFactory? httpClientFactory = null)
+        public FaviconService(IHttpClientFactory httpClientFactory)
         {
-            _httpClientFactory = httpClientFactory;
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             if (!Directory.Exists(CacheDir))
             {
                 Directory.CreateDirectory(CacheDir);
@@ -26,14 +26,7 @@ namespace RadialLauncher.Services.Icons
 
         private HttpClient CreateClient()
         {
-            if (_httpClientFactory != null)
-            {
-                return _httpClientFactory.CreateClient("FaviconClient");
-            }
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            client.Timeout = TimeSpan.FromSeconds(5);
-            return client;
+            return _httpClientFactory.CreateClient("FaviconClient");
         }
 
         public ImageSource? GetFaviconForUrl(string url)
@@ -129,7 +122,7 @@ namespace RadialLauncher.Services.Icons
             catch (Exception ex)
             {
                 Log.Warning(ex, "Corrupt cached favicon at {Path}", path);
-                try { File.Delete(path); } catch { }
+                try { File.Delete(path); } catch (Exception delEx) { Log.Debug(delEx, "Failed to delete corrupted favicon at {Path}", path); }
                 return null;
             }
         }

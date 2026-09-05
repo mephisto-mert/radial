@@ -23,6 +23,7 @@ namespace RadialLauncher.UI.ViewModels
         private readonly IThemeService _themeService;
         private readonly IClipboardService _clipboardService;
         private readonly IVirtualDesktopService _desktopService;
+        private readonly ISystemActionService _systemActionService;
 
         private readonly Stack<(int parentId, string title)> _navStack = new();
         private List<LauncherItem> _allItems = new();
@@ -84,7 +85,8 @@ namespace RadialLauncher.UI.ViewModels
             IProcessRunner processRunner,
             IThemeService themeService,
             IClipboardService clipboardService,
-            IVirtualDesktopService desktopService)
+            IVirtualDesktopService desktopService,
+            ISystemActionService systemActionService)
         {
             _itemRepo = itemRepo;
             _categoryRepo = categoryRepo;
@@ -92,6 +94,7 @@ namespace RadialLauncher.UI.ViewModels
             _themeService = themeService;
             _clipboardService = clipboardService;
             _desktopService = desktopService;
+            _systemActionService = systemActionService;
 
             _activeTheme = _themeService.GetCurrentTheme();
             _themeService.OnThemeChanged += (t) =>
@@ -306,8 +309,7 @@ namespace RadialLauncher.UI.ViewModels
                 RequestClose?.Invoke();
                 RadialLauncher.App.Current.Dispatcher.Invoke(() =>
                 {
-                    var mgmt = new Windows.ManagementWindow();
-                    mgmt.Show();
+                    ((App)App.Current).OpenSettings();
                 });
             }
             else if (action.ActionKey == "SEARCH")
@@ -316,7 +318,7 @@ namespace RadialLauncher.UI.ViewModels
             }
             else
             {
-                RadialLauncher.Services.Actions.SystemActionService.Instance.ExecuteAction(action.ActionKey);
+                _systemActionService.ExecuteAction(action.ActionKey);
             }
         }
     }

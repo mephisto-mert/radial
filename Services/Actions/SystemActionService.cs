@@ -116,7 +116,10 @@ namespace RadialLauncher.Services.Actions
                         "RadialLauncher", "logs", "action_error.log");
                     File.AppendAllText(actionLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}: {ex}\n");
                 }
-                catch { }
+                catch (Exception writeEx)
+                {
+                    Log.Warning(writeEx, "Failed to append to action_error.log");
+                }
             }
         }
 

@@ -86,7 +86,10 @@ namespace RadialLauncher.Services.Icons
                             return img;
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Failed extracting associated icon for {Path}, falling back to SHGetFileInfo", filePath);
+                    }
                 }
 
                 // 4. SHGetFileInfo fallback

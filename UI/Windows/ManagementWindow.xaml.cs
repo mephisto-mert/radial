@@ -8,7 +8,10 @@ using System.Windows.Media;
 using Microsoft.Win32;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Scanning;
 using RadialLauncher.Services.Themes;
+using RadialLauncher.Services.Windows;
 using RadialLauncher.UI.ViewModels;
 using Serilog;
 
@@ -16,6 +19,7 @@ namespace RadialLauncher.UI.Windows
 {
     public class LauncherItemViewModel
     {
+        private readonly IIconExtractor? _iconExtractor;
         public LauncherItem Item { get; set; }
         public string IsFavoriteText => Item.IsFavorite ? "⭐" : "—";
         public int Position => Item.Position;
@@ -28,49 +32,66 @@ namespace RadialLauncher.UI.Windows
         {
             get
             {
+                var extractor = _iconExtractor ?? (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor);
+                if (extractor == null) return null;
+
                 if (!string.IsNullOrEmpty(Item.IconPath) && File.Exists(Item.IconPath))
                 {
-                    var f = Services.IconExtractor.GetIconForFile(Item.IconPath);
+                    var f = extractor.GetIconForFile(Item.IconPath);
                     if (f != null) return f;
                 }
                 if (Item.Type == "URL")
                 {
-                    var fav = Services.IconExtractor.GetFaviconForUrl(Item.Target);
+                    var fav = extractor.GetFaviconForUrl(Item.Target);
                     if (fav != null) return fav;
                 }
-                var brand = Services.IconExtractor.GetBrandIcon(Item.Name, Item.Target);
+                var brand = extractor.GetBrandIcon(Item.Name, Item.Target);
                 if (brand != null) return brand;
                 if (!string.IsNullOrEmpty(Item.Target))
                 {
-                    var tf = Services.IconExtractor.GetIconForFile(Item.Target);
+                    var tf = extractor.GetIconForFile(Item.Target);
                     if (tf != null) return tf;
                 }
-                return Services.IconExtractor.CreateMonogramIcon(Item.Name, Color.FromRgb(88, 140, 236));
+                return extractor.CreateMonogramIcon(Item.Name, Color.FromRgb(88, 140, 236));
             }
         }
 
-        public LauncherItemViewModel(LauncherItem item, string categoryName)
+        public LauncherItemViewModel(LauncherItem item, string categoryName, IIconExtractor? iconExtractor = null)
         {
             Item = item;
             CategoryName = categoryName;
+            _iconExtractor = iconExtractor;
         }
     }
 
     public partial class ManagementWindow : Window
     {
         private readonly ManagementViewModel _viewModel;
+        private readonly IStartupManager _startupManager;
+        private readonly IThemeService _themeService;
 
-        public ManagementWindow()
+        public ManagementWindow() : this(
+            App.ServiceProvider?.GetService(typeof(ManagementViewModel)) as ManagementViewModel,
+            App.ServiceProvider?.GetService(typeof(IStartupManager)) as IStartupManager,
+            App.ServiceProvider?.GetService(typeof(IThemeService)) as IThemeService)
+        {
+        }
+
+        public ManagementWindow(ManagementViewModel? viewModel, IStartupManager? startupManager = null, IThemeService? themeService = null)
         {
             InitializeComponent();
 
-            _viewModel = (App.ServiceProvider?.GetService(typeof(ManagementViewModel)) as ManagementViewModel)
+            _themeService = themeService ?? ThemeService.Instance;
+            _startupManager = startupManager ?? new StartupManager();
+            _viewModel = viewModel
+                         ?? (App.ServiceProvider?.GetService(typeof(ManagementViewModel)) as ManagementViewModel)
                          ?? new ManagementViewModel(
                              new ItemRepository(new Data.DatabaseManager()),
                              new CategoryRepository(new Data.DatabaseManager()),
-                             ThemeService.Instance,
-                             new Services.Scanning.PCScannerService(),
-                             new Services.Sync.SyncService(new ItemRepository(new Data.DatabaseManager()), new CategoryRepository(new Data.DatabaseManager())));
+                             _themeService,
+                             (App.ServiceProvider?.GetService(typeof(IPCScannerService)) as IPCScannerService) ?? new Services.Scanning.PCScannerService(),
+                             new Services.Sync.SyncService(new ItemRepository(new Data.DatabaseManager()), new CategoryRepository(new Data.DatabaseManager())),
+                             new Data.DatabaseManager());
 
             DataContext = _viewModel;
             Loaded += ManagementWindow_Loaded;
@@ -130,7 +151,7 @@ namespace RadialLauncher.UI.Windows
 
         private void LoadStartupState()
         {
-            RunOnStartupCheck.IsChecked = Services.StartupManager.IsRunOnStartup();
+            RunOnStartupCheck.IsChecked = _startupManager.IsRunOnStartup();
         }
 
         private void RefreshGrid()
@@ -236,7 +257,10 @@ namespace RadialLauncher.UI.Windows
                 };
                 LivePreviewControl.Theme = previewTheme;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Live preview color parse failed for partial input");
+            }
         }
 
         private void SaveCustomTheme_Click(object sender, RoutedEventArgs e)
@@ -265,23 +289,23 @@ namespace RadialLauncher.UI.Windows
         private void FollowWindowsTheme_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.FollowWindowsTheme = FollowWindowsThemeCheck.IsChecked ?? false;
-            Services.Themes.ThemeService.Instance.SetFollowWindowsTheme(_viewModel.FollowWindowsTheme);
-            LivePreviewControl.Theme = Services.Themes.ThemeService.Instance.GetCurrentTheme();
+            _themeService.SetFollowWindowsTheme(_viewModel.FollowWindowsTheme);
+            LivePreviewControl.Theme = _themeService.GetCurrentTheme();
         }
 
         private void ExtractAccent_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ExtractAccentFromWallpaper = ExtractAccentCheck.IsChecked ?? false;
-            Services.Themes.ThemeService.Instance.SetExtractAccentFromWallpaper(_viewModel.ExtractAccentFromWallpaper);
-            LivePreviewControl.Theme = Services.Themes.ThemeService.Instance.GetCurrentTheme();
+            _themeService.SetExtractAccentFromWallpaper(_viewModel.ExtractAccentFromWallpaper);
+            LivePreviewControl.Theme = _themeService.GetCurrentTheme();
         }
 
         private void ReduceMotion_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ReduceMotion = ReduceMotionCheck.IsChecked ?? false;
-            var t = Services.Themes.ThemeService.Instance.GetCurrentTheme();
+            var t = _themeService.GetCurrentTheme();
             t.ReduceMotion = _viewModel.ReduceMotion;
-            Services.Themes.ThemeService.Instance.SaveCustomTheme(t);
+            _themeService.SaveCustomTheme(t);
         }
 
         private void DensityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -290,9 +314,9 @@ namespace RadialLauncher.UI.Windows
             {
                 string mode = cbi.Content.ToString()!.Contains("Kompakt") ? "Compact" : "Expanded";
                 _viewModel.DensityMode = mode;
-                var t = Services.Themes.ThemeService.Instance.GetCurrentTheme();
+                var t = _themeService.GetCurrentTheme();
                 t.DensityMode = mode;
-                Services.Themes.ThemeService.Instance.SaveCustomTheme(t);
+                _themeService.SaveCustomTheme(t);
             }
         }
 
@@ -312,14 +336,14 @@ namespace RadialLauncher.UI.Windows
                     "~ (Tilde Tuşu)" => "Tilde",
                     _ => "MiddleClick"
                 };
-                Services.Themes.ThemeService.Instance.SetActivationShortcut(sc);
+                _themeService.SetActivationShortcut(sc);
             }
         }
 
         private void RunOnStartupCheck_Click(object sender, RoutedEventArgs e)
         {
             bool enable = RunOnStartupCheck.IsChecked ?? false;
-            Services.StartupManager.SetRunOnStartup(enable);
+            _startupManager.SetRunOnStartup(enable);
         }
 
         private async void ScanButton_Click(object sender, RoutedEventArgs e)
