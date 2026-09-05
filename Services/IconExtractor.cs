@@ -714,16 +714,58 @@ namespace RadialLauncher.Services
             }
         }
 
+        private static readonly Dictionary<string, ImageSource?> _fileIconCache = new(StringComparer.OrdinalIgnoreCase);
+
         public static ImageSource? GetIconForFile(string path)
         {
             if (string.IsNullOrWhiteSpace(path)) return null;
 
+            if (_fileIconCache.TryGetValue(path, out var cached))
+                return cached;
+
+            var icon = ExtractIconForFileInternal(path);
+            _fileIconCache[path] = icon;
+            return icon;
+        }
+
+        private static ImageSource? ExtractIconForFileInternal(string path)
+        {
             // Direct image file (.png, .jpg, .ico)
             string ext = Path.GetExtension(path).ToLowerInvariant();
             if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".ico")
             {
                 var img = LoadImageFromFile(path);
                 if (img != null) return img;
+            }
+
+            // URL files (Desktop / Steam shortcuts)
+            if (ext == ".url" && File.Exists(path))
+            {
+                try
+                {
+                    var lines = File.ReadAllLines(path);
+                    string? iconFile = null;
+                    string? steamUrl = null;
+                    foreach (var l in lines)
+                    {
+                        var trimmed = l.Trim();
+                        if (trimmed.StartsWith("IconFile=", StringComparison.OrdinalIgnoreCase))
+                            iconFile = trimmed.Substring("IconFile=".Length).Trim();
+                        else if (trimmed.StartsWith("URL=steam://rungameid/", StringComparison.OrdinalIgnoreCase))
+                            steamUrl = trimmed.Substring("URL=".Length).Trim();
+                    }
+                    if (!string.IsNullOrEmpty(iconFile) && File.Exists(iconFile))
+                    {
+                        var img = LoadImageFromFile(iconFile);
+                        if (img != null) return img;
+                    }
+                    if (!string.IsNullOrEmpty(steamUrl))
+                    {
+                        var img = GetIconForFile(steamUrl);
+                        if (img != null) return img;
+                    }
+                }
+                catch { }
             }
 
             // Steam URL lookup

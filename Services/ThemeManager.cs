@@ -160,6 +160,7 @@ namespace RadialLauncher.Services
         }
 
         public static event Action<Theme>? OnThemeChanged;
+        public static event Action<string>? OnShortcutChanged;
 
         public static void SetCurrentTheme(string name)
         {
@@ -168,18 +169,9 @@ namespace RadialLauncher.Services
                 var dir = Path.GetDirectoryName(SettingsPath)!;
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-                AppSettings settings;
-                if (File.Exists(SettingsPath))
-                {
-                    var json = File.ReadAllText(SettingsPath);
-                    settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-                }
-                else
-                {
-                    settings = new AppSettings();
-                }
+                var settings = LoadSettings();
                 settings.ThemeName = name;
-                File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+                SaveSettings(settings);
 
                 var updatedTheme = GetTheme(name);
                 OnThemeChanged?.Invoke(updatedTheme);
@@ -187,9 +179,58 @@ namespace RadialLauncher.Services
             catch { }
         }
 
-        private class AppSettings
+        public static string GetActivationShortcut()
+        {
+            try
+            {
+                var settings = LoadSettings();
+                return string.IsNullOrEmpty(settings.ActivationShortcut) ? "MiddleClick" : settings.ActivationShortcut;
+            }
+            catch
+            {
+                return "MiddleClick";
+            }
+        }
+
+        public static void SetActivationShortcut(string shortcut)
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(SettingsPath)!;
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                var settings = LoadSettings();
+                settings.ActivationShortcut = shortcut;
+                SaveSettings(settings);
+
+                OnShortcutChanged?.Invoke(shortcut);
+            }
+            catch { }
+        }
+
+        private static AppSettings LoadSettings()
+        {
+            try
+            {
+                if (File.Exists(SettingsPath))
+                {
+                    var json = File.ReadAllText(SettingsPath);
+                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                }
+            }
+            catch { }
+            return new AppSettings();
+        }
+
+        private static void SaveSettings(AppSettings settings)
+        {
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        public class AppSettings
         {
             public string ThemeName { get; set; } = "Dark";
+            public string ActivationShortcut { get; set; } = "MiddleClick";
         }
     }
 }

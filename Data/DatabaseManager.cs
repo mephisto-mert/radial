@@ -103,17 +103,86 @@ namespace RadialLauncher.Data
                 }
                 catch { }
 
-                // Auto-resolve missing icons for Steam games in DB
+                // Auto-resolve missing icons for all items in DB
                 try
                 {
                     var steamIcons = Services.GameDetector.ScanSteamShortcutIcons();
-                    var steamItems = connection.Query<LauncherItem>("SELECT * FROM Items WHERE Target LIKE 'steam://rungameid/%' AND (IconPath IS NULL OR IconPath = '')");
-                    foreach (var sItem in steamItems)
+                    
+                    // Also scan desktop .url and .lnk files to map icon paths
+                    var desktopUrlIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    var desktopUrlTargets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    var desktopFolders = new[]
                     {
-                        string appId = sItem.Target.Replace("steam://rungameid/", "").Trim();
-                        if (steamIcons.TryGetValue(appId, out var iconFile) && File.Exists(iconFile))
+                        Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)
+                    };
+                    foreach (var df in desktopFolders)
+                    {
+                        if (!Directory.Exists(df)) continue;
+                        foreach (var urlFile in Directory.GetFiles(df, "*.url"))
                         {
-                            connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { IconPath = iconFile, sItem.Id });
+                            try
+                            {
+                                string baseName = Path.GetFileNameWithoutExtension(urlFile);
+                                var lines = File.ReadAllLines(urlFile);
+                                string? url = null;
+                                string? icon = null;
+                                foreach (var l in lines)
+                                {
+                                    var tr = l.Trim();
+                                    if (tr.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))
+                                        url = tr.Substring("URL=".Length).Trim();
+                                    else if (tr.StartsWith("IconFile=", StringComparison.OrdinalIgnoreCase))
+                                        icon = tr.Substring("IconFile=".Length).Trim();
+                                }
+                                if (!string.IsNullOrEmpty(icon) && File.Exists(icon))
+                                {
+                                    desktopUrlIcons[baseName] = icon;
+                                    if (!string.IsNullOrEmpty(url))
+                                        desktopUrlTargets[url] = icon;
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+
+                    var allDbItems = connection.Query<LauncherItem>("SELECT * FROM Items WHERE IconPath IS NULL OR IconPath = ''");
+                    foreach (var it in allDbItems)
+                    {
+                        string foundIcon = "";
+                        if (it.Target.StartsWith("steam://rungameid/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string appId = it.Target.Replace("steam://rungameid/", "").Trim();
+                            if (steamIcons.TryGetValue(appId, out var iconFile) && File.Exists(iconFile))
+                            {
+                                foundIcon = iconFile;
+                            }
+                            else if (desktopUrlTargets.TryGetValue(it.Target, out var dtIcon) && File.Exists(dtIcon))
+                            {
+                                foundIcon = dtIcon;
+                            }
+                        }
+                        
+                        if (string.IsNullOrEmpty(foundIcon) && desktopUrlIcons.TryGetValue(it.Name, out var nameIcon) && File.Exists(nameIcon))
+                        {
+                            foundIcon = nameIcon;
+                        }
+
+                        if (string.IsNullOrEmpty(foundIcon))
+                        {
+                            if (it.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) && File.Exists(it.Target))
+                            {
+                                foundIcon = it.Target;
+                            }
+                            else if (it.Target.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(it.Target))
+                            {
+                                foundIcon = it.Target;
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(foundIcon))
+                        {
+                            connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { IconPath = foundIcon, it.Id });
                         }
                     }
                 }

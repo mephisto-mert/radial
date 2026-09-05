@@ -17,6 +17,23 @@ namespace RadialLauncher.Services
         public string CategoryName { get; set; } = "🛠️ Sistem & Araçlar";
         public string Source { get; set; } = string.Empty;
         public bool IsSelected { get; set; } = true;
+
+        public System.Windows.Media.ImageSource? Icon
+        {
+            get
+            {
+                var brand = IconExtractor.GetBrandIcon(Name, Target);
+                if (brand != null) return brand;
+                if (!string.IsNullOrEmpty(IconPath) && File.Exists(IconPath))
+                    return IconExtractor.GetIconForFile(IconPath);
+                if (!string.IsNullOrEmpty(Target))
+                {
+                    var targetIcon = IconExtractor.GetIconForFile(Target);
+                    if (targetIcon != null) return targetIcon;
+                }
+                return IconExtractor.CreateMonogramIcon(Name, System.Windows.Media.Color.FromRgb(88, 140, 236));
+            }
+        }
     }
 
     public class ScanSummary
@@ -122,7 +139,7 @@ namespace RadialLauncher.Services
             }
             catch { }
 
-            // 2. Desktop Shortcuts
+            // 2. Desktop Shortcuts (.lnk and .url)
             try
             {
                 string[] desktopFolders = new[]
@@ -135,6 +152,7 @@ namespace RadialLauncher.Services
                 {
                     if (Directory.Exists(folder))
                     {
+                        // .lnk shortcuts
                         foreach (var file in Directory.GetFiles(folder, "*.lnk"))
                         {
                             string appName = Path.GetFileNameWithoutExtension(file);
@@ -146,12 +164,46 @@ namespace RadialLauncher.Services
                                 Source = "Masaüstü"
                             });
                         }
+
+                        // .url shortcuts (Steam games, websites, etc.)
+                        foreach (var file in Directory.GetFiles(folder, "*.url"))
+                        {
+                            string appName = Path.GetFileNameWithoutExtension(file);
+                            string target = file;
+                            string iconPath = "";
+                            try
+                            {
+                                var lines = File.ReadAllLines(file);
+                                foreach (var line in lines)
+                                {
+                                    var trimmed = line.Trim();
+                                    if (trimmed.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        target = trimmed.Substring("URL=".Length).Trim();
+                                    }
+                                    else if (trimmed.StartsWith("IconFile=", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        iconPath = trimmed.Substring("IconFile=".Length).Trim();
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            AddIfValid(new ScannedApp
+                            {
+                                Name = appName,
+                                Target = target,
+                                IconPath = iconPath,
+                                CategoryName = ClassifyCategory(appName, target),
+                                Source = "Masaüstü"
+                            });
+                        }
                     }
                 }
             }
             catch { }
 
-            // 3. Start Menu Shortcuts
+            // 3. Start Menu Shortcuts (.lnk and .url)
             try
             {
                 string[] startMenuFolders = new[]
@@ -172,6 +224,39 @@ namespace RadialLauncher.Services
                                 Name = appName,
                                 Target = file,
                                 CategoryName = ClassifyCategory(appName, file),
+                                Source = "Başlat Menüsü"
+                            });
+                        }
+
+                        foreach (var file in Directory.GetFiles(folder, "*.url", SearchOption.AllDirectories))
+                        {
+                            string appName = Path.GetFileNameWithoutExtension(file);
+                            string target = file;
+                            string iconPath = "";
+                            try
+                            {
+                                var lines = File.ReadAllLines(file);
+                                foreach (var line in lines)
+                                {
+                                    var trimmed = line.Trim();
+                                    if (trimmed.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        target = trimmed.Substring("URL=".Length).Trim();
+                                    }
+                                    else if (trimmed.StartsWith("IconFile=", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        iconPath = trimmed.Substring("IconFile=".Length).Trim();
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            AddIfValid(new ScannedApp
+                            {
+                                Name = appName,
+                                Target = target,
+                                IconPath = iconPath,
+                                CategoryName = ClassifyCategory(appName, target),
                                 Source = "Başlat Menüsü"
                             });
                         }
@@ -263,11 +348,23 @@ namespace RadialLauncher.Services
 
         public static string ClassifyCategory(string name, string target)
         {
+            if (target.StartsWith("steam://", StringComparison.OrdinalIgnoreCase) ||
+                target.StartsWith("com.epicgames.", StringComparison.OrdinalIgnoreCase))
+            {
+                return CatGames;
+            }
+
             string combined = (name + " " + target).ToLowerInvariant();
 
             foreach (var kw in GameKeywords)
             {
                 if (combined.Contains(kw)) return CatGames;
+            }
+
+            if (target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                target.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return CatInternet;
             }
 
             foreach (var kw in InternetKeywords)

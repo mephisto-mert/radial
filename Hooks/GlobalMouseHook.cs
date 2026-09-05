@@ -7,15 +7,24 @@ namespace RadialLauncher.Hooks
     public class GlobalMouseHook : IDisposable
     {
         private const int WH_MOUSE_LL = 14;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_RBUTTONUP = 0x0205;
         private const int WM_MBUTTONDOWN = 0x0207;
         private const int WM_MBUTTONUP = 0x0208;
+        private const int WM_XBUTTONDOWN = 0x020B;
+        private const int WM_XBUTTONUP = 0x020C;
 
-        public event EventHandler<Point> OnMiddleMouseDown;
+        private const int VK_SHIFT = 0x10;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_MENU = 0x12;
+
+        public event EventHandler<Point>? OnMiddleMouseDown;
 
         private LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
 
         public bool IsPassThroughEnabled { get; set; } = false;
+        public string TriggerMode { get; set; } = "MiddleClick";
 
         public GlobalMouseHook()
         {
@@ -45,25 +54,54 @@ namespace RadialLauncher.Hooks
         {
             if (nCode >= 0)
             {
-                if (wParam == (IntPtr)WM_MBUTTONDOWN)
+                int msg = (int)wParam;
+                MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                bool triggered = false;
+
+                if (TriggerMode == "MiddleClick" && msg == WM_MBUTTONDOWN)
                 {
-                    MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                    triggered = true;
+                }
+                else if (TriggerMode == "AltRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0)
+                {
+                    triggered = true;
+                }
+                else if (TriggerMode == "ShiftRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0)
+                {
+                    triggered = true;
+                }
+                else if (TriggerMode == "CtrlRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
+                {
+                    triggered = true;
+                }
+                else if (TriggerMode == "XButton1" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 1)
+                {
+                    triggered = true;
+                }
+                else if (TriggerMode == "XButton2" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 2)
+                {
+                    triggered = true;
+                }
+
+                if (triggered)
+                {
                     OnMiddleMouseDown?.Invoke(this, new Point(hookStruct.pt.x, hookStruct.pt.y));
 
                     if (!IsPassThroughEnabled)
                     {
-                        // Block the event
                         return (IntPtr)1;
                     }
                 }
-                else if (wParam == (IntPtr)WM_MBUTTONUP && !IsPassThroughEnabled)
+                else if (!IsPassThroughEnabled && (msg == WM_MBUTTONUP || msg == WM_RBUTTONUP || msg == WM_XBUTTONUP))
                 {
-                    // Block the up event too if pass-through is disabled
-                    return (IntPtr)1;
+                    // If triggered previously, pass through normally
                 }
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
 
         public void Dispose()
         {

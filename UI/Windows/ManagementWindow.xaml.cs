@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,6 +22,27 @@ namespace RadialLauncher.UI.Windows
         public string Type => Item.Type;
         public string Target => Item.Target;
         public string CategoryName { get; set; } = "Genel";
+
+        public ImageSource? Icon
+        {
+            get
+            {
+                var brand = IconExtractor.GetBrandIcon(Item.Name, Item.Target);
+                if (brand != null) return brand;
+                if (!string.IsNullOrEmpty(Item.IconPath) && File.Exists(Item.IconPath))
+                    return IconExtractor.GetIconForFile(Item.IconPath);
+                if (!string.IsNullOrEmpty(Item.Target))
+                {
+                    var targetIcon = IconExtractor.GetIconForFile(Item.Target);
+                    if (targetIcon != null) return targetIcon;
+                }
+                if (Item.Type == "URL")
+                {
+                    return IconExtractor.GetFaviconForUrl(Item.Target);
+                }
+                return IconExtractor.CreateMonogramIcon(Item.Name, Color.FromRgb(88, 140, 236));
+            }
+        }
 
         public LauncherItemViewModel(LauncherItem item, string categoryName)
         {
@@ -54,9 +75,25 @@ namespace RadialLauncher.UI.Windows
 
             LoadThemes();
             LoadStartupState();
+            LoadShortcutState();
             LoadCategoriesAndItems();
 
+            var currentTheme = ThemeManager.GetCurrentTheme();
+            ApplyThemeToWindow(currentTheme);
+
+            ThemeManager.OnThemeChanged += OnThemeManagerChanged;
+            this.Closed += (s, e) => ThemeManager.OnThemeChanged -= OnThemeManagerChanged;
+
             _isInitializing = false;
+        }
+
+        private void OnThemeManagerChanged(Theme t)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                ApplyThemeToWindow(t);
+                UpdateThemePreview(t);
+            });
         }
 
         private void LoadThemes()
@@ -154,7 +191,102 @@ namespace RadialLauncher.UI.Windows
                 ThemeManager.SetCurrentTheme(selectedTheme);
                 var theme = ThemeManager.GetTheme(selectedTheme);
                 UpdateThemePreview(theme);
+                ApplyThemeToWindow(theme);
             }
+        }
+
+        private void LoadShortcutState()
+        {
+            try
+            {
+                string currentShortcut = ThemeManager.GetActivationShortcut();
+                foreach (ComboBoxItem item in ShortcutComboBox.Items)
+                {
+                    if (item.Tag?.ToString() == currentShortcut)
+                    {
+                        ShortcutComboBox.SelectedItem = item;
+                        break;
+                    }
+                }
+                if (ShortcutComboBox.SelectedItem == null && ShortcutComboBox.Items.Count > 0)
+                {
+                    ShortcutComboBox.SelectedIndex = 0;
+                }
+            }
+            catch { }
+        }
+
+        private void ShortcutComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isInitializing) return;
+            if (ShortcutComboBox.SelectedItem is ComboBoxItem item && item.Tag is string shortcutKey)
+            {
+                ThemeManager.SetActivationShortcut(shortcutKey);
+            }
+        }
+
+        private void ApplyThemeToWindow(Theme theme)
+        {
+            try
+            {
+                var darkBg = Color.FromRgb(
+                    (byte)Math.Max(14, (int)(theme.BackgroundColor.R * 0.45)),
+                    (byte)Math.Max(14, (int)(theme.BackgroundColor.G * 0.45)),
+                    (byte)Math.Max(18, (int)(theme.BackgroundColor.B * 0.45))
+                );
+                var cardBg = Color.FromRgb(
+                    (byte)Math.Min(255, darkBg.R + 10),
+                    (byte)Math.Min(255, darkBg.G + 10),
+                    (byte)Math.Min(255, darkBg.B + 14)
+                );
+                var borderCol = Color.FromArgb(90, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B);
+
+                this.Background = new SolidColorBrush(darkBg);
+
+                var cardBrush = new SolidColorBrush(cardBg);
+                var accentBrush = new SolidColorBrush(theme.AccentColor);
+                var borderBrush = new SolidColorBrush(borderCol);
+
+                if (HeaderBadgeBorder != null)
+                {
+                    HeaderBadgeBorder.BorderBrush = borderBrush;
+                    HeaderBadgeBorder.BorderThickness = new Thickness(1);
+                }
+                if (HeaderBadgeText != null)
+                {
+                    HeaderBadgeText.Foreground = accentBrush;
+                }
+
+                Border[] cards = new[] 
+                { 
+                    Tab1ActionBar, Tab2LeftBorder, Tab3InfoBorder, Tab3ActionBar, 
+                    Tab4ThemeBar, Tab4PreviewCard, Tab5StartupCard, Tab5ShortcutCard, Tab5GuideCard 
+                };
+                foreach (var card in cards)
+                {
+                    if (card != null)
+                    {
+                        card.Background = cardBrush;
+                        card.BorderBrush = borderBrush;
+                    }
+                }
+
+                if (ItemsListView != null)
+                {
+                    ItemsListView.Background = new SolidColorBrush(Color.FromRgb((byte)Math.Max(10, darkBg.R - 4), (byte)Math.Max(10, darkBg.G - 4), (byte)Math.Max(12, darkBg.B - 4)));
+                    ItemsListView.BorderBrush = borderBrush;
+                }
+                if (ScannedAppsListView != null)
+                {
+                    ScannedAppsListView.Background = new SolidColorBrush(Color.FromRgb((byte)Math.Max(10, darkBg.R - 4), (byte)Math.Max(10, darkBg.G - 4), (byte)Math.Max(12, darkBg.B - 4)));
+                    ScannedAppsListView.BorderBrush = borderBrush;
+                }
+                if (CategoriesListView != null)
+                {
+                    CategoriesListView.BorderBrush = borderBrush;
+                }
+            }
+            catch { }
         }
 
         private void StartupCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -213,25 +345,35 @@ namespace RadialLauncher.UI.Windows
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ItemsListView.SelectedItem is LauncherItemViewModel vm)
+            var selectedItems = ItemsListView.SelectedItems.OfType<LauncherItemViewModel>().ToList();
+            if (selectedItems.Count == 0) return;
+
+            string confirmMsg = selectedItems.Count == 1
+                ? $"'{selectedItems[0].Name}' öğesini silmek istediğinize emin misiniz?"
+                : $"Seçilen {selectedItems.Count} öğeyi silmek istediğinize emin misiniz?";
+
+            var result = MessageBox.Show(confirmMsg, "Silme Onayı",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result == MessageBoxResult.Yes)
             {
-                var result = MessageBox.Show($"'{vm.Name}' öğesini silmek istediğinize emin misiniz?", "Silme Onayı",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (result == MessageBoxResult.Yes)
+                foreach (var vm in selectedItems)
                 {
                     _dbManager.DeleteItem(vm.Item.Id);
-                    LoadCategoriesAndItems();
                 }
+                LoadCategoriesAndItems();
             }
         }
 
         private void ToggleFavorite_Click(object sender, RoutedEventArgs e)
         {
-            if (ItemsListView.SelectedItem is LauncherItemViewModel vm)
+            var selectedItems = ItemsListView.SelectedItems.OfType<LauncherItemViewModel>().ToList();
+            if (selectedItems.Count == 0) return;
+
+            foreach (var vm in selectedItems)
             {
                 _dbManager.ToggleFavorite(vm.Item.Id);
-                LoadCategoriesAndItems();
             }
+            LoadCategoriesAndItems();
         }
 
         private void MoveUp_Click(object sender, RoutedEventArgs e)
@@ -418,6 +560,79 @@ namespace RadialLauncher.UI.Windows
         private void DeselectAllScanned_Click(object sender, RoutedEventArgs e)
         {
             foreach (var app in _scannedApps) app.IsSelected = false;
+            ScannedAppsListView.Items.Refresh();
+        }
+
+        private int _lastScannedClickIndex = -1;
+
+        private void ScannedAppsListView_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var item = GetScannedAppAtPoint(e.GetPosition(ScannedAppsListView));
+            if (item != null)
+            {
+                int curIndex = _scannedApps.IndexOf(item);
+                if ((System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftShift) || 
+                     System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.RightShift)) &&
+                    _lastScannedClickIndex >= 0 && _lastScannedClickIndex < _scannedApps.Count)
+                {
+                    int start = Math.Min(_lastScannedClickIndex, curIndex);
+                    int end = Math.Max(_lastScannedClickIndex, curIndex);
+                    bool newState = true;
+                    for (int i = start; i <= end; i++)
+                    {
+                        _scannedApps[i].IsSelected = newState;
+                    }
+                    ScannedAppsListView.Items.Refresh();
+                }
+                _lastScannedClickIndex = curIndex;
+            }
+        }
+
+        private ScannedApp? GetScannedAppAtPoint(Point point)
+        {
+            var hitTest = VisualTreeHelper.HitTest(ScannedAppsListView, point);
+            if (hitTest == null) return null;
+
+            var visual = hitTest.VisualHit;
+            while (visual != null && visual != ScannedAppsListView)
+            {
+                if (visual is ListViewItem lvi && lvi.DataContext is ScannedApp app)
+                {
+                    return app;
+                }
+                visual = VisualTreeHelper.GetParent(visual);
+            }
+            return null;
+        }
+
+        private void ScannedAppsListView_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Space)
+            {
+                var selected = ScannedAppsListView.SelectedItems.OfType<ScannedApp>().ToList();
+                if (selected.Count > 0)
+                {
+                    bool targetState = !selected[0].IsSelected;
+                    foreach (var app in selected) app.IsSelected = targetState;
+                    ScannedAppsListView.Items.Refresh();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void CheckSelectedScanned_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ScannedAppsListView.SelectedItems.OfType<ScannedApp>().ToList();
+            if (selected.Count == 0) return;
+            foreach (var app in selected) app.IsSelected = true;
+            ScannedAppsListView.Items.Refresh();
+        }
+
+        private void UncheckSelectedScanned_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ScannedAppsListView.SelectedItems.OfType<ScannedApp>().ToList();
+            if (selected.Count == 0) return;
+            foreach (var app in selected) app.IsSelected = false;
             ScannedAppsListView.Items.Refresh();
         }
 

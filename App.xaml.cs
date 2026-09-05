@@ -74,6 +74,22 @@ namespace RadialLauncher
                     return;
                 }
 
+                if (e.Args.Length > 0 && e.Args[0] == "--test-shortcut")
+                {
+                    string orig = Services.ThemeManager.GetActivationShortcut();
+                    string testVal = "AltRightClick";
+                    string received = "";
+                    void OnChange(string s) { received = s; }
+                    Services.ThemeManager.OnShortcutChanged += OnChange;
+                    Services.ThemeManager.SetActivationShortcut(testVal);
+                    Services.ThemeManager.OnShortcutChanged -= OnChange;
+                    string updated = Services.ThemeManager.GetActivationShortcut();
+                    Console.WriteLine($"SHORTCUT_TEST: Set='{testVal}', Got='{updated}', Event='{received}'");
+                    Services.ThemeManager.SetActivationShortcut(orig);
+                    Current.Shutdown();
+                    return;
+                }
+
                 if (e.Args.Length > 0 && e.Args[0] == "--test-db")
                 {
                     var db = new Data.DatabaseManager();
@@ -96,6 +112,36 @@ namespace RadialLauncher
                     {
                         Console.WriteLine($"  [{it.Type}] {it.Name} (CatId={it.CategoryId}, UserAdded={it.IsUserAdded}, Fav={it.IsFavorite})");
                     }
+                    Current.Shutdown();
+                    return;
+                }
+
+                if (e.Args.Length > 0 && e.Args[0] == "--test-icons")
+                {
+                    var db = new Data.DatabaseManager();
+                    db.InitializeDatabase();
+                    var items = db.GetAllItems();
+                    Console.WriteLine($"TOTAL_ITEMS_TO_CHECK:{items.Count}");
+                    int hasIcon = 0;
+                    int missingIcon = 0;
+                    foreach (var it in items)
+                    {
+                        var brand = Services.IconExtractor.GetBrandIcon(it.Name, it.Target);
+                        var fileIcon = !string.IsNullOrEmpty(it.IconPath) && System.IO.File.Exists(it.IconPath) ? Services.IconExtractor.GetIconForFile(it.IconPath) : null;
+                        var targetIcon = Services.IconExtractor.GetIconForFile(it.Target);
+                        var favicon = it.Type == "URL" ? Services.IconExtractor.GetFaviconForUrl(it.Target) : null;
+                        bool found = brand != null || fileIcon != null || targetIcon != null || favicon != null;
+                        if (found) hasIcon++;
+                        else
+                        {
+                            missingIcon++;
+                            if (missingIcon <= 30)
+                            {
+                                Console.WriteLine($"MISSING_ICON: Id={it.Id}, Name='{it.Name}', Target='{it.Target}', IconPath='{it.IconPath}', Type={it.Type}");
+                            }
+                        }
+                    }
+                    Console.WriteLine($"ICON_SUMMARY: Found={hasIcon}, Missing={missingIcon}");
                     Current.Shutdown();
                     return;
                 }
@@ -173,12 +219,26 @@ namespace RadialLauncher
                 
                 // Setup Global Mouse Hook
                 mouseHook = new Hooks.GlobalMouseHook();
+                mouseHook.TriggerMode = Services.ThemeManager.GetActivationShortcut();
                 mouseHook.OnMiddleMouseDown += (s, pt) => 
                 {
                     // Run on UI Thread asynchronously to prevent blocking the hook
                     Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt)));
                 };
                 mouseHook.Start();
+
+                // Setup Keyboard HotKey
+                SetupHotKey(Services.ThemeManager.GetActivationShortcut());
+
+                // Listen to Shortcut changes
+                Services.ThemeManager.OnShortcutChanged += (newShortcut) =>
+                {
+                    if (mouseHook != null)
+                    {
+                        mouseHook.TriggerMode = newShortcut;
+                    }
+                    SetupHotKey(newShortcut);
+                };
             }
             catch (Exception ex)
             {
@@ -191,6 +251,78 @@ namespace RadialLauncher
                 catch { }
                 Current.Shutdown();
             }
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        private const int HOTKEY_ID = 9001;
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_NOREPEAT = 0x4000;
+        private const uint VK_SPACE = 0x20;
+        private const uint VK_F4 = 0x73;
+        private const uint VK_OEM_3 = 0xC0; // ~ tilde
+
+        private System.Windows.Interop.HwndSource? _hwndSource;
+
+        private void SetupHotKey(string shortcut)
+        {
+            try
+            {
+                if (_hwndSource == null && _radialMenu != null)
+                {
+                    var helper = new System.Windows.Interop.WindowInteropHelper(_radialMenu);
+                    _hwndSource = System.Windows.Interop.HwndSource.FromHwnd(helper.EnsureHandle());
+                    _hwndSource?.AddHook(HwndHook);
+                }
+
+                if (_hwndSource != null)
+                {
+                    UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID);
+
+                    uint mod = MOD_NOREPEAT;
+                    uint vk = 0;
+
+                    switch (shortcut)
+                    {
+                        case "AltSpace":
+                            mod |= MOD_ALT;
+                            vk = VK_SPACE;
+                            break;
+                        case "CtrlSpace":
+                            mod |= MOD_CONTROL;
+                            vk = VK_SPACE;
+                            break;
+                        case "F4":
+                            vk = VK_F4;
+                            break;
+                        case "Tilde":
+                            vk = VK_OEM_3;
+                            break;
+                    }
+
+                    if (vk != 0)
+                    {
+                        RegisterHotKey(_hwndSource.Handle, HOTKEY_ID, mod, vk);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_HOTKEY = 0x0312;
+            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
+            {
+                OpenLauncher();
+                handled = true;
+            }
+            return IntPtr.Zero;
         }
 
         private void ConfigureServices(IServiceCollection services)
@@ -227,6 +359,17 @@ namespace RadialLauncher
 
         private void ExitApplication()
         {
+            try
+            {
+                if (_hwndSource != null)
+                {
+                    UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID);
+                    _hwndSource.RemoveHook(HwndHook);
+                    _hwndSource.Dispose();
+                    _hwndSource = null;
+                }
+            }
+            catch { }
             mouseHook?.Dispose();
             notifyIcon?.Dispose();
             Current.Shutdown();
