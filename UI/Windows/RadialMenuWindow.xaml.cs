@@ -298,9 +298,9 @@ namespace RadialLauncher.UI.Windows
             if (count == 0) return;
 
             var theme = Services.ThemeManager.GetCurrentTheme();
-            double centerX = 250;
-            double centerY = 250;
-            double radius = 168;
+            double centerX = 270;
+            double centerY = 270;
+            double radius = 170;
 
             for (int i = 0; i < count; i++)
             {
@@ -333,27 +333,29 @@ namespace RadialLauncher.UI.Windows
                         icon = Services.IconExtractor.GetIconForFile(item.IconPath);
                     }
 
-                    // 2. Sleek vector dark brand icon (for YouTube, Discord, Spotify, etc.)
+                    // 2. Web favicon for URLs (official crisp website logo from cache or web)
+                    if (icon == null && item.Type == "URL")
+                    {
+                        icon = Services.IconExtractor.GetFaviconForUrl(item.Target);
+                    }
+
+                    // 3. Sleek vector dark brand icon (for YouTube, Discord, Spotify, etc.)
                     if (icon == null)
                     {
                         icon = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
                     }
 
-                    // 3. Web favicon or executable icon
+                    // 4. Executable icon or shortcut icon
                     if (icon == null)
                     {
-                        if (item.Type == "URL")
-                        {
-                            icon = Services.IconExtractor.GetFaviconForUrl(item.Target);
-                        }
-                        else if (!string.IsNullOrEmpty(item.Target))
+                        if (!string.IsNullOrEmpty(item.Target))
                         {
                             icon = Services.IconExtractor.GetIconForFile(item.Target);
                         }
                     }
                 }
 
-                int circleSize = 50;
+                int circleSize = 48;
                 int iconSize = 30;
 
                 // Dark-glass circular border
@@ -481,10 +483,15 @@ namespace RadialLauncher.UI.Windows
                     iconWrapper.Children.Add(star);
                 }
 
-                // Outward radial name label to completely prevent overlap with bubbles
-                double labelRadius = radius + 36;
-                double lx = centerX + labelRadius * Math.Cos(angle);
-                double ly = centerY + labelRadius * Math.Sin(angle);
+                // Outward radial name label with mathematically verified non-overlapping clearance
+                double bubbleR = circleSize / 2.0;
+                double labelW = 68;
+                double labelH = 24;
+                double cosA = Math.Cos(angle);
+                double sinA = Math.Sin(angle);
+                double D = bubbleR + 8.0 + (labelW / 2.0) * Math.Abs(cosA) + (labelH / 2.0) * Math.Abs(sinA);
+                double lx = x + D * cosA;
+                double ly = y + D * sinA;
 
                 var nameLabel = new TextBlock
                 {
@@ -496,9 +503,9 @@ namespace RadialLauncher.UI.Windows
                     HorizontalAlignment = HorizontalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    Width = 74,
-                    MaxWidth = 74,
-                    MaxHeight = 28,
+                    Width = labelW,
+                    MaxWidth = labelW,
+                    MaxHeight = labelH + 2,
                     IsHitTestVisible = false
                 };
                 nameLabel.Effect = new System.Windows.Media.Effects.DropShadowEffect
@@ -508,8 +515,8 @@ namespace RadialLauncher.UI.Windows
                     Opacity = 0.9,
                     Color = Colors.Black
                 };
-                Canvas.SetLeft(nameLabel, lx - 37);
-                Canvas.SetTop(nameLabel, ly - 14);
+                Canvas.SetLeft(nameLabel, lx - (labelW / 2.0));
+                Canvas.SetTop(nameLabel, ly - (labelH / 2.0));
                 Panel.SetZIndex(nameLabel, 25);
 
                 string tooltipText = item.Type switch

@@ -124,7 +124,13 @@ namespace RadialLauncher
                     var items = db.GetAllItems();
                     Console.WriteLine($"TOTAL_ITEMS_TO_CHECK:{items.Count}");
 
-                    string[] testGames = new[] { "Red Dead Redemption 2", "Hitman: Absolution", "Kenshi", "Half Sword", "Project Zomboid", "Sons Of The Forest", "Marvel's Spider-Man 2", "Mephisto Mail", "Mephisto Shares" };
+                    string[] testGames = new[] { 
+                        "Red Dead Redemption 2", "Hitman: Absolution", "Kenshi", "Half Sword", 
+                        "Project Zomboid", "Sons Of The Forest", "Marvel's Spider-Man 2", "Cities: Skylines",
+                        "Universe Sandbox", "WorldBox - God Simulator", "STAR WARS Battlefront II",
+                        "Minecraft Launcher", "OpenCode", "ChatGpt", "Github", "Mephisto Mail", 
+                        "Mephisto Shares", "Zen", "Google", "youtube" 
+                    };
                     foreach (var gameName in testGames)
                     {
                         var it = items.FirstOrDefault(i => i.Name.Equals(gameName, StringComparison.OrdinalIgnoreCase));

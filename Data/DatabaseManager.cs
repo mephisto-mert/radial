@@ -185,6 +185,38 @@ namespace RadialLauncher.Data
                             connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { IconPath = foundIcon, it.Id });
                         }
                     }
+
+                    // Auto-resolve favicon for URL items from FaviconCache
+                    string faviconDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "RadialLauncher", "FaviconCache");
+                    if (Directory.Exists(faviconDir))
+                    {
+                        var urlItems = connection.Query<LauncherItem>("SELECT * FROM Items WHERE Type = 'URL' AND (IconPath IS NULL OR IconPath = '')");
+                        foreach (var u in urlItems)
+                        {
+                            try
+                            {
+                                string domain = u.Target;
+                                if (domain.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                                    domain.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    domain = new Uri(domain).Host;
+                                }
+                                else
+                                {
+                                    try { domain = new Uri("https://" + domain).Host; } catch { }
+                                }
+                                string safeName = domain.Replace(".", "_").Replace(":", "_") + ".png";
+                                string iconFile = Path.Combine(faviconDir, safeName);
+                                if (File.Exists(iconFile))
+                                {
+                                    connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { IconPath = iconFile, u.Id });
+                                }
+                            }
+                            catch { }
+                        }
+                    }
                 }
                 catch { }
 
@@ -207,10 +239,10 @@ namespace RadialLauncher.Data
                         connection.Execute("UPDATE Categories SET Name = '🌐 Web & İnternet', Color = '#3498db' WHERE Id = @Id", new { Id = webCatId });
                     }
 
-                    // Move all URL items and browser items to Web category, mark as user added so they appear on main menu too!
+                    // Move all URL items and browser items to Web category
                     connection.Execute(@"
                         UPDATE Items 
-                        SET CategoryId = @webCatId, IsUserAdded = 1 
+                        SET CategoryId = @webCatId 
                         WHERE Type = 'URL' 
                            OR Target LIKE '%brave%' 
                            OR Target LIKE '%chrome%' 
@@ -264,15 +296,14 @@ namespace RadialLauncher.Data
                     }
                     connection.Execute("UPDATE Items SET CategoryId = @sysCatId WHERE Type = 'ACTION' OR CategoryId IN (SELECT Id FROM Categories WHERE Id != @sysCatId AND (Name LIKE '%Sistem%' OR Name LIKE '%Araç%'))", new { sysCatId });
 
-                    // 6. Delete obsolete duplicate empty categories
-                    var validCategoryIds = new[] { 1, webCatId, gamesCatId, devCatId, sysCatId };
+                    // 6. Delete obsolete duplicate empty categories safely without array binding errors
                     connection.Execute(@"
                         DELETE FROM Categories 
                         WHERE Id > 1 
-                          AND Id NOT IN @validCategoryIds 
+                          AND Id NOT IN (1, @webCatId, @gamesCatId, @devCatId, @sysCatId) 
                           AND Name NOT LIKE '%Açık Pencereler%'
                           AND (SELECT COUNT(*) FROM Items WHERE CategoryId = Categories.Id) = 0", 
-                        new { validCategoryIds });
+                        new { webCatId, gamesCatId, devCatId, sysCatId });
 
                     // 7. Re-order canonical positions
                     connection.Execute("UPDATE Categories SET Position = 0 WHERE Id = 1;");
@@ -288,32 +319,34 @@ namespace RadialLauncher.Data
 
                         UPDATE Items 
                         SET IsUserAdded = 1 
-                        WHERE Type = 'URL' 
-                           OR IsFavorite = 1
-                           OR Id IN (8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 23, 24, 36, 48, 49, 51, 54, 55, 58, 69, 70);
+                        WHERE Id IN (8, 48, 9, 49, 10, 11, 51, 13, 14, 20, 12, 22, 54, 18, 55, 15, 36, 16, 23, 24, 58, 69, 70);
 
-                        -- Arrange user's primary items so Page 1 contains exactly their handpicked shortcuts
-                        UPDATE Items SET Position = 0 WHERE Id = 8;  -- youtube
-                        UPDATE Items SET Position = 1 WHERE Id = 48; -- Ses Aç
-                        UPDATE Items SET Position = 2 WHERE Id = 9;  -- ChatGpt
-                        UPDATE Items SET Position = 3 WHERE Id = 49; -- Ses Kıs
-                        UPDATE Items SET Position = 4 WHERE Id = 10; -- Github
-                        UPDATE Items SET Position = 5 WHERE Id = 11; -- Gmail
-                        UPDATE Items SET Position = 6 WHERE Id = 51; -- Oynat/Durdur
-                        UPDATE Items SET Position = 7 WHERE Id = 13; -- Mephisto Mail
-                        UPDATE Items SET Position = 8 WHERE Id = 14; -- Mephisto Shares
-                        UPDATE Items SET Position = 9 WHERE Id = 12; -- Analytics
-                        UPDATE Items SET Position = 10 WHERE Id = 54; -- Masaüstü
-                        UPDATE Items SET Position = 11 WHERE Id = 18; -- Brave
-                        UPDATE Items SET Position = 12 WHERE Id = 55; -- Ekran Alıntısı
-                        UPDATE Items SET Position = 13 WHERE Id = 15; -- Rave
-                        UPDATE Items SET Position = 14 WHERE Id = 36; -- Counter-Strike 2
-                        UPDATE Items SET Position = 15 WHERE Id = 16; -- Antigravity
-                        UPDATE Items SET Position = 16 WHERE Id = 23; -- Steam
-                        UPDATE Items SET Position = 17 WHERE Id = 24; -- Epic Games
-                        UPDATE Items SET Position = 18 WHERE Id = 58; -- Discord
-                        UPDATE Items SET Position = 19 WHERE Id = 69; -- Spotify
-                        UPDATE Items SET Position = 20 WHERE Id = 70; -- Blitz
+                        -- Page 1: Exact 15 items in user's requested order
+                        UPDATE Items SET Position = 0 WHERE Id = 8;   -- youtube
+                        UPDATE Items SET Position = 1 WHERE Id = 48;  -- Ses Aç
+                        UPDATE Items SET Position = 2 WHERE Id = 9;   -- ChatGpt
+                        UPDATE Items SET Position = 3 WHERE Id = 49;  -- Ses Kıs
+                        UPDATE Items SET Position = 4 WHERE Id = 10;  -- Github
+                        UPDATE Items SET Position = 5 WHERE Id = 11;  -- Gmail
+                        UPDATE Items SET Position = 6 WHERE Id = 51;  -- Oynat/Durdur
+                        UPDATE Items SET Position = 7 WHERE Id = 13;  -- Mephisto Mail
+                        UPDATE Items SET Position = 8 WHERE Id = 14;  -- Mephisto Shares
+                        UPDATE Items SET Position = 9 WHERE Id = 20;  -- Zen
+                        UPDATE Items SET Position = 10 WHERE Id = 12; -- Analytics
+                        UPDATE Items SET Position = 11 WHERE Id = 22; -- Google
+                        UPDATE Items SET Position = 12 WHERE Id = 54; -- Masaüstü
+                        UPDATE Items SET Position = 13 WHERE Id = 18; -- Brave
+                        UPDATE Items SET Position = 14 WHERE Id = 55; -- Ekran Alıntısı
+
+                        -- Page 2: Remaining user-added / desktop items
+                        UPDATE Items SET Position = 15 WHERE Id = 15; -- Rave
+                        UPDATE Items SET Position = 16 WHERE Id = 36; -- Counter-Strike 2
+                        UPDATE Items SET Position = 17 WHERE Id = 16; -- Antigravity
+                        UPDATE Items SET Position = 18 WHERE Id = 23; -- Steam
+                        UPDATE Items SET Position = 19 WHERE Id = 24; -- Epic Games
+                        UPDATE Items SET Position = 20 WHERE Id = 58; -- Discord
+                        UPDATE Items SET Position = 21 WHERE Id = 69; -- Spotify
+                        UPDATE Items SET Position = 22 WHERE Id = 70; -- Blitz
                     ");
                 }
                 catch { }

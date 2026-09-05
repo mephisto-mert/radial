@@ -8,7 +8,7 @@
         KeyDown="Window_KeyDown" TextInput="Window_TextInput">
     <Grid>
         <!-- Outer glow shadow -->
-        <Ellipse x:Name="GlowEllipse" Width="520" Height="520" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Ellipse x:Name="GlowEllipse" Width="560" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Ellipse.Effect>
                 <DropShadowEffect BlurRadius="36" ShadowDepth="0" Color="#558CACEC" Opacity="0.5"/>
             </Ellipse.Effect>
@@ -21,7 +21,7 @@
         </Ellipse>
 
         <!-- Base circle with gradient -->
-        <Ellipse x:Name="BaseCircle" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <Ellipse x:Name="BaseCircle" Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center"
                  StrokeThickness="1.5">
             <Ellipse.Fill>
                 <SolidColorBrush x:Name="BaseFill" Color="#E8121216"/>
@@ -37,7 +37,7 @@
 
         <!-- Hover Info Header in Upper Center -->
         <TextBlock x:Name="HoverInfoText" Text="" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-102,0,0"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-100,0,0"
                    TextAlignment="Center" MaxWidth="240" TextTrimming="CharacterEllipsis">
             <TextBlock.Effect>
                 <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="Black" Opacity="0.8"/>
@@ -45,10 +45,10 @@
         </TextBlock>
 
         <!-- Container for radial items -->
-        <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Canvas x:Name="ItemsCanvas" Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center">
             <!-- Center Button -->
             <Button x:Name="CenterButton" Width="58" Height="58" FontSize="16"
-                    Canvas.Left="221" Canvas.Top="221" 
+                    Canvas.Left="241" Canvas.Top="241" 
                     Foreground="#AAAAAA" BorderThickness="0"
                     Click="CenterButton_Click" MouseRightButtonUp="CenterButton_MouseRightButtonUp"
                     ToolTip="Sol Tık: Kapat | Sağ Tık: Ayarlar" Cursor="Hand">
@@ -84,7 +84,7 @@
         </Border>
 
         <!-- Category & Page Info Pill (Safely positioned in inner ring below center button) -->
-        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,95,0,0"
+        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,100,0,0"
                 Background="#E015151B" CornerRadius="12" Padding="12,4" BorderThickness="1" BorderBrush="#35FFFFFF"
                 SnapsToDevicePixels="True">
             <Border.Effect>

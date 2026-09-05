@@ -103,7 +103,7 @@ namespace RadialLauncher.Services
                 return GetOrCache("minecraft", CreateMinecraftIcon);
             if (nameLower.Contains("blitz") || nameLower.Contains("riot client") || nameLower.Contains("league of legends"))
                 return GetOrCache("blitz", CreateBlitzIcon);
-            if (nameLower.Contains("visual studio code") || nameLower == "vscode" || targetLower.Contains("code.exe"))
+            if (nameLower.Contains("visual studio code") || nameLower == "vscode" || targetLower.EndsWith("\\code.exe", StringComparison.OrdinalIgnoreCase) || targetLower.EndsWith("/code.exe", StringComparison.OrdinalIgnoreCase))
                 return GetOrCache("vscode", CreateVsCodeIcon);
             if (key.Contains("notepad"))
                 return GetOrCache("notepad", CreateNotepadPlusIcon);
@@ -182,6 +182,17 @@ namespace RadialLauncher.Services
 
         private static ImageSource CreateChatGptIcon()
         {
+            try
+            {
+                string cached = Path.Combine(FaviconCacheDir, "chatgpt_com.png");
+                if (File.Exists(cached))
+                {
+                    var img = LoadImageFromFile(cached);
+                    if (img != null) return img;
+                }
+            }
+            catch { }
+
             var dv = new DrawingVisual();
             using (var dc = dv.RenderOpen())
             {
@@ -200,6 +211,17 @@ namespace RadialLauncher.Services
 
         private static ImageSource CreateGitHubIcon()
         {
+            try
+            {
+                string cached = Path.Combine(FaviconCacheDir, "github_com.png");
+                if (File.Exists(cached))
+                {
+                    var img = LoadImageFromFile(cached);
+                    if (img != null) return img;
+                }
+            }
+            catch { }
+
             var dv = new DrawingVisual();
             using (var dc = dv.RenderOpen())
             {
@@ -250,6 +272,17 @@ namespace RadialLauncher.Services
 
         private static ImageSource CreateAnalyticsIcon()
         {
+            try
+            {
+                string cached = Path.Combine(FaviconCacheDir, "analytics_google_com.png");
+                if (File.Exists(cached))
+                {
+                    var img = LoadImageFromFile(cached);
+                    if (img != null) return img;
+                }
+            }
+            catch { }
+
             var dv = new DrawingVisual();
             using (var dc = dv.RenderOpen())
             {
@@ -735,6 +768,19 @@ namespace RadialLauncher.Services
                         }
                     }
                     catch { }
+
+                    // GDI+ Icon decoder fallback for complex / unmanaged ICO headers
+                    try
+                    {
+                        using var gdiIcon = new System.Drawing.Icon(path, 128, 128);
+                        var bs = Imaging.CreateBitmapSourceFromHIcon(
+                            gdiIcon.Handle,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions());
+                        bs.Freeze();
+                        return bs;
+                    }
+                    catch { }
                 }
 
                 var bitmap = new BitmapImage();
@@ -882,6 +928,25 @@ namespace RadialLauncher.Services
                 {
                     DestroyIcon(shinfo.hIcon);
                 }
+            }
+
+            // Fallback for Windows shortcuts and apps: ExtractAssociatedIcon
+            if (File.Exists(path))
+            {
+                try
+                {
+                    using var assocIcon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                    if (assocIcon != null)
+                    {
+                        var bs = Imaging.CreateBitmapSourceFromHIcon(
+                            assocIcon.Handle,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions());
+                        bs.Freeze();
+                        return bs;
+                    }
+                }
+                catch { }
             }
 
             return null;

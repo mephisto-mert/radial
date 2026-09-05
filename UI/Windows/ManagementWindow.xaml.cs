@@ -34,22 +34,22 @@ namespace RadialLauncher.UI.Windows
                     if (fileIcon != null) return fileIcon;
                 }
 
-                // 2. Vector brand icon (YouTube, ChatGPT, Discord, Spotify, etc.)
-                var brand = IconExtractor.GetBrandIcon(Item.Name, Item.Target);
-                if (brand != null) return brand;
-
-                // 3. Target file / shortcut extraction
-                if (!string.IsNullOrEmpty(Item.Target))
-                {
-                    var targetIcon = IconExtractor.GetIconForFile(Item.Target);
-                    if (targetIcon != null) return targetIcon;
-                }
-
-                // 4. Web Favicon
+                // 2. Web Favicon (official crisp website logo)
                 if (Item.Type == "URL")
                 {
                     var favicon = IconExtractor.GetFaviconForUrl(Item.Target);
                     if (favicon != null) return favicon;
+                }
+
+                // 3. Vector brand icon (YouTube, ChatGPT, Discord, Spotify, etc.)
+                var brand = IconExtractor.GetBrandIcon(Item.Name, Item.Target);
+                if (brand != null) return brand;
+
+                // 4. Target file / shortcut extraction
+                if (!string.IsNullOrEmpty(Item.Target))
+                {
+                    var targetIcon = IconExtractor.GetIconForFile(Item.Target);
+                    if (targetIcon != null) return targetIcon;
                 }
 
                 // 5. High-quality monogram
