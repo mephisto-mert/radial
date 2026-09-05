@@ -781,6 +781,21 @@ namespace RadialLauncher.Services
                         return bs;
                     }
                     catch { }
+
+                    try
+                    {
+                        using var assocIcon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                        if (assocIcon != null)
+                        {
+                            var bs = Imaging.CreateBitmapSourceFromHIcon(
+                                assocIcon.Handle,
+                                Int32Rect.Empty,
+                                BitmapSizeOptions.FromEmptyOptions());
+                            bs.Freeze();
+                            return bs;
+                        }
+                    }
+                    catch { }
                 }
 
                 var bitmap = new BitmapImage();
@@ -852,6 +867,39 @@ namespace RadialLauncher.Services
                 }
                 catch { }
                 return null;
+            }
+
+            // Windows Shortcuts (.lnk) - extract actual target and icon
+            if (ext == ".lnk" && File.Exists(path))
+            {
+                try
+                {
+                    Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                    if (shellType != null)
+                    {
+                        dynamic shell = Activator.CreateInstance(shellType)!;
+                        dynamic shortcut = shell.CreateShortcut(path);
+                        string iconLoc = shortcut.IconLocation;
+                        string targetPath = shortcut.TargetPath;
+
+                        if (!string.IsNullOrEmpty(iconLoc))
+                        {
+                            string cleanIco = iconLoc.Split(',')[0].Trim().Trim('"');
+                            if (File.Exists(cleanIco))
+                            {
+                                var icoImg = GetIconForFile(cleanIco);
+                                if (icoImg != null) return icoImg;
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
+                        {
+                            var targetImg = GetIconForFile(targetPath);
+                            if (targetImg != null) return targetImg;
+                        }
+                    }
+                }
+                catch { }
             }
 
             // Steam URL lookup (e.g. steam://rungameid/1174180)

@@ -355,8 +355,8 @@ namespace RadialLauncher.UI.Windows
                     }
                 }
 
-                int circleSize = 48;
-                int iconSize = 30;
+                int circleSize = 52;
+                int iconSize = 40;
 
                 // Dark-glass circular border
                 var iconBorder = new Border
@@ -416,7 +416,7 @@ namespace RadialLauncher.UI.Windows
                     iconContainer.Children.Add(new TextBlock
                     {
                         Text = symbol,
-                        FontSize = 20,
+                        FontSize = 24,
                         Foreground = new SolidColorBrush(theme.AccentColor),
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
@@ -427,7 +427,7 @@ namespace RadialLauncher.UI.Windows
                     iconContainer.Children.Add(new TextBlock
                     {
                         Text = "📁",
-                        FontSize = 20,
+                        FontSize = 24,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     });
@@ -437,7 +437,7 @@ namespace RadialLauncher.UI.Windows
                     iconContainer.Children.Add(new TextBlock
                     {
                         Text = "🪟",
-                        FontSize = 18,
+                        FontSize = 22,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     });
@@ -485,8 +485,8 @@ namespace RadialLauncher.UI.Windows
 
                 // Outward radial name label with mathematically verified non-overlapping clearance
                 double bubbleR = circleSize / 2.0;
-                double labelW = 68;
-                double labelH = 24;
+                double labelW = 72;
+                double labelH = 26;
                 double cosA = Math.Cos(angle);
                 double sinA = Math.Sin(angle);
                 double D = bubbleR + 8.0 + (labelW / 2.0) * Math.Abs(cosA) + (labelH / 2.0) * Math.Abs(sinA);
@@ -497,27 +497,47 @@ namespace RadialLauncher.UI.Windows
                 {
                     Text = item.Name,
                     Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor),
-                    FontSize = 9.5,
+                    FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    Width = labelW,
-                    MaxWidth = labelW,
-                    MaxHeight = labelH + 2,
+                    MaxWidth = labelW - 6,
+                    MaxHeight = labelH,
                     IsHitTestVisible = false
                 };
-                nameLabel.Effect = new System.Windows.Media.Effects.DropShadowEffect
+
+                var labelBorder = new Border
                 {
-                    BlurRadius = 5,
+                    Width = labelW,
+                    Height = labelH,
+                    Background = new SolidColorBrush(Color.FromArgb(135, 16, 16, 22)),
+                    CornerRadius = new CornerRadius(5),
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(35, 255, 255, 255)),
+                    Child = nameLabel,
+                    Cursor = Cursors.Hand,
+                    SnapsToDevicePixels = true,
+                    RenderTransformOrigin = new Point(0.5, 0.5)
+                };
+
+                labelBorder.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    BlurRadius = 8,
                     ShadowDepth = 1,
-                    Opacity = 0.9,
+                    Opacity = 0.8,
                     Color = Colors.Black
                 };
-                Canvas.SetLeft(nameLabel, lx - (labelW / 2.0));
-                Canvas.SetTop(nameLabel, ly - (labelH / 2.0));
-                Panel.SetZIndex(nameLabel, 25);
+
+                var labelScale = new ScaleTransform(1.0, 1.0);
+                labelBorder.RenderTransform = labelScale;
+                labelBorder.Opacity = 0;
+
+                Canvas.SetLeft(labelBorder, lx - (labelW / 2.0));
+                Canvas.SetTop(labelBorder, ly - (labelH / 2.0));
+                Panel.SetZIndex(labelBorder, 25);
 
                 string tooltipText = item.Type switch
                 {
@@ -544,52 +564,88 @@ namespace RadialLauncher.UI.Windows
                 var scaleTransform = new ScaleTransform(0, 0);
                 btn.RenderTransform = scaleTransform;
                 btn.Opacity = 0;
-                nameLabel.Opacity = 0;
 
-                // Hover animation
+                // Hover animation: elevate both bubble AND label to front (Z-Index 100/101) & scale smoothly
                 var capturedBorder = iconBorder;
                 var capturedShadow = dropShadow;
                 string itemName = item.Name;
-                btn.MouseEnter += (s, e) =>
-                {
-                    HoverInfoText.Text = itemName;
-                    nameLabel.Foreground = new SolidColorBrush(theme.AccentColor);
-                    var grow = new DoubleAnimation(1.18, TimeSpan.FromMilliseconds(130))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                    };
-                    scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
-                    scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
 
-                    capturedBorder.BorderBrush = new SolidColorBrush(theme.AccentColor);
-                    capturedShadow.Color = theme.AccentColor;
-                    capturedShadow.BlurRadius = 22;
-                    capturedShadow.Opacity = 0.8;
+                Action<bool> setHover = (hovered) =>
+                {
+                    if (hovered)
+                    {
+                        HoverInfoText.Text = itemName;
+                        Panel.SetZIndex(btn, 100);
+                        Panel.SetZIndex(labelBorder, 101);
+
+                        nameLabel.Foreground = new SolidColorBrush(theme.AccentColor);
+                        nameLabel.FontWeight = FontWeights.Bold;
+                        labelBorder.Background = new SolidColorBrush(Color.FromArgb(235, 24, 24, 32));
+                        labelBorder.BorderBrush = new SolidColorBrush(theme.AccentColor);
+
+                        var grow = new DoubleAnimation(1.22, TimeSpan.FromMilliseconds(130))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                        };
+                        scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+                        scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+
+                        var lGrow = new DoubleAnimation(1.15, TimeSpan.FromMilliseconds(130))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                        };
+                        labelScale.BeginAnimation(ScaleTransform.ScaleXProperty, lGrow);
+                        labelScale.BeginAnimation(ScaleTransform.ScaleYProperty, lGrow);
+
+                        capturedBorder.BorderBrush = new SolidColorBrush(theme.AccentColor);
+                        capturedBorder.BorderThickness = new Thickness(2.0);
+                        capturedShadow.Color = theme.AccentColor;
+                        capturedShadow.BlurRadius = 24;
+                        capturedShadow.Opacity = 0.95;
+                    }
+                    else
+                    {
+                        if (HoverInfoText.Text == itemName) HoverInfoText.Text = "";
+                        Panel.SetZIndex(btn, 15);
+                        Panel.SetZIndex(labelBorder, 25);
+
+                        nameLabel.Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor);
+                        nameLabel.FontWeight = FontWeights.SemiBold;
+                        labelBorder.Background = new SolidColorBrush(Color.FromArgb(135, 16, 16, 22));
+                        labelBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(35, 255, 255, 255));
+
+                        var shrink = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                        };
+                        scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
+                        scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
+
+                        var lShrink = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                        };
+                        labelScale.BeginAnimation(ScaleTransform.ScaleXProperty, lShrink);
+                        labelScale.BeginAnimation(ScaleTransform.ScaleYProperty, lShrink);
+
+                        capturedBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255));
+                        capturedBorder.BorderThickness = new Thickness(1.4);
+                        capturedShadow.Color = Colors.Black;
+                        capturedShadow.BlurRadius = 14;
+                        capturedShadow.Opacity = 0.5;
+                    }
                 };
 
-                btn.MouseLeave += (s, e) =>
-                {
-                    if (HoverInfoText.Text == itemName) HoverInfoText.Text = "";
-                    nameLabel.Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor);
-                    var shrink = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                    };
-                    scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
-                    scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
-
-                    capturedBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255));
-                    capturedShadow.Color = Colors.Black;
-                    capturedShadow.BlurRadius = 14;
-                    capturedShadow.Opacity = 0.5;
-                };
+                btn.MouseEnter += (s, e) => setHover(true);
+                btn.MouseLeave += (s, e) => setHover(false);
+                labelBorder.MouseEnter += (s, e) => setHover(true);
+                labelBorder.MouseLeave += (s, e) => setHover(false);
 
                 Canvas.SetLeft(btn, x - (circleSize / 2.0));
                 Canvas.SetTop(btn, y - (circleSize / 2.0));
                 Panel.SetZIndex(btn, 15);
 
-                // Left click trigger
-                btn.Click += (s, e) =>
+                Action executeLaunch = () =>
                 {
                     if (item.Type == "SUBMENU")
                     {
@@ -621,6 +677,9 @@ namespace RadialLauncher.UI.Windows
                     this.Hide();
                 };
 
+                btn.Click += (s, e) => executeLaunch();
+                labelBorder.MouseLeftButtonUp += (s, e) => executeLaunch();
+
                 // Middle click: Close window if item is a WINDOW
                 btn.MouseDown += (s, e) =>
                 {
@@ -651,7 +710,7 @@ namespace RadialLauncher.UI.Windows
                 }
 
                 ItemsCanvas.Children.Add(btn);
-                ItemsCanvas.Children.Add(nameLabel);
+                ItemsCanvas.Children.Add(labelBorder);
                 _visibleButtons.Add((btn, item));
 
                 // Entry animation
@@ -675,7 +734,7 @@ namespace RadialLauncher.UI.Windows
                 Storyboard.SetTargetProperty(fadeAnim, new PropertyPath("Opacity"));
 
                 var fadeLabelAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
-                Storyboard.SetTarget(fadeLabelAnim, nameLabel);
+                Storyboard.SetTarget(fadeLabelAnim, labelBorder);
                 Storyboard.SetTargetProperty(fadeLabelAnim, new PropertyPath("Opacity"));
 
                 sb.Children.Add(scaleXAnim);

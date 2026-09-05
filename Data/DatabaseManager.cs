@@ -351,6 +351,160 @@ namespace RadialLauncher.Data
                 }
                 catch { }
 
+                // --- GUARANTEE ALL GAMES AND DESKTOP APPS ARE DISCOVERED & HAVE CRISP ICONS ---
+                try
+                {
+                    int gamesCatId = connection.QueryFirstOrDefault<int>("SELECT Id FROM Categories WHERE Name LIKE '%Oyun%' ORDER BY Id DESC");
+                    int maxPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) FROM Items");
+
+                    // 1. Detect all Steam & Epic games (from libraryfolders + uninstall registry)
+                    var detectedGames = Services.GameDetector.DetectAllGames();
+                    foreach (var g in detectedGames)
+                    {
+                        int exists = connection.QuerySingle<int>(
+                            "SELECT COUNT(*) FROM Items WHERE Target = @ExePath OR (Name = @Name AND CategoryId = @gamesCatId)",
+                            new { g.ExePath, g.Name, gamesCatId });
+
+                        if (exists == 0)
+                        {
+                            maxPos++;
+                            connection.Execute(@"
+                                INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded)
+                                VALUES (@Name, 'EXE', @ExePath, '', '', @IconPath, @gamesCatId, @maxPos, 0, 0, 0)",
+                                new { g.Name, g.ExePath, g.IconPath, gamesCatId, maxPos });
+                        }
+                    }
+
+                    // 2. Scan Desktop .url files for any missing games / web links
+                    var desktopFolders = new[]
+                    {
+                        Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)
+                    };
+                    foreach (var df in desktopFolders)
+                    {
+                        if (!Directory.Exists(df)) continue;
+                        foreach (var urlFile in Directory.GetFiles(df, "*.url"))
+                        {
+                            try
+                            {
+                                string baseName = Path.GetFileNameWithoutExtension(urlFile);
+                                var lines = File.ReadAllLines(urlFile);
+                                string? url = null;
+                                string? icon = null;
+                                foreach (var l in lines)
+                                {
+                                    var tr = l.Trim();
+                                    if (tr.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))
+                                        url = tr.Substring("URL=".Length).Trim();
+                                    else if (tr.StartsWith("IconFile=", StringComparison.OrdinalIgnoreCase))
+                                        icon = tr.Substring("IconFile=".Length).Trim();
+                                }
+
+                                if (!string.IsNullOrEmpty(url))
+                                {
+                                    int exists = connection.QuerySingle<int>(
+                                        "SELECT COUNT(*) FROM Items WHERE Target = @url OR Name = @baseName",
+                                        new { url, baseName });
+
+                                    if (exists == 0)
+                                    {
+                                        maxPos++;
+                                        int targetCat = url.StartsWith("steam://", StringComparison.OrdinalIgnoreCase) ? gamesCatId : 1;
+                                        connection.Execute(@"
+                                            INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded)
+                                            VALUES (@baseName, 'EXE', @url, '', '', @icon, @targetCat, @maxPos, 0, 0, 0)",
+                                            new { baseName, url, icon = icon ?? "", targetCat, maxPos });
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+
+                    // 3. Backfill missing / invalid IconPath for ALL items in DB
+                    var steamIcons = Services.GameDetector.ScanSteamShortcutIcons();
+                    var allDbItems = connection.Query<LauncherItem>("SELECT * FROM Items").ToList();
+                    foreach (var it in allDbItems)
+                    {
+                        if (string.IsNullOrEmpty(it.IconPath) || !File.Exists(it.IconPath))
+                        {
+                            string resolvedIcon = "";
+                            if (it.Target.StartsWith("steam://rungameid/", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string appId = it.Target.Substring("steam://rungameid/".Length).Trim();
+                                if (steamIcons.TryGetValue(appId, out var sIcon) && File.Exists(sIcon))
+                                {
+                                    resolvedIcon = sIcon;
+                                }
+                            }
+
+                            if (string.IsNullOrEmpty(resolvedIcon) && it.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) && File.Exists(it.Target))
+                            {
+                                try
+                                {
+                                    Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                                    if (shellType != null)
+                                    {
+                                        dynamic shell = Activator.CreateInstance(shellType)!;
+                                        dynamic shortcut = shell.CreateShortcut(it.Target);
+                                        string iconLoc = shortcut.IconLocation;
+                                        string targetPath = shortcut.TargetPath;
+                                        if (!string.IsNullOrEmpty(iconLoc))
+                                        {
+                                            string cl = iconLoc.Split(',')[0].Trim().Trim('"');
+                                            if (File.Exists(cl)) resolvedIcon = cl;
+                                        }
+                                        if (string.IsNullOrEmpty(resolvedIcon) && !string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
+                                        {
+                                            resolvedIcon = targetPath;
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
+
+                            if (string.IsNullOrEmpty(resolvedIcon) && it.Target.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(it.Target))
+                            {
+                                resolvedIcon = it.Target;
+                            }
+
+                            if (string.IsNullOrEmpty(resolvedIcon) && it.Type == "URL")
+                            {
+                                string faviconDir = Path.Combine(
+                                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                    "RadialLauncher", "FaviconCache");
+                                if (Directory.Exists(faviconDir))
+                                {
+                                    try
+                                    {
+                                        string domain = it.Target;
+                                        if (domain.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                                            domain.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            domain = new Uri(domain).Host;
+                                        }
+                                        else
+                                        {
+                                            try { domain = new Uri("https://" + domain).Host; } catch { }
+                                        }
+                                        string safeName = domain.Replace(".", "_").Replace(":", "_") + ".png";
+                                        string iconFile = Path.Combine(faviconDir, safeName);
+                                        if (File.Exists(iconFile)) resolvedIcon = iconFile;
+                                    }
+                                    catch { }
+                                }
+                            }
+
+                            if (!string.IsNullOrEmpty(resolvedIcon))
+                            {
+                                connection.Execute("UPDATE Items SET IconPath = @resolvedIcon WHERE Id = @Id", new { resolvedIcon, it.Id });
+                            }
+                        }
+                    }
+                }
+                catch { }
+
                 // Seed default items if empty
                 int count = connection.QuerySingle<int>("SELECT COUNT(*) FROM Items");
                 if (count == 0)

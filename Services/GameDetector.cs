@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Microsoft.Win32;
 
@@ -119,6 +120,63 @@ namespace RadialLauncher.Services
                         catch { }
                     }
                 }
+
+                // Complement with registry uninstall entries for installed Steam games
+                var regRoots = new[]
+                {
+                    (Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+                    (Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+                    (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Uninstall")
+                };
+
+                foreach (var (root, subPath) in regRoots)
+                {
+                    try
+                    {
+                        using var baseKey = root.OpenSubKey(subPath);
+                        if (baseKey == null) continue;
+                        foreach (var subName in baseKey.GetSubKeyNames())
+                        {
+                            if (subName.StartsWith("Steam App ", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string appId = subName.Substring("Steam App ".Length).Trim();
+                                string steamExePath = $"steam://rungameid/{appId}";
+                                if (!games.Any(g => g.ExePath.Equals(steamExePath, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    using var appKey = baseKey.OpenSubKey(subName);
+                                    if (appKey != null)
+                                    {
+                                        string? displayName = appKey.GetValue("DisplayName") as string;
+                                        string? displayIcon = appKey.GetValue("DisplayIcon") as string;
+                                        string cleanIcon = "";
+                                        if (!string.IsNullOrEmpty(displayIcon))
+                                        {
+                                            string cl = displayIcon.Split(',')[0].Trim().Trim('"');
+                                            if (File.Exists(cl)) cleanIcon = cl;
+                                        }
+
+                                        if (string.IsNullOrEmpty(cleanIcon) && shortcutIcons.TryGetValue(appId, out var scIcon) && File.Exists(scIcon))
+                                        {
+                                            cleanIcon = scIcon;
+                                        }
+
+                                        if (!string.IsNullOrEmpty(displayName))
+                                        {
+                                            games.Add(new DetectedGame
+                                            {
+                                                Name = displayName,
+                                                ExePath = steamExePath,
+                                                Platform = "Steam",
+                                                IconPath = cleanIcon
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
             }
             catch { }
             return games;
@@ -168,6 +226,46 @@ namespace RadialLauncher.Services
                         }
                         catch { }
                     }
+                }
+                // Check registry uninstall entries for official Steam game icons
+                var regRoots = new[]
+                {
+                    (Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+                    (Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+                    (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Uninstall")
+                };
+
+                foreach (var (root, subPath) in regRoots)
+                {
+                    try
+                    {
+                        using var baseKey = root.OpenSubKey(subPath);
+                        if (baseKey == null) continue;
+                        foreach (var subName in baseKey.GetSubKeyNames())
+                        {
+                            if (subName.StartsWith("Steam App ", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string appId = subName.Substring("Steam App ".Length).Trim();
+                                if (!dict.ContainsKey(appId))
+                                {
+                                    using var appKey = baseKey.OpenSubKey(subName);
+                                    if (appKey != null)
+                                    {
+                                        string? displayIcon = appKey.GetValue("DisplayIcon") as string;
+                                        if (!string.IsNullOrEmpty(displayIcon))
+                                        {
+                                            string clean = displayIcon.Split(',')[0].Trim().Trim('"');
+                                            if (File.Exists(clean))
+                                            {
+                                                dict[appId] = clean;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch { }
                 }
             }
             catch { }
