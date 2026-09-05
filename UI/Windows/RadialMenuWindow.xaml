@@ -1,0 +1,93 @@
+<Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Radial Launcher" Height="680" Width="680"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
+        WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
+        KeyDown="Window_KeyDown" TextInput="Window_TextInput">
+    <Grid>
+        <!-- Outer glow shadow -->
+        <Ellipse x:Name="GlowEllipse" Width="440" Height="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Ellipse.Effect>
+                <DropShadowEffect BlurRadius="32" ShadowDepth="0" Color="#558CACEC" Opacity="0.5"/>
+            </Ellipse.Effect>
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#00000000" Offset="0.85"/>
+                    <GradientStop Color="#22558CEC" Offset="1.0"/>
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <!-- Base circle with gradient -->
+        <Ellipse x:Name="BaseCircle" Width="420" Height="420" HorizontalAlignment="Center" VerticalAlignment="Center"
+                 StrokeThickness="1.5">
+            <Ellipse.Fill>
+                <SolidColorBrush x:Name="BaseFill" Color="#E8121216"/>
+            </Ellipse.Fill>
+            <Ellipse.Stroke>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop x:Name="BorderGrad1" Color="#33588CEC" Offset="0"/>
+                    <GradientStop x:Name="BorderGrad2" Color="#11588CEC" Offset="0.5"/>
+                    <GradientStop x:Name="BorderGrad3" Color="#33588CEC" Offset="1"/>
+                </LinearGradientBrush>
+            </Ellipse.Stroke>
+        </Ellipse>
+
+        <!-- Hover Info Header in Upper Center -->
+        <TextBlock x:Name="HoverInfoText" Text="" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-80,0,0"
+                   TextAlignment="Center" MaxWidth="190" TextTrimming="CharacterEllipsis">
+            <TextBlock.Effect>
+                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="Black" Opacity="0.8"/>
+            </TextBlock.Effect>
+        </TextBlock>
+
+        <!-- Container for radial items -->
+        <Canvas x:Name="ItemsCanvas" Width="420" Height="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- Center Button -->
+            <Button x:Name="CenterButton" Width="56" Height="56" FontSize="16"
+                    Canvas.Left="182" Canvas.Top="182" 
+                    Foreground="#AAAAAA" BorderThickness="0"
+                    Click="CenterButton_Click" MouseRightButtonUp="CenterButton_MouseRightButtonUp"
+                    ToolTip="Sol Tık: Kapat | Sağ Tık: Ayarlar" Cursor="Hand">
+                <Button.Content>
+                    <TextBlock x:Name="CenterText" Text="✕" FontSize="16"/>
+                </Button.Content>
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="28"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+        </Canvas>
+
+        <!-- Search overlay (hidden by default) -->
+        <Border x:Name="SearchBorder" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="#DD1E1E24" CornerRadius="20" Padding="12,6" Margin="0,150,0,0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="🔍 " FontSize="14" Foreground="#888" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SearchText" Text="" FontSize="14" Foreground="White" VerticalAlignment="Center" MinWidth="80"/>
+                <TextBlock Text="|" FontSize="14" Foreground="#588CEC" VerticalAlignment="Center" x:Name="SearchCursor">
+                    <TextBlock.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard RepeatBehavior="Forever">
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0" Duration="0:0:0.5" AutoReverse="True"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </TextBlock.Triggers>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Category & Page Info -->
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,225,0,0">
+            <StackPanel x:Name="CategoryDots" Orientation="Horizontal" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="CategoryTitleText" Text="Hepsi" FontSize="11" Foreground="#888888" 
+                       HorizontalAlignment="Center" Margin="0,3,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

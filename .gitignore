@@ -1,0 +1,26 @@
+﻿## Build and Output
+bin/
+obj/
+out/
+*.log
+
+## Visual Studio & IDEs
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.idea/
+.vscode/
+
+## Local Databases and caches
+*.db
+*.db-shm
+*.db-wal
+RadialLauncher_old_*
+
+## Windows OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

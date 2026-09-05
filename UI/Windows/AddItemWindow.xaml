@@ -1,0 +1,83 @@
+<Window x:Class="RadialLauncher.UI.Windows.AddItemWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Yeni Öğe Ekle" Height="380" Width="480" 
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#1E1E24" Foreground="#E6E6E6"
+        Icon="app.ico">
+    <Window.Resources>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#2A2A32"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Name -->
+        <TextBlock Text="İsim:" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,12" FontWeight="SemiBold"/>
+        <TextBox x:Name="NameTextBox" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,12" Height="28" 
+                 Background="#2A2A32" Foreground="White" BorderBrush="#444" Padding="6,2"/>
+
+        <!-- Type -->
+        <TextBlock Text="Tür:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,12" FontWeight="SemiBold"/>
+        <ComboBox x:Name="TypeComboBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,12" Height="28"
+                  Background="#2A2A32" Foreground="White" BorderBrush="#444" SelectionChanged="TypeComboBox_SelectionChanged">
+            <ComboBoxItem Content="EXE" IsSelected="True"/>
+            <ComboBoxItem Content="URL"/>
+            <ComboBoxItem Content="FILE"/>
+            <ComboBoxItem Content="FOLDER"/>
+            <ComboBoxItem Content="SUBMENU"/>
+            <ComboBoxItem Content="ACTION"/>
+        </ComboBox>
+
+        <!-- Target -->
+        <TextBlock Text="Hedef:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,12" FontWeight="SemiBold"/>
+        <TextBox x:Name="TargetTextBox" Grid.Row="2" Grid.Column="1" Margin="0,0,8,12" Height="28"
+                 Background="#2A2A32" Foreground="White" BorderBrush="#444" Padding="6,2"
+                 ToolTip="EXE dosya yolu, site URL'si (ör. youtube.com), dosya veya klasör yolu"/>
+        <ComboBox x:Name="ActionSelectComboBox" Grid.Row="2" Grid.Column="1" Margin="0,0,8,12" Height="28"
+                  Background="#2A2A32" Foreground="White" BorderBrush="#444" Visibility="Collapsed"
+                  SelectionChanged="ActionSelectComboBox_SelectionChanged" DisplayMemberPath="DisplayName" SelectedValuePath="ActionKey"/>
+        <Button x:Name="BrowseButton" Content="Gözat..." Grid.Row="2" Grid.Column="2" Width="65" Height="28" Margin="0,0,0,12"
+                Background="#3A3A45" Foreground="White" BorderThickness="0" Click="BrowseButton_Click"/>
+
+        <!-- Arguments -->
+        <TextBlock Text="Argümanlar:" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,12" FontWeight="SemiBold"/>
+        <TextBox x:Name="ArgsTextBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,12" Height="28"
+                 Background="#2A2A32" Foreground="White" BorderBrush="#444" Padding="6,2"
+                 ToolTip="Opsiyonel komut satırı argümanları"/>
+
+        <!-- Category -->
+        <TextBlock Text="Kategori:" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,12" FontWeight="SemiBold"/>
+        <ComboBox x:Name="CategoryComboBox" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,12" Height="28"
+                  Background="#2A2A32" Foreground="White" BorderBrush="#444" DisplayMemberPath="Name" SelectedValuePath="Id"/>
+
+        <!-- Favorite Checkbox -->
+        <CheckBox x:Name="FavoriteCheckBox" Content="Favorilere Ekle (İç Halka ⭐)" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" 
+                  Margin="0,0,0,12" Foreground="#E6E6E6" VerticalAlignment="Center"/>
+
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="7" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="Kaydet" Width="90" Height="32" Margin="0,0,10,0" 
+                    Background="#3498DB" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="SaveButton_Click"/>
+            <Button Content="İptal" Width="80" Height="32" 
+                    Background="#444" Foreground="#CCC" BorderThickness="0" Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
