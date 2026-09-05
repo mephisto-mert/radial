@@ -100,6 +100,39 @@ namespace RadialLauncher.Services
                 TextR = 210, TextG = 245, TextB = 220,
                 AccentR = 80, AccentG = 220, AccentB = 100,
                 CenterR = 30, CenterG = 55, CenterB = 38
+            },
+            new Theme
+            {
+                Name = "Cyberpunk",
+                BgR = 10, BgG = 10, BgB = 16,
+                BackgroundOpacity = 0.90,
+                IconBgR = 28, IconBgG = 24, IconBgB = 40,
+                IconHoverR = 48, IconHoverG = 38, IconHoverB = 65,
+                TextR = 255, TextG = 245, TextB = 180,
+                AccentR = 255, AccentG = 230, AccentB = 0,
+                CenterR = 35, CenterG = 30, CenterB = 50
+            },
+            new Theme
+            {
+                Name = "Crimson Red",
+                BgR = 20, BgG = 10, BgB = 12,
+                BackgroundOpacity = 0.90,
+                IconBgR = 42, IconBgG = 22, IconBgB = 26,
+                IconHoverR = 65, IconHoverG = 30, IconHoverB = 35,
+                TextR = 255, TextG = 230, TextB = 235,
+                AccentR = 255, AccentG = 59, AccentB = 48,
+                CenterR = 50, CenterG = 25, CenterB = 30
+            },
+            new Theme
+            {
+                Name = "AMOLED Black",
+                BgR = 0, BgG = 0, BgB = 0,
+                BackgroundOpacity = 0.95,
+                IconBgR = 22, IconBgG = 22, IconBgB = 26,
+                IconHoverR = 38, IconHoverG = 38, IconHoverB = 44,
+                TextR = 255, TextG = 255, TextB = 255,
+                AccentR = 168, AccentG = 85, AccentB = 247,
+                CenterR = 28, CenterG = 28, CenterB = 32
             }
         };
 
@@ -126,6 +159,8 @@ namespace RadialLauncher.Services
             return _themes[0]; // Dark default
         }
 
+        public static event Action<Theme>? OnThemeChanged;
+
         public static void SetCurrentTheme(string name)
         {
             try
@@ -145,6 +180,9 @@ namespace RadialLauncher.Services
                 }
                 settings.ThemeName = name;
                 File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+
+                var updatedTheme = GetTheme(name);
+                OnThemeChanged?.Invoke(updatedTheme);
             }
             catch { }
         }

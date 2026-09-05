@@ -119,40 +119,125 @@ namespace RadialLauncher.Data
                 }
                 catch { }
 
-                // Seed default categories if empty
-                int catCount = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories");
-                if (catCount == 0)
+                // --- CATEGORY HARMONIZATION & CONSOLIDATION ---
+                try
                 {
-                    var defaultCategories = new[]
-                    {
-                        new { Name = "Hepsi", Color = "#95a5a6", Position = 0 },
-                        new { Name = "Uygulamalar", Color = "#3498db", Position = 1 },
-                        new { Name = "Web Siteleri", Color = "#2ecc71", Position = 2 },
-                        new { Name = "Oyunlar", Color = "#e74c3c", Position = 3 },
-                        new { Name = "Araçlar", Color = "#f39c12", Position = 4 }
-                    };
-                    connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES (@Name, @Color, @Position)", defaultCategories);
-                }
+                    // 1. Rename Cat 1 to "⭐ En Çok Kullanılanlar"
+                    connection.Execute("UPDATE Categories SET Name = '⭐ En Çok Kullanılanlar', Color = '#f1c40f' WHERE Id = 1;");
 
-                // Ensure smart categories exist
-                var defaultSmartCats = new[]
-                {
-                    new { Name = "🎮 Oyunlar", Color = "#e74c3c" },
-                    new { Name = "🌐 İnternet & İletişim", Color = "#3498db" },
-                    new { Name = "💼 Geliştirme & İş", Color = "#2ecc71" },
-                    new { Name = "🛠️ Sistem & Araçlar", Color = "#e67e22" }
-                };
-                foreach (var sc in defaultSmartCats)
-                {
-                    string searchKey = sc.Name.Substring(2).Trim();
-                    int exists = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE @Search", new { Search = $"%{searchKey}%" });
-                    if (exists == 0)
+                    // 2. Ensure "🌐 Web & İnternet"
+                    int webCatId = connection.QueryFirstOrDefault<int>("SELECT Id FROM Categories WHERE Name LIKE '%Web%' OR Name LIKE '%İnternet%' ORDER BY Id DESC");
+                    if (webCatId == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES (@Name, @Color, @Position)",
-                            new { sc.Name, sc.Color, Position = nextPos });
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🌐 Web & İnternet', '#3498db', @nextPos)", new { nextPos });
+                        webCatId = connection.QuerySingle<int>("SELECT last_insert_rowid()");
                     }
+                    else
+                    {
+                        connection.Execute("UPDATE Categories SET Name = '🌐 Web & İnternet', Color = '#3498db' WHERE Id = @Id", new { Id = webCatId });
+                    }
+
+                    // Move all URL items and browser items to Web category, mark as user added so they appear on main menu too!
+                    connection.Execute(@"
+                        UPDATE Items 
+                        SET CategoryId = @webCatId, IsUserAdded = 1 
+                        WHERE Type = 'URL' 
+                           OR Target LIKE '%brave%' 
+                           OR Target LIKE '%chrome%' 
+                           OR Target LIKE '%edge%' 
+                           OR Target LIKE '%firefox%' 
+                           OR Target LIKE '%discord%' 
+                           OR Target LIKE '%spotify%' 
+                           OR Target LIKE '%telegram%' 
+                           OR Target LIKE '%whatsapp%'", new { webCatId });
+
+                    // 3. Ensure "🎮 Oyunlar"
+                    int gamesCatId = connection.QueryFirstOrDefault<int>("SELECT Id FROM Categories WHERE Name LIKE '%Oyun%' ORDER BY (CASE WHEN Name LIKE '🎮%' THEN 0 ELSE 1 END), Id DESC");
+                    if (gamesCatId == 0)
+                    {
+                        int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🎮 Oyunlar', '#e74c3c', @nextPos)", new { nextPos });
+                        gamesCatId = connection.QuerySingle<int>("SELECT last_insert_rowid()");
+                    }
+                    else
+                    {
+                        connection.Execute("UPDATE Categories SET Name = '🎮 Oyunlar', Color = '#e74c3c' WHERE Id = @Id", new { Id = gamesCatId });
+                    }
+                    // Move games from duplicate categories into gamesCatId
+                    connection.Execute("UPDATE Items SET CategoryId = @gamesCatId WHERE CategoryId IN (SELECT Id FROM Categories WHERE Id != @gamesCatId AND Name LIKE '%Oyun%')", new { gamesCatId });
+
+                    // 4. Ensure "💼 Uygulamalar & İş"
+                    int devCatId = connection.QueryFirstOrDefault<int>("SELECT Id FROM Categories WHERE Name LIKE '%Geliştirme%' OR (Name LIKE '%Uygulama%' AND Id > 1) ORDER BY (CASE WHEN Name LIKE '💼%' THEN 0 ELSE 1 END), Id DESC");
+                    if (devCatId == 0)
+                    {
+                        int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('💼 Uygulamalar & İş', '#2ecc71', @nextPos)", new { nextPos });
+                        devCatId = connection.QuerySingle<int>("SELECT last_insert_rowid()");
+                    }
+                    else
+                    {
+                        connection.Execute("UPDATE Categories SET Name = '💼 Uygulamalar & İş', Color = '#2ecc71' WHERE Id = @Id", new { Id = devCatId });
+                    }
+                    connection.Execute("UPDATE Items SET CategoryId = @devCatId WHERE CategoryId IN (SELECT Id FROM Categories WHERE Id != @devCatId AND (Name LIKE '%Geliştirme%' OR (Name LIKE '%Uygulama%' AND Id > 1)))", new { devCatId });
+
+                    // 5. Ensure "🛠️ Sistem & Araçlar"
+                    int sysCatId = connection.QueryFirstOrDefault<int>("SELECT Id FROM Categories WHERE (Name LIKE '%Sistem%' OR Name LIKE '%Araç%') AND Id > 1 ORDER BY (CASE WHEN Name LIKE '🛠️%' THEN 0 ELSE 1 END), Id DESC");
+                    if (sysCatId == 0)
+                    {
+                        int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🛠️ Sistem & Araçlar', '#e67e22', @nextPos)", new { nextPos });
+                        sysCatId = connection.QuerySingle<int>("SELECT last_insert_rowid()");
+                    }
+                    else
+                    {
+                        connection.Execute("UPDATE Categories SET Name = '🛠️ Sistem & Araçlar', Color = '#e67e22' WHERE Id = @Id", new { Id = sysCatId });
+                    }
+                    connection.Execute("UPDATE Items SET CategoryId = @sysCatId WHERE Type = 'ACTION' OR CategoryId IN (SELECT Id FROM Categories WHERE Id != @sysCatId AND (Name LIKE '%Sistem%' OR Name LIKE '%Araç%'))", new { sysCatId });
+
+                    // 6. Delete obsolete duplicate empty categories
+                    var validCategoryIds = new[] { 1, webCatId, gamesCatId, devCatId, sysCatId };
+                    connection.Execute(@"
+                        DELETE FROM Categories 
+                        WHERE Id > 1 
+                          AND Id NOT IN @validCategoryIds 
+                          AND Name NOT LIKE '%Açık Pencereler%'
+                          AND (SELECT COUNT(*) FROM Items WHERE CategoryId = Categories.Id) = 0", 
+                        new { validCategoryIds });
+
+                    // 7. Re-order canonical positions
+                    connection.Execute("UPDATE Categories SET Position = 0 WHERE Id = 1;");
+                    connection.Execute("UPDATE Categories SET Position = 1 WHERE Id = @webCatId;", new { webCatId });
+                    connection.Execute("UPDATE Categories SET Position = 2 WHERE Id = @gamesCatId;", new { gamesCatId });
+                    connection.Execute("UPDATE Categories SET Position = 3 WHERE Id = @devCatId;", new { devCatId });
+                    connection.Execute("UPDATE Categories SET Position = 4 WHERE Id = @sysCatId;", new { sysCatId });
+                    connection.Execute("UPDATE Categories SET Position = 5 WHERE Name LIKE '%Açık Pencereler%';");
+
+                    // 8. Ensure the user's top desktop apps, games, and web shortcuts have IsUserAdded = 1
+                    connection.Execute(@"
+                        UPDATE Items SET IsUserAdded = 0;
+
+                        UPDATE Items 
+                        SET IsUserAdded = 1 
+                        WHERE Type = 'URL' 
+                           OR Target LIKE '%Desktop%'
+                           OR Target LIKE '%Masaüstü%'
+                           OR Target LIKE 'steam://rungameid/%'
+                           OR Target LIKE 'com.epicgames.%'
+                           OR LOWER(Target) LIKE '%brave%' 
+                           OR LOWER(Target) LIKE '%discord%' 
+                           OR LOWER(Target) LIKE '%spotify%'
+                           OR LOWER(Target) LIKE '%rave%'
+                           OR LOWER(Target) LIKE '%blitz%'
+                           OR LOWER(Target) LIKE '%opencode%'
+                           OR LOWER(Target) LIKE '%mpc-hc%'
+                           OR LOWER(Target) LIKE '%wo mic%'
+                           OR LOWER(Target) LIKE '%minecraft%'
+                           OR LOWER(Target) LIKE '%battlefront%'
+                           OR LOWER(Name) LIKE '%belgeler%'
+                           OR IsFavorite = 1;");
                 }
+                catch { }
 
                 // Seed default items if empty
                 int count = connection.QuerySingle<int>("SELECT COUNT(*) FROM Items");

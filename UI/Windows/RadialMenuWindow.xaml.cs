@@ -34,6 +34,17 @@ namespace RadialLauncher.UI.Windows
         public RadialMenuWindow()
         {
             InitializeComponent();
+            Services.ThemeManager.OnThemeChanged += (t) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    ApplyTheme();
+                    if (this.IsVisible)
+                    {
+                        GenerateItems();
+                    }
+                });
+            };
         }
 
         public void ShowAt(int x, int y)
@@ -63,7 +74,15 @@ namespace RadialLauncher.UI.Windows
 
                 // Load data
                 _allItems = _dbManager.GetAllItems();
-                _categories = _dbManager.GetAllCategories();
+                var allDbCats = _dbManager.GetAllCategories();
+                
+                // Hide any empty category tabs from radial wheel so user never sees an empty screen
+                _categories = allDbCats.Where(c =>
+                    c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) ||
+                    (c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)) ||
+                    _allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0)
+                ).ToList();
+
                 if (_currentCategoryIndex >= _categories.Count) _currentCategoryIndex = 0;
 
                 ApplyTheme();
@@ -90,24 +109,37 @@ namespace RadialLauncher.UI.Windows
             var theme = Services.ThemeManager.GetCurrentTheme();
 
             byte alpha = (byte)(theme.BackgroundOpacity * 255);
-            BaseFill.Color = Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B);
+            BaseCircle.Fill = new SolidColorBrush(Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B));
 
-            var accentTransparent = Color.FromArgb(50, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B);
-            var accentDim = Color.FromArgb(20, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B);
-            BorderGrad1.Color = accentTransparent;
-            BorderGrad2.Color = accentDim;
-            BorderGrad3.Color = accentTransparent;
+            var strokeBrush = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1)
+            };
+            strokeBrush.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.0));
+            strokeBrush.GradientStops.Add(new GradientStop(Color.FromArgb(25, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.5));
+            strokeBrush.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
+            BaseCircle.Stroke = strokeBrush;
+
+            var glowBrush = new RadialGradientBrush();
+            glowBrush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.82));
+            glowBrush.GradientStops.Add(new GradientStop(Color.FromArgb(45, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
+            GlowEllipse.Fill = glowBrush;
 
             GlowEllipse.Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
-                BlurRadius = 32,
+                BlurRadius = 36,
                 ShadowDepth = 0,
-                Color = Color.FromArgb(85, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B),
-                Opacity = 0.5
+                Color = theme.AccentColor,
+                Opacity = 0.6
             };
 
             CenterButton.Background = new SolidColorBrush(theme.CenterButtonColor);
-            CenterText.Foreground = new SolidColorBrush(Color.FromArgb(180, theme.TextColor.R, theme.TextColor.G, theme.TextColor.B));
+            CenterText.Foreground = new SolidColorBrush(theme.TextColor);
+            HoverInfoText.Foreground = new SolidColorBrush(theme.TextColor);
+
+            CategoryPill.Background = new SolidColorBrush(Color.FromArgb(225, 18, 18, 24));
+            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
         }
 
         private List<LauncherItem> GetCurrentFilteredItems()
@@ -148,13 +180,29 @@ namespace RadialLauncher.UI.Windows
                 return winItems;
             }
 
-            if (currentCategory != null && currentCategory.Id > 1 && !currentCategory.Name.Equals("Hepsi", StringComparison.OrdinalIgnoreCase))
+            if (currentCategory != null && currentCategory.Id > 1 && 
+                !currentCategory.Name.Equals("Hepsi", StringComparison.OrdinalIgnoreCase) && 
+                !currentCategory.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase))
             {
-                return _allItems.Where(i => i.CategoryId == currentCategory.Id && i.ParentId == 0).ToList();
+                return _allItems.Where(i => i.CategoryId == currentCategory.Id && i.ParentId == 0)
+                                .OrderBy(i => i.IsFavorite ? 0 : 1)
+                                .ThenBy(i => i.Position)
+                                .ToList();
             }
 
-            // Hepsi category: strictly user-added items (isolated from auto-scanned apps)
-            return _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded) && i.ParentId == 0).ToList();
+            // ⭐ En Çok Kullanılanlar: User's top desktop apps, games, websites, and favorites
+            var primaryItems = _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded) && i.ParentId == 0)
+                                        .OrderBy(i => i.IsFavorite ? 0 : 1)
+                                        .ThenBy(i => i.Type == "URL" ? 0 : 1)
+                                        .ThenBy(i => i.Position)
+                                        .ToList();
+
+            if (primaryItems.Count == 0)
+            {
+                primaryItems = _allItems.Where(i => i.ParentId == 0).Take(15).ToList();
+            }
+
+            return primaryItems;
         }
 
         private void GenerateCategoryDots(int totalPages)
@@ -181,7 +229,7 @@ namespace RadialLauncher.UI.Windows
                 : categoryName;
 
             var theme = Services.ThemeManager.GetCurrentTheme();
-            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(60, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
 
             // Dots for categories
             for (int i = 0; i < _categories.Count; i++)
@@ -200,7 +248,7 @@ namespace RadialLauncher.UI.Windows
 
                 dot.Fill = isCatActive 
                     ? new SolidColorBrush(theme.AccentColor) 
-                    : new SolidColorBrush(Color.FromRgb(90, 90, 95));
+                    : new SolidColorBrush(Color.FromArgb(120, 120, 125, 135));
 
                 int catIndex = i;
                 dot.MouseLeftButtonDown += (s, e) =>
@@ -278,49 +326,72 @@ namespace RadialLauncher.UI.Windows
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
+                    // 1. Sleek vector dark brand icon first
+                    icon = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
+
+                    // 2. Custom icon path
+                    if (icon == null && !string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
                     {
                         icon = Services.IconExtractor.GetIconForFile(item.IconPath);
                     }
 
+                    // 3. Web favicon or executable icon
                     if (icon == null)
                     {
                         if (item.Type == "URL")
                         {
                             icon = Services.IconExtractor.GetFaviconForUrl(item.Target);
                         }
-                        else if (item.Type == "EXE" || item.Type == "FILE")
+                        else if (item.Type == "EXE" || item.Type == "FILE" || item.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
                         {
                             icon = Services.IconExtractor.GetIconForFile(item.Target);
                         }
                     }
                 }
 
-                int circleSize = 48;
-                int iconSize = 30;
+                int circleSize = 52;
+                int iconSize = 32;
+
+                // Dark-glass circular border
+                var iconBorder = new Border
+                {
+                    Width = circleSize,
+                    Height = circleSize,
+                    CornerRadius = new CornerRadius(circleSize / 2.0),
+                    BorderThickness = new Thickness(1.4),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
+                    SnapsToDevicePixels = true,
+                    ClipToBounds = true
+                };
+
+                var bgGrad = new LinearGradientBrush
+                {
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 1)
+                };
+                bgGrad.GradientStops.Add(new GradientStop(Color.FromArgb(235, theme.IconBackgroundColor.R, theme.IconBackgroundColor.G, theme.IconBackgroundColor.B), 0.0));
+                bgGrad.GradientStops.Add(new GradientStop(Color.FromArgb(250, (byte)Math.Max(0, theme.IconBackgroundColor.R - 15), (byte)Math.Max(0, theme.IconBackgroundColor.G - 15), (byte)Math.Max(0, theme.IconBackgroundColor.B - 15)), 1.0));
+                iconBorder.Background = bgGrad;
+
+                var dropShadow = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    BlurRadius = 14,
+                    ShadowDepth = 2,
+                    Opacity = 0.5,
+                    Color = Colors.Black
+                };
+                iconBorder.Effect = dropShadow;
 
                 var iconContainer = new Grid
                 {
                     Width = circleSize,
-                    Height = circleSize,
-                    Background = new SolidColorBrush(theme.IconBackgroundColor),
-                    ClipToBounds = true
+                    Height = circleSize
                 };
-                iconContainer.Clip = new EllipseGeometry(
-                    new Point(circleSize / 2.0, circleSize / 2.0),
-                    circleSize / 2.0, circleSize / 2.0);
-
-                iconContainer.Effect = new System.Windows.Media.Effects.DropShadowEffect
-                {
-                    BlurRadius = 8,
-                    ShadowDepth = 2,
-                    Opacity = 0.4,
-                    Color = Colors.Black
-                };
+                iconBorder.Child = iconContainer;
 
                 if (icon != null)
                 {
-                    iconContainer.Children.Add(new Image
+                    var img = new Image
                     {
                         Source = icon,
                         Width = iconSize,
@@ -329,7 +400,9 @@ namespace RadialLauncher.UI.Windows
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center,
                         Opacity = isMissing ? 0.3 : 1.0
-                    });
+                    };
+                    RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+                    iconContainer.Children.Add(img);
                 }
                 else if (item.Type == "ACTION")
                 {
@@ -338,6 +411,7 @@ namespace RadialLauncher.UI.Windows
                     {
                         Text = symbol,
                         FontSize = 20,
+                        Foreground = new SolidColorBrush(theme.AccentColor),
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     });
@@ -362,28 +436,20 @@ namespace RadialLauncher.UI.Windows
                         VerticalAlignment = VerticalAlignment.Center
                     });
                 }
-                else if (item.Target.StartsWith("steam://", StringComparison.OrdinalIgnoreCase) ||
-                         item.Target.StartsWith("com.epicgames", StringComparison.OrdinalIgnoreCase))
-                {
-                    iconContainer.Children.Add(new TextBlock
-                    {
-                        Text = "🎮",
-                        FontSize = 18,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    });
-                }
                 else
                 {
-                    iconContainer.Children.Add(new TextBlock
+                    var monogram = Services.IconExtractor.CreateMonogramIcon(item.Name, theme.AccentColor);
+                    var img = new Image
                     {
-                        Text = item.Name.Length >= 2 ? item.Name.Substring(0, 2).ToUpper() : item.Name.ToUpper(),
-                        Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor),
-                        FontSize = 15,
-                        FontWeight = FontWeights.Bold,
+                        Source = monogram,
+                        Width = iconSize,
+                        Height = iconSize,
+                        Stretch = Stretch.Uniform,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
-                    });
+                    };
+                    RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+                    iconContainer.Children.Add(img);
                 }
 
                 // Wrapper for icon + favorite badge
@@ -393,9 +459,9 @@ namespace RadialLauncher.UI.Windows
                     Height = circleSize + 2,
                     HorizontalAlignment = HorizontalAlignment.Center
                 };
-                iconContainer.HorizontalAlignment = HorizontalAlignment.Center;
-                iconContainer.VerticalAlignment = VerticalAlignment.Center;
-                iconWrapper.Children.Add(iconContainer);
+                iconBorder.HorizontalAlignment = HorizontalAlignment.Center;
+                iconBorder.VerticalAlignment = VerticalAlignment.Center;
+                iconWrapper.Children.Add(iconBorder);
 
                 // Favorite star indicator
                 if (item.IsFavorite && item.Type != "WINDOW")
@@ -422,9 +488,16 @@ namespace RadialLauncher.UI.Windows
                     HorizontalAlignment = HorizontalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = 64,
+                    MaxWidth = 66,
                     MaxHeight = 26,
-                    Margin = new Thickness(0, 2, 0, 0)
+                    Margin = new Thickness(0, 3, 0, 0)
+                };
+                nameLabel.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    BlurRadius = 4,
+                    ShadowDepth = 1,
+                    Opacity = 0.8,
+                    Color = Colors.Black
                 };
 
                 var stack = new StackPanel
@@ -461,7 +534,8 @@ namespace RadialLauncher.UI.Windows
                 btn.Opacity = 0;
 
                 // Hover animation
-                var capturedContainer = iconContainer;
+                var capturedBorder = iconBorder;
+                var capturedShadow = dropShadow;
                 string itemName = item.Name;
                 btn.MouseEnter += (s, e) =>
                 {
@@ -472,7 +546,11 @@ namespace RadialLauncher.UI.Windows
                     };
                     scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
                     scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
-                    capturedContainer.Background = new SolidColorBrush(theme.IconHoverColor);
+
+                    capturedBorder.BorderBrush = new SolidColorBrush(theme.AccentColor);
+                    capturedShadow.Color = theme.AccentColor;
+                    capturedShadow.BlurRadius = 22;
+                    capturedShadow.Opacity = 0.8;
                 };
 
                 btn.MouseLeave += (s, e) =>
@@ -484,11 +562,15 @@ namespace RadialLauncher.UI.Windows
                     };
                     scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
                     scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
-                    capturedContainer.Background = new SolidColorBrush(theme.IconBackgroundColor);
+
+                    capturedBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255));
+                    capturedShadow.Color = Colors.Black;
+                    capturedShadow.BlurRadius = 14;
+                    capturedShadow.Opacity = 0.5;
                 };
 
                 Canvas.SetLeft(btn, x - 33);
-                Canvas.SetTop(btn, y - 24);
+                Canvas.SetTop(btn, y - 26);
 
                 // Left click trigger
                 btn.Click += (s, e) =>

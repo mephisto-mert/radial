@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -32,8 +32,8 @@ namespace RadialLauncher.Services
     public static class PCScannerService
     {
         public const string CatGames = "🎮 Oyunlar";
-        public const string CatInternet = "🌐 İnternet & İletişim";
-        public const string CatDev = "💼 Geliştirme & İş";
+        public const string CatInternet = "🌐 Web & İnternet";
+        public const string CatDev = "💼 Uygulamalar & İş";
         public const string CatTools = "🛠️ Sistem & Araçlar";
 
         private static readonly string[] IgnoreKeywords = new[]
@@ -315,6 +315,14 @@ namespace RadialLauncher.Services
                 };
 
                 maxPos++;
+                bool isUserApp = app.Source == "Masaüstü" || 
+                                 app.Source == "Steam" || 
+                                 app.Source == "Epic" ||
+                                 app.CategoryName == CatGames ||
+                                 (app.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) && 
+                                  (app.Target.IndexOf("Desktop", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                                   app.Target.IndexOf("Masaüstü", StringComparison.OrdinalIgnoreCase) >= 0));
+
                 db.InsertItem(new LauncherItem
                 {
                     Name = app.Name,
@@ -326,7 +334,7 @@ namespace RadialLauncher.Services
                     Position = maxPos,
                     IsFavorite = false,
                     ParentId = 0,
-                    IsUserAdded = false // Isolated from main "Hepsi" menu!
+                    IsUserAdded = isUserApp
                 });
 
                 existingTargets.Add(app.Target);

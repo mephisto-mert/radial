@@ -39,6 +39,67 @@ namespace RadialLauncher
                     return;
                 }
 
+                if (e.Args.Length > 0 && e.Args[0] == "--test-theme")
+                {
+                    string originalTheme = Services.ThemeManager.GetCurrentTheme().Name;
+                    var allThemes = Services.ThemeManager.GetAllThemes();
+                    Console.WriteLine($"TESTING_THEMES_TOTAL:{allThemes.Count}");
+
+                    int successCount = 0;
+                    foreach (var theme in allThemes)
+                    {
+                        string eventReceivedName = "";
+                        void Handler(Services.Theme t) { eventReceivedName = t.Name; }
+                        Services.ThemeManager.OnThemeChanged += Handler;
+
+                        Services.ThemeManager.SetCurrentTheme(theme.Name);
+                        Services.ThemeManager.OnThemeChanged -= Handler;
+
+                        var active = Services.ThemeManager.GetCurrentTheme();
+                        if (active.Name == theme.Name && eventReceivedName == theme.Name)
+                        {
+                            Console.WriteLine($"THEME_OK: '{theme.Name}', Accent=#{theme.AccentColor.R:X2}{theme.AccentColor.G:X2}{theme.AccentColor.B:X2}");
+                            successCount++;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"THEME_FAIL: '{theme.Name}' (Active='{active.Name}', Event='{eventReceivedName}')");
+                        }
+                    }
+
+                    // Restore original
+                    Services.ThemeManager.SetCurrentTheme(originalTheme);
+                    Console.WriteLine($"THEME_TEST_RESULT: {successCount}/{allThemes.Count} PASSED");
+                    Current.Shutdown();
+                    return;
+                }
+
+                if (e.Args.Length > 0 && e.Args[0] == "--test-db")
+                {
+                    var db = new Data.DatabaseManager();
+                    db.InitializeDatabase();
+                    var cats = db.GetAllCategories();
+                    var items = db.GetAllItems();
+                    Console.WriteLine($"TOTAL_CATEGORIES:{cats.Count}");
+                    foreach (var c in cats)
+                    {
+                        int cCount = items.Count(i => (c.Id <= 1 || c.Name.Contains("Kullanılanlar") || c.Name.Contains("Hepsi")) ? (i.CategoryId <= 1 || i.IsUserAdded) : i.CategoryId == c.Id);
+                        Console.WriteLine($"CAT_ID={c.Id}, NAME='{c.Name}', POS={c.Position}, ITEMS={cCount}");
+                    }
+                    Console.WriteLine($"TOTAL_ITEMS:{items.Count}");
+                    var topCategoryItems = items.Where(i => i.CategoryId <= 1 || i.IsUserAdded)
+                                                .OrderBy(i => i.IsFavorite ? 0 : 1)
+                                                .ThenBy(i => i.Type == "URL" ? 0 : 1)
+                                                .Take(15);
+                    Console.WriteLine("PAGE_1_MOST_USED_ITEMS:");
+                    foreach (var it in topCategoryItems)
+                    {
+                        Console.WriteLine($"  [{it.Type}] {it.Name} (CatId={it.CategoryId}, UserAdded={it.IsUserAdded}, Fav={it.IsFavorite})");
+                    }
+                    Current.Shutdown();
+                    return;
+                }
+
                 if (e.Args.Length > 0 && e.Args[0] == "--test-settings")
                 {
                     var db = new Data.DatabaseManager();
