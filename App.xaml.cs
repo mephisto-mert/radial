@@ -34,12 +34,8 @@ namespace RadialLauncher
                 dbManager.InitializeDatabase();
 
                 _radialMenu = new UI.Windows.RadialMenuWindow();
-                // Workaround for WPF exiting early when no windows are shown
                 _radialMenu.Show();
                 _radialMenu.Hide();
-
-                // TEST: Open it immediately to ensure it displays!
-                OpenLauncher(new Hooks.Point(500, 500));
 
                 // Setup Tray Icon
                 notifyIcon = new TaskbarIcon();
@@ -50,21 +46,22 @@ namespace RadialLauncher
                 {
                     var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                     var icoPath = System.IO.Path.Combine(baseDir, "app.ico");
-                    if (System.IO.File.Exists(icoPath))
+                    var icon = Services.IconExtractor.GetIconForFile(icoPath);
+                    if (icon != null)
                     {
-                        notifyIcon.IconSource = new System.Windows.Media.Imaging.BitmapImage(new Uri(icoPath));
+                        notifyIcon.IconSource = icon;
                     }
                     else
                     {
                         var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
                         if (exePath.EndsWith(".dll")) exePath = exePath.Replace(".dll", ".exe");
-                        var icon = Services.IconExtractor.GetIconForFile(exePath);
-                        if (icon != null) notifyIcon.IconSource = icon;
+                        var fallbackIcon = Services.IconExtractor.GetIconForFile(exePath);
+                        if (fallbackIcon != null) notifyIcon.IconSource = fallbackIcon;
                     }
                 }
                 catch 
                 {
-                    // Ignore icon extraction failure
+                    // Fallback to default tray icon if any
                 }
 
                 var menu = new System.Windows.Controls.ContextMenu();
@@ -90,17 +87,20 @@ namespace RadialLauncher
                 mouseHook = new Hooks.GlobalMouseHook();
                 mouseHook.OnMiddleMouseDown += (s, pt) => 
                 {
-                    System.IO.File.AppendAllText("hook_debug.log", $"Middle mouse triggered at {pt.X}, {pt.Y}\n");
                     // Run on UI Thread asynchronously to prevent blocking the hook
                     Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt)));
                 };
                 mouseHook.Start();
-                
-                System.IO.File.WriteAllText("success.log", "Started successfully!");
             }
             catch (Exception ex)
             {
-                System.IO.File.WriteAllText("crash.log", ex.ToString());
+                try
+                {
+                    var logFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
+                    if (!System.IO.Directory.Exists(logFolder)) System.IO.Directory.CreateDirectory(logFolder);
+                    System.IO.File.WriteAllText(System.IO.Path.Combine(logFolder, "crash.log"), ex.ToString());
+                }
+                catch { }
                 Current.Shutdown();
             }
         }

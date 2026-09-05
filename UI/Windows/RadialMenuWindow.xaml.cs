@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -76,7 +76,12 @@ namespace RadialLauncher.UI.Windows
             }
             catch (Exception ex)
             {
-                System.IO.File.WriteAllText("showat_error.log", ex.ToString());
+                try
+                {
+                    var logFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
+                    System.IO.File.WriteAllText(System.IO.Path.Combine(logFolder, "showat_error.log"), ex.ToString());
+                }
+                catch { }
             }
         }
 
