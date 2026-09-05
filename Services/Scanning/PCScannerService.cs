@@ -45,8 +45,12 @@ namespace RadialLauncher.Services.Scanning
         private readonly IIconExtractor _iconExtractor;
 
         public PCScannerService() : this(
-            (App.ServiceProvider?.GetService(typeof(IGameDetector)) as IGameDetector) ?? new Games.GameDetector(),
-            (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor)!)
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IGameDetector>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IIconExtractor>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
         {
         }
 

@@ -71,27 +71,25 @@ namespace RadialLauncher.UI.Windows
         private readonly IThemeService _themeService;
 
         public ManagementWindow() : this(
-            App.ServiceProvider?.GetService(typeof(ManagementViewModel)) as ManagementViewModel,
-            App.ServiceProvider?.GetService(typeof(IStartupManager)) as IStartupManager,
-            App.ServiceProvider?.GetService(typeof(IThemeService)) as IThemeService)
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ManagementViewModel>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupManager>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
         {
         }
 
-        public ManagementWindow(ManagementViewModel? viewModel, IStartupManager? startupManager = null, IThemeService? themeService = null)
+        public ManagementWindow(ManagementViewModel viewModel, IStartupManager startupManager, IThemeService themeService)
         {
-            InitializeComponent();
+            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            _startupManager = startupManager ?? throw new ArgumentNullException(nameof(startupManager));
+            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
 
-            _themeService = themeService ?? ThemeService.Instance;
-            _startupManager = startupManager ?? new StartupManager();
-            _viewModel = viewModel
-                         ?? (App.ServiceProvider?.GetService(typeof(ManagementViewModel)) as ManagementViewModel)
-                         ?? new ManagementViewModel(
-                             new ItemRepository(new Data.DatabaseManager()),
-                             new CategoryRepository(new Data.DatabaseManager()),
-                             _themeService,
-                             (App.ServiceProvider?.GetService(typeof(IPCScannerService)) as IPCScannerService) ?? new Services.Scanning.PCScannerService(),
-                             new Services.Sync.SyncService(new ItemRepository(new Data.DatabaseManager()), new CategoryRepository(new Data.DatabaseManager())),
-                             new Data.DatabaseManager());
+            InitializeComponent();
 
             DataContext = _viewModel;
             Loaded += ManagementWindow_Loaded;
@@ -229,6 +227,7 @@ namespace RadialLauncher.UI.Windows
 
         private void ThemesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_viewModel == null) return;
             if (ThemesListBox.SelectedItem is string themeName)
             {
                 var theme = _viewModel.Themes.FirstOrDefault(t => t.Name == themeName);
@@ -310,6 +309,7 @@ namespace RadialLauncher.UI.Windows
 
         private void DensityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_viewModel == null || _themeService == null) return;
             if (DensityCombo.SelectedItem is ComboBoxItem cbi)
             {
                 string mode = cbi.Content.ToString()!.Contains("Kompakt") ? "Compact" : "Expanded";
@@ -322,6 +322,7 @@ namespace RadialLauncher.UI.Windows
 
         private void ShortcutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_viewModel == null || _themeService == null) return;
             if (ShortcutCombo.SelectedItem is ComboBoxItem cbi)
             {
                 string sc = cbi.Content.ToString() switch

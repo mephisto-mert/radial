@@ -16,32 +16,40 @@ namespace RadialLauncher.UI.Windows
     {
         public LauncherItem Item { get; private set; }
         private readonly IDatabaseManager _dbManager;
-        private readonly IIconExtractor? _iconExtractor;
+        private readonly IIconExtractor _iconExtractor;
         private readonly ISystemActionService _actionService;
+
+        public EditItemWindow(LauncherItem item) : this(
+            item,
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDatabaseManager>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IIconExtractor>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ISystemActionService>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
+        {
+        }
 
         public EditItemWindow(
             LauncherItem item,
-            IDatabaseManager? dbManager = null,
-            IIconExtractor? iconExtractor = null,
-            ISystemActionService? actionService = null)
+            IDatabaseManager dbManager,
+            IIconExtractor iconExtractor,
+            ISystemActionService actionService)
         {
+            Item = item ?? throw new ArgumentNullException(nameof(item));
+            _dbManager = dbManager ?? throw new ArgumentNullException(nameof(dbManager));
+            _iconExtractor = iconExtractor ?? throw new ArgumentNullException(nameof(iconExtractor));
+            _actionService = actionService ?? throw new ArgumentNullException(nameof(actionService));
+
             InitializeComponent();
-
-            _dbManager = dbManager 
-                         ?? App.ServiceProvider?.GetService<IDatabaseManager>() 
-                         ?? new DatabaseManager();
-
-            _iconExtractor = iconExtractor 
-                             ?? App.ServiceProvider?.GetService<IIconExtractor>();
-
-            _actionService = actionService 
-                             ?? App.ServiceProvider?.GetService<ISystemActionService>()
-                             ?? SystemActionService.Instance;
 
             try
             {
                 string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
-                if (File.Exists(iconPath) && _iconExtractor != null)
+                if (File.Exists(iconPath))
                 {
                     this.Icon = _iconExtractor.GetIconForFile(iconPath);
                 }
@@ -51,7 +59,6 @@ namespace RadialLauncher.UI.Windows
                 Log.Debug(ex, "Could not set EditItemWindow icon");
             }
 
-            Item = item;
             LoadCategories();
             ActionSelectComboBox.ItemsSource = _actionService.GetAvailableActions();
             PopulateData();

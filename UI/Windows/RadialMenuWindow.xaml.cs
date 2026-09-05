@@ -18,7 +18,7 @@ namespace RadialLauncher.UI.Windows
     public partial class RadialMenuWindow : Window
     {
         private readonly RadialMenuViewModel _viewModel;
-        private readonly IIconExtractor? _iconExtractor;
+        private readonly IIconExtractor _iconExtractor;
         private readonly List<(Button btn, Border labelBorder, LauncherItem item)> _visibleButtons = new();
         private readonly List<IntPtr> _activeDwmThumbs = new();
         private int _keyboardFocusIndex = -1;
@@ -26,34 +26,27 @@ namespace RadialLauncher.UI.Windows
         public RadialMenuViewModel ViewModel => _viewModel;
 
         public RadialMenuWindow() : this(
-            App.ServiceProvider?.GetService(typeof(RadialMenuViewModel)) as RadialMenuViewModel,
-            App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor)
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<RadialMenuViewModel>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IIconExtractor>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
         {
         }
 
-        public RadialMenuWindow(RadialMenuViewModel? viewModel, IIconExtractor? iconExtractor = null)
+        public RadialMenuWindow(RadialMenuViewModel viewModel, IIconExtractor iconExtractor)
         {
+            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            _iconExtractor = iconExtractor ?? throw new ArgumentNullException(nameof(iconExtractor));
+
             InitializeComponent();
-
-            _iconExtractor = iconExtractor ?? (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor);
-
-            _viewModel = viewModel 
-                         ?? (App.ServiceProvider?.GetService(typeof(RadialMenuViewModel)) as RadialMenuViewModel) 
-                         ?? new RadialMenuViewModel(
-                             new Data.Repositories.ItemRepository(new Data.DatabaseManager()),
-                             new Data.Repositories.CategoryRepository(new Data.DatabaseManager()),
-                             new Services.Processes.ProcessRunner(),
-                             Services.Themes.ThemeService.Instance,
-                             new Services.Clipboard.ClipboardService(),
-                             new Services.VirtualDesktop.VirtualDesktopService(),
-                             Services.Actions.SystemActionService.Instance);
 
             DataContext = _viewModel;
 
             _viewModel.RequestClose += () => Dispatcher.Invoke(this.Hide);
             _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
 
-            Loaded += (s, e) => WindowAcrylicHelper.EnableBlur(this);
             MouseMove += Window_MouseMove;
         }
 
@@ -271,28 +264,32 @@ namespace RadialLauncher.UI.Windows
 
         private ImageSource? ResolveItemIcon(LauncherItem item)
         {
-            var extractor = _iconExtractor ?? (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor);
-            if (extractor == null) return null;
+            if (item.Type == "WINDOW")
+            {
+                if (RadialMenuViewModel.WindowIcons.TryGetValue(item.Target, out var winIcon) && winIcon != null)
+                    return winIcon;
+                return _iconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(155, 89, 182));
+            }
 
             if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
             {
-                var f = extractor.GetIconForFile(item.IconPath);
+                var f = _iconExtractor.GetIconForFile(item.IconPath);
                 if (f != null) return f;
             }
             if (item.Type == "URL")
             {
-                var fav = extractor.GetFaviconForUrl(item.Target);
+                var fav = _iconExtractor.GetFaviconForUrl(item.Target);
                 if (fav != null) return fav;
             }
-            var brand = extractor.GetBrandIcon(item.Name, item.Target);
+            var brand = _iconExtractor.GetBrandIcon(item.Name, item.Target);
             if (brand != null) return brand;
 
             if (!string.IsNullOrEmpty(item.Target))
             {
-                var t = extractor.GetIconForFile(item.Target);
+                var t = _iconExtractor.GetIconForFile(item.Target);
                 if (t != null) return t;
             }
-            return extractor.CreateMonogramIcon(item.Name, Color.FromRgb(88, 140, 236));
+            return _iconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(88, 140, 236));
         }
 
         private void RenderCategoryDots()

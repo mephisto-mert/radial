@@ -16,31 +16,37 @@ namespace RadialLauncher.UI.Windows
     {
         public LauncherItem? CreatedItem { get; private set; }
         private readonly IDatabaseManager _dbManager;
-        private readonly IIconExtractor? _iconExtractor;
+        private readonly IIconExtractor _iconExtractor;
         private readonly ISystemActionService _actionService;
 
-        public AddItemWindow(
-            IDatabaseManager? dbManager = null,
-            IIconExtractor? iconExtractor = null,
-            ISystemActionService? actionService = null)
+        public AddItemWindow() : this(
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDatabaseManager>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IIconExtractor>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ISystemActionService>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
         {
+        }
+
+        public AddItemWindow(
+            IDatabaseManager dbManager,
+            IIconExtractor iconExtractor,
+            ISystemActionService actionService)
+        {
+            _dbManager = dbManager ?? throw new ArgumentNullException(nameof(dbManager));
+            _iconExtractor = iconExtractor ?? throw new ArgumentNullException(nameof(iconExtractor));
+            _actionService = actionService ?? throw new ArgumentNullException(nameof(actionService));
+
             InitializeComponent();
-
-            _dbManager = dbManager 
-                         ?? App.ServiceProvider?.GetService<IDatabaseManager>() 
-                         ?? new DatabaseManager();
-
-            _iconExtractor = iconExtractor 
-                             ?? App.ServiceProvider?.GetService<IIconExtractor>();
-
-            _actionService = actionService 
-                             ?? App.ServiceProvider?.GetService<ISystemActionService>()
-                             ?? SystemActionService.Instance;
 
             try
             {
                 string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
-                if (File.Exists(iconPath) && _iconExtractor != null)
+                if (File.Exists(iconPath))
                 {
                     this.Icon = _iconExtractor.GetIconForFile(iconPath);
                 }

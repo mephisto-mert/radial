@@ -110,7 +110,7 @@ namespace RadialLauncher
                 openItem.Click += (s, args) => OpenLauncher();
                 
                 var settingsItem = new System.Windows.Controls.MenuItem { Header = "Ayarlar & Yönetim" };
-                settingsItem.Click += (s, args) => OpenSettings();
+                settingsItem.Click += (s, args) => Current.Dispatcher.Invoke(OpenSettings);
                 
                 var exitItem = new System.Windows.Controls.MenuItem { Header = "Çıkış" };
                 exitItem.Click += (s, args) => ExitApplication();
@@ -283,17 +283,24 @@ namespace RadialLauncher
 
         public void OpenSettings()
         {
-            if (_managementWindow == null || !_managementWindow.IsLoaded)
+            try
             {
-                _managementWindow = new ManagementWindow();
-                _managementWindow.Closed += (s, e) => _managementWindow = null;
-                _managementWindow.Show();
+                if (_managementWindow == null || !_managementWindow.IsLoaded)
+                {
+                    _managementWindow = ServiceProvider.GetRequiredService<ManagementWindow>();
+                    _managementWindow.Closed += (s, e) => _managementWindow = null;
+                    _managementWindow.Show();
+                }
+                else
+                {
+                    _managementWindow.Activate();
+                    if (_managementWindow.WindowState == WindowState.Minimized)
+                        _managementWindow.WindowState = WindowState.Normal;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _managementWindow.Activate();
-                if (_managementWindow.WindowState == WindowState.Minimized)
-                    _managementWindow.WindowState = WindowState.Normal;
+                Log.Error(ex, "Failed to open ManagementWindow");
             }
         }
 

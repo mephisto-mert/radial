@@ -201,8 +201,9 @@ namespace RadialLauncher.Services.Icons
                     IconLocation = iconLoc
                 };
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "Failed to resolve shortcut target for {Path}", lnkPath);
                 return null;
             }
         }

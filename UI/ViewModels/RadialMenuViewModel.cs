@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Windows.Media;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
@@ -11,12 +12,15 @@ using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Processes;
 using RadialLauncher.Services.Themes;
 using RadialLauncher.Services.VirtualDesktop;
+using RadialLauncher.Services.Windows;
 using Serilog;
 
 namespace RadialLauncher.UI.ViewModels
 {
     public partial class RadialMenuViewModel : ObservableObject
     {
+        public static readonly Dictionary<string, ImageSource> WindowIcons = new();
+
         private readonly IItemRepository _itemRepo;
         private readonly ICategoryRepository _categoryRepo;
         private readonly IProcessRunner _processRunner;
@@ -24,6 +28,7 @@ namespace RadialLauncher.UI.ViewModels
         private readonly IClipboardService _clipboardService;
         private readonly IVirtualDesktopService _desktopService;
         private readonly ISystemActionService _systemActionService;
+        private readonly IWindowSwitcherService _windowSwitcher;
 
         private readonly Stack<(int parentId, string title)> _navStack = new();
         private List<LauncherItem> _allItems = new();
@@ -86,7 +91,8 @@ namespace RadialLauncher.UI.ViewModels
             IThemeService themeService,
             IClipboardService clipboardService,
             IVirtualDesktopService desktopService,
-            ISystemActionService systemActionService)
+            ISystemActionService systemActionService,
+            IWindowSwitcherService windowSwitcher)
         {
             _itemRepo = itemRepo;
             _categoryRepo = categoryRepo;
@@ -95,6 +101,7 @@ namespace RadialLauncher.UI.ViewModels
             _clipboardService = clipboardService;
             _desktopService = desktopService;
             _systemActionService = systemActionService;
+            _windowSwitcher = windowSwitcher;
 
             _activeTheme = _themeService.GetCurrentTheme();
             _themeService.OnThemeChanged += (t) =>
@@ -124,12 +131,24 @@ namespace RadialLauncher.UI.ViewModels
             _allItems = _itemRepo.GetAll();
             var allDbCats = _categoryRepo.GetAll();
 
-            // Filter out empty category tabs
-            var validCats = allDbCats.Where(c =>
-                c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) ||
-                (c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)) ||
-                _allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0)
-            ).ToList();
+            // 1. Most Used / Favorites is first category
+            var mostUsedCat = allDbCats.FirstOrDefault(c => c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase))
+                             ?? new Category { Id = 1, Name = "⭐ En Çok Kullanılanlar", Color = "#f39c12", Position = 0 };
+
+            // 2. Open Windows category placed immediately next to Most Used
+            var openWinCat = new Category { Id = -99, Name = "🪟 Açık Pencereler", Color = "#9b59b6", Position = 1 };
+
+            var validCats = new List<Category> { mostUsedCat, openWinCat };
+
+            foreach (var c in allDbCats)
+            {
+                if (c.Id == mostUsedCat.Id || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)) continue;
+                if (c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase)) continue;
+                if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
+                {
+                    validCats.Add(c);
+                }
+            }
 
             Categories = new ObservableCollection<Category>(validCats);
             if (CurrentCategoryIndex >= Categories.Count) CurrentCategoryIndex = 0;
@@ -178,6 +197,25 @@ namespace RadialLauncher.UI.ViewModels
                 {
                     filtered = new List<LauncherItem>();
                 }
+                else if (cat.Id == -99 || cat.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase))
+                {
+                    var openWins = _windowSwitcher.GetOpenWindows();
+                    WindowIcons.Clear();
+                    foreach (var w in openWins)
+                    {
+                        if (w.Icon != null) WindowIcons[w.Handle.ToString()] = w.Icon;
+                    }
+                    filtered = openWins.Select((w, idx) => new LauncherItem
+                    {
+                        Id = -100 - idx,
+                        Name = string.IsNullOrWhiteSpace(w.Title) ? w.ProcessName : w.Title,
+                        Type = "WINDOW",
+                        Target = w.Handle.ToString(),
+                        IconPath = w.ProcessName,
+                        CategoryId = cat.Id,
+                        Position = idx
+                    }).ToList();
+                }
                 else if (cat.Id <= 1 || cat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Hepsi", StringComparison.OrdinalIgnoreCase))
                 {
                     // Smart usage tracking: page 1 prioritizes user-added items, then most used
@@ -219,6 +257,13 @@ namespace RadialLauncher.UI.ViewModels
                 BreadcrumbTitle = item.Name;
                 CurrentPageIndex = 0;
                 RefreshPageItems();
+                return;
+            }
+
+            if (string.Equals(item.Type, "WINDOW", StringComparison.OrdinalIgnoreCase) && long.TryParse(item.Target, out long hWndVal))
+            {
+                _windowSwitcher.SwitchToWindow((IntPtr)hWndVal);
+                RequestClose?.Invoke();
                 return;
             }
 
