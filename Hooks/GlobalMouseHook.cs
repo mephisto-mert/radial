@@ -36,9 +36,7 @@ namespace RadialLauncher.Hooks
         private IntPtr SetHook(LowLevelMouseProc proc)
         {
             IntPtr handle = GetModuleHandle(null);
-            IntPtr hook = SetWindowsHookEx(WH_MOUSE_LL, proc, handle, 0);
-            System.IO.File.WriteAllText("hook_setup.log", $"Handle: {handle}, Hook: {hook}, LastError: {Marshal.GetLastWin32Error()}");
-            return hook;
+            return SetWindowsHookEx(WH_MOUSE_LL, proc, handle, 0);
         }
 
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
@@ -47,9 +45,6 @@ namespace RadialLauncher.Hooks
         {
             if (nCode >= 0)
             {
-                // DEBUG LOGGING
-                System.IO.File.AppendAllText("hook_all_events.log", $"Hook called: {wParam}\n");
-                
                 if (wParam == (IntPtr)WM_MBUTTONDOWN)
                 {
                     MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
