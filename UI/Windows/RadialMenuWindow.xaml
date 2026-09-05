@@ -1,12 +1,18 @@
 <Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
         Title="Radial Launcher" Height="680" Width="680"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
-        KeyDown="Window_KeyDown" TextInput="Window_TextInput">
-    <Grid>
+        KeyDown="Window_KeyDown" TextInput="Window_TextInput" MouseWheel="Window_MouseWheel"
+        automation:AutomationProperties.Name="Radial Launcher Dairesel Menü"
+        automation:AutomationProperties.HelpText="Uygulama ve kısayol başlatıcı">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <Grid x:Name="RootGrid" RenderTransformOrigin="0.5,0.5">
         <!-- Outer glow shadow -->
         <Ellipse x:Name="GlowEllipse" Width="560" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Ellipse.Effect>
@@ -36,9 +42,9 @@
         </Ellipse>
 
         <!-- Hover Info Header in Upper Center -->
-        <TextBlock x:Name="HoverInfoText" Text="" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF"
+        <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF"
                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-100,0,0"
-                   TextAlignment="Center" MaxWidth="240" TextTrimming="CharacterEllipsis">
+                   TextAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis">
             <TextBlock.Effect>
                 <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="Black" Opacity="0.8"/>
             </TextBlock.Effect>
@@ -46,14 +52,17 @@
 
         <!-- Container for radial items -->
         <Canvas x:Name="ItemsCanvas" Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <!-- Center Button -->
+            <!-- Center Button (Morphing Back/Close) -->
             <Button x:Name="CenterButton" Width="58" Height="58" FontSize="16"
                     Canvas.Left="241" Canvas.Top="241" 
                     Foreground="#AAAAAA" BorderThickness="0"
-                    Click="CenterButton_Click" MouseRightButtonUp="CenterButton_MouseRightButtonUp"
-                    ToolTip="Sol Tık: Kapat | Sağ Tık: Ayarlar" Cursor="Hand">
+                    Command="{Binding CenterButtonClickCommand}"
+                    MouseRightButtonUp="CenterButton_MouseRightButtonUp"
+                    ToolTip="Sol Tık: Geri/Kapat | Sağ Tık: Ayarlar" Cursor="Hand"
+                    automation:AutomationProperties.Name="Merkez Buton"
+                    RenderTransformOrigin="0.5,0.5">
                 <Button.Content>
-                    <TextBlock x:Name="CenterText" Text="✕" FontSize="16"/>
+                    <TextBlock x:Name="CenterText" Text="✕" FontSize="16" FontWeight="Bold"/>
                 </Button.Content>
                 <Button.Resources>
                     <Style TargetType="Border">
@@ -63,13 +72,39 @@
             </Button>
         </Canvas>
 
-        <!-- Search overlay (hidden by default) -->
-        <Border x:Name="SearchBorder" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
-                Background="#DD1E1E24" CornerRadius="20" Padding="12,6" Margin="0,150,0,0">
+        <!-- Pinned Quick Actions Strip (Bottom Inner Area) -->
+        <ItemsControl x:Name="QuickActionsBar" ItemsSource="{Binding QuickActions}" 
+                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,28">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Width="36" Height="36" Margin="4,0" Background="#33FFFFFF" BorderThickness="1" BorderBrush="#22FFFFFF"
+                            Command="{Binding DataContext.ExecuteQuickActionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}" Cursor="Hand" ToolTip="{Binding Name}">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="18"/>
+                            </Style>
+                        </Button.Resources>
+                        <TextBlock Text="{Binding IconSymbol}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Search overlay -->
+        <Border x:Name="SearchBorder" Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="#EE1E1E24" CornerRadius="20" Padding="14,6" Margin="0,150,0,0"
+                BorderThickness="1" BorderBrush="#44588CEC">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🔍 " FontSize="14" Foreground="#888" VerticalAlignment="Center"/>
-                <TextBlock x:Name="SearchText" Text="" FontSize="14" Foreground="White" VerticalAlignment="Center" MinWidth="80"/>
-                <TextBlock Text="|" FontSize="14" Foreground="#588CEC" VerticalAlignment="Center" x:Name="SearchCursor">
+                <TextBlock x:Name="SearchText" Text="{Binding SearchQuery}" FontSize="14" Foreground="White" VerticalAlignment="Center" MinWidth="80"/>
+                <TextBlock Text="|" FontSize="14" Foreground="#588CEC" VerticalAlignment="Center">
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
                             <BeginStoryboard>
@@ -83,17 +118,35 @@
             </StackPanel>
         </Border>
 
-        <!-- Category & Page Info Pill (Safely positioned in inner ring below center button) -->
+        <!-- Category & Page Info Pill -->
         <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,100,0,0"
-                Background="#E015151B" CornerRadius="12" Padding="12,4" BorderThickness="1" BorderBrush="#35FFFFFF"
-                SnapsToDevicePixels="True">
+                Background="#E015151B" CornerRadius="12" Padding="14,4" BorderThickness="1" BorderBrush="#35FFFFFF"
+                SnapsToDevicePixels="True" Cursor="Hand" MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="12" ShadowDepth="1" Color="Black" Opacity="0.7"/>
             </Border.Effect>
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                 <StackPanel x:Name="CategoryDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                <TextBlock x:Name="CategoryTitleText" Text="Hepsi" FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF" 
+                <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.Name, FallbackValue='Kategoriler'}" 
+                           FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF" 
                            HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
+            </StackPanel>
+        </Border>
+
+        <!-- First-run Tutorial Overlay -->
+        <Border x:Name="TutorialOverlay" Visibility="{Binding ShowTutorial, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                Background="#F0101014" CornerRadius="24" Margin="60" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="🚀 Radial Launcher'a Hoş Geldiniz!" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
+                <TextBlock Text="• Orta Fare Tuşu: Menüyü açar / kapatır\n• Çemberdeki bir öğeye tıklayın: Başlatır\n• Fare tekerleği: Sayfalar arası geçiş yapar\n• Klavye: Herhangi bir şey yazarak anında arayın" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
+                <Button Content="Anladım, Başla!" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
+                        HorizontalAlignment="Center" Cursor="Hand" Command="{Binding DismissTutorialCommand}">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="14"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
             </StackPanel>
         </Border>
     </Grid>

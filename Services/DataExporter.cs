@@ -4,13 +4,13 @@ using System.Text.Json;
 using RadialLauncher.Data;
 using RadialLauncher.Models;
 
-namespace RadialLauncher.Services
+namespace RadialLauncher.Services.Data
 {
-    public class DataExporter
+    public class DataExporter : IDataExporter
     {
-        private readonly DatabaseManager _db;
+        private readonly IDatabaseManager _db;
 
-        public DataExporter(DatabaseManager db)
+        public DataExporter(IDatabaseManager db)
         {
             _db = db;
         }

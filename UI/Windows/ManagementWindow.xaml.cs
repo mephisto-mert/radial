@@ -2,14 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
-using RadialLauncher.Data;
+using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
-using RadialLauncher.Services;
+using RadialLauncher.Services.Themes;
+using RadialLauncher.UI.ViewModels;
+using Serilog;
 
 namespace RadialLauncher.UI.Windows
 {
@@ -27,33 +28,24 @@ namespace RadialLauncher.UI.Windows
         {
             get
             {
-                // 1. Explicit valid icon file takes top precedence (e.g. Steam game .ico, custom app icon)
                 if (!string.IsNullOrEmpty(Item.IconPath) && File.Exists(Item.IconPath))
                 {
-                    var fileIcon = IconExtractor.GetIconForFile(Item.IconPath);
-                    if (fileIcon != null) return fileIcon;
+                    var f = Services.IconExtractor.GetIconForFile(Item.IconPath);
+                    if (f != null) return f;
                 }
-
-                // 2. Web Favicon (official crisp website logo)
                 if (Item.Type == "URL")
                 {
-                    var favicon = IconExtractor.GetFaviconForUrl(Item.Target);
-                    if (favicon != null) return favicon;
+                    var fav = Services.IconExtractor.GetFaviconForUrl(Item.Target);
+                    if (fav != null) return fav;
                 }
-
-                // 3. Vector brand icon (YouTube, ChatGPT, Discord, Spotify, etc.)
-                var brand = IconExtractor.GetBrandIcon(Item.Name, Item.Target);
+                var brand = Services.IconExtractor.GetBrandIcon(Item.Name, Item.Target);
                 if (brand != null) return brand;
-
-                // 4. Target file / shortcut extraction
                 if (!string.IsNullOrEmpty(Item.Target))
                 {
-                    var targetIcon = IconExtractor.GetIconForFile(Item.Target);
-                    if (targetIcon != null) return targetIcon;
+                    var tf = Services.IconExtractor.GetIconForFile(Item.Target);
+                    if (tf != null) return tf;
                 }
-
-                // 5. High-quality monogram
-                return IconExtractor.CreateMonogramIcon(Item.Name, Color.FromRgb(88, 140, 236));
+                return Services.IconExtractor.CreateMonogramIcon(Item.Name, Color.FromRgb(88, 140, 236));
             }
         }
 
@@ -66,735 +58,297 @@ namespace RadialLauncher.UI.Windows
 
     public partial class ManagementWindow : Window
     {
-        private readonly DatabaseManager _dbManager = new();
-        private readonly DataExporter _exporter;
-        private List<LauncherItem> _allItems = new();
-        private List<Category> _categories = new();
-        private List<ScannedApp> _scannedApps = new();
-        private bool _isInitializing = true;
+        private readonly ManagementViewModel _viewModel;
 
         public ManagementWindow()
         {
             InitializeComponent();
 
-            try
-            {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
-                if (File.Exists(iconPath)) this.Icon = IconExtractor.GetIconForFile(iconPath);
-            }
-            catch { }
+            _viewModel = (App.ServiceProvider?.GetService(typeof(ManagementViewModel)) as ManagementViewModel)
+                         ?? new ManagementViewModel(
+                             new ItemRepository(new Data.DatabaseManager()),
+                             new CategoryRepository(new Data.DatabaseManager()),
+                             ThemeService.Instance,
+                             new Services.Scanning.PCScannerService(),
+                             new Services.Sync.SyncService(new ItemRepository(new Data.DatabaseManager()), new CategoryRepository(new Data.DatabaseManager())));
 
-            _exporter = new DataExporter(_dbManager);
-
-            LoadThemes();
-            LoadStartupState();
-            LoadShortcutState();
-            LoadCategoriesAndItems();
-
-            var currentTheme = ThemeManager.GetCurrentTheme();
-            ApplyThemeToWindow(currentTheme);
-
-            ThemeManager.OnThemeChanged += OnThemeManagerChanged;
-            this.Closed += (s, e) => ThemeManager.OnThemeChanged -= OnThemeManagerChanged;
-
-            _isInitializing = false;
+            DataContext = _viewModel;
+            Loaded += ManagementWindow_Loaded;
         }
 
-        private void OnThemeManagerChanged(Theme t)
+        private void ManagementWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            Dispatcher.Invoke(() =>
+            LoadCategories();
+            LoadThemes();
+            RefreshGrid();
+            LoadStartupState();
+            LoadShortcutState();
+        }
+
+        private void LoadCategories()
+        {
+            CategoryFilterCombo.Items.Clear();
+            CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = "Tüm Kategoriler", Tag = 0 });
+
+            foreach (var cat in _viewModel.Categories)
             {
-                ApplyThemeToWindow(t);
-                UpdateThemePreview(t);
-            });
+                CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = cat.Name, Tag = cat.Id });
+            }
+            CategoryFilterCombo.SelectedIndex = 0;
         }
 
         private void LoadThemes()
         {
-            var themes = ThemeManager.GetAllThemes();
-            ThemeComboBox.ItemsSource = themes.Select(t => t.Name).ToList();
-            var current = ThemeManager.GetCurrentTheme();
-            ThemeComboBox.SelectedItem = current.Name;
-            UpdateThemePreview(current);
-        }
-
-        private void UpdateThemePreview(Theme theme)
-        {
-            try
+            ThemesListBox.Items.Clear();
+            foreach (var t in _viewModel.Themes)
             {
-                PreviewBgColor.Fill = new SolidColorBrush(theme.BackgroundColor);
-                PreviewAccentColor.Fill = new SolidColorBrush(theme.AccentColor);
-                PreviewIconBgColor.Fill = new SolidColorBrush(theme.IconBackgroundColor);
-                PreviewCenterColor.Fill = new SolidColorBrush(theme.CenterButtonColor);
+                ThemesListBox.Items.Add(t.Name);
             }
-            catch { }
-        }
+            ThemesListBox.SelectedItem = _viewModel.SelectedTheme?.Name ?? "Dark";
+            LivePreviewControl.Theme = _viewModel.SelectedTheme;
 
-        private void LoadStartupState()
-        {
-            StartupCheckBox.IsChecked = StartupManager.IsRunOnStartup();
-        }
-
-        private void LoadCategoriesAndItems()
-        {
-            _categories = _dbManager.GetAllCategories();
-            _allItems = _dbManager.GetAllItems();
-
-            // Populate category filter
-            int previousFilterId = -1;
-            if (CategoryFilterComboBox.SelectedValue is int prevId)
-                previousFilterId = prevId;
-
-            var filterList = new List<Category> { new Category { Id = -1, Name = "Tümü" } };
-            filterList.AddRange(_categories);
-            CategoryFilterComboBox.ItemsSource = filterList;
-
-            if (previousFilterId != -1 && filterList.Any(c => c.Id == previousFilterId))
-            {
-                CategoryFilterComboBox.SelectedValue = previousFilterId;
-            }
-            else
-            {
-                CategoryFilterComboBox.SelectedIndex = 0;
-            }
-
-            // Populate category manager list
-            CategoriesListView.ItemsSource = null;
-            CategoriesListView.ItemsSource = _categories;
-
-            ApplyFilter();
-        }
-
-        private void ApplyFilter()
-        {
-            string query = SearchBox?.Text?.Trim().ToLower() ?? "";
-            var categoryMap = _categories.ToDictionary(c => c.Id, c => c.Name);
-
-            int selectedCatId = -1;
-            if (CategoryFilterComboBox?.SelectedValue is int catId)
-            {
-                selectedCatId = catId;
-            }
-
-            var filtered = _allItems
-                .Where(i => selectedCatId <= 0 || (selectedCatId == 1 ? (i.CategoryId <= 1 || i.IsUserAdded) : i.CategoryId == selectedCatId))
-                .Where(i => string.IsNullOrEmpty(query) || i.Name.ToLower().Contains(query) || i.Target.ToLower().Contains(query))
-                .Select(i => new LauncherItemViewModel(i, categoryMap.TryGetValue(i.CategoryId, out var name) ? name : "Genel"))
-                .ToList();
-
-            ItemsListView.ItemsSource = filtered;
-        }
-
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            ApplyFilter();
-        }
-
-        private void CategoryFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-            ApplyFilter();
-        }
-
-        private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-            if (ThemeComboBox.SelectedItem is string selectedTheme)
-            {
-                ThemeManager.SetCurrentTheme(selectedTheme);
-                var theme = ThemeManager.GetTheme(selectedTheme);
-                UpdateThemePreview(theme);
-                ApplyThemeToWindow(theme);
-            }
+            FollowWindowsThemeCheck.IsChecked = _viewModel.FollowWindowsTheme;
+            ExtractAccentCheck.IsChecked = _viewModel.ExtractAccentFromWallpaper;
         }
 
         private void LoadShortcutState()
         {
-            try
+            string sc = _viewModel.ActivationShortcut;
+            ShortcutCombo.SelectedIndex = sc switch
             {
-                string currentShortcut = ThemeManager.GetActivationShortcut();
-                foreach (ComboBoxItem item in ShortcutComboBox.Items)
-                {
-                    if (item.Tag?.ToString() == currentShortcut)
-                    {
-                        ShortcutComboBox.SelectedItem = item;
-                        break;
-                    }
-                }
-                if (ShortcutComboBox.SelectedItem == null && ShortcutComboBox.Items.Count > 0)
-                {
-                    ShortcutComboBox.SelectedIndex = 0;
-                }
-            }
-            catch { }
-        }
-
-        private void ShortcutComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-            if (ShortcutComboBox.SelectedItem is ComboBoxItem item && item.Tag is string shortcutKey)
-            {
-                ThemeManager.SetActivationShortcut(shortcutKey);
-            }
-        }
-
-        private void ApplyThemeToWindow(Theme theme)
-        {
-            try
-            {
-                var darkBg = Color.FromRgb(
-                    (byte)Math.Max(14, (int)(theme.BackgroundColor.R * 0.45)),
-                    (byte)Math.Max(14, (int)(theme.BackgroundColor.G * 0.45)),
-                    (byte)Math.Max(18, (int)(theme.BackgroundColor.B * 0.45))
-                );
-                var cardBg = Color.FromRgb(
-                    (byte)Math.Min(255, darkBg.R + 10),
-                    (byte)Math.Min(255, darkBg.G + 10),
-                    (byte)Math.Min(255, darkBg.B + 14)
-                );
-                var borderCol = Color.FromArgb(90, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B);
-
-                this.Background = new SolidColorBrush(darkBg);
-
-                var cardBrush = new SolidColorBrush(cardBg);
-                var accentBrush = new SolidColorBrush(theme.AccentColor);
-                var borderBrush = new SolidColorBrush(borderCol);
-
-                if (HeaderBadgeBorder != null)
-                {
-                    HeaderBadgeBorder.BorderBrush = borderBrush;
-                    HeaderBadgeBorder.BorderThickness = new Thickness(1);
-                }
-                if (HeaderBadgeText != null)
-                {
-                    HeaderBadgeText.Foreground = accentBrush;
-                }
-
-                Border[] cards = new[] 
-                { 
-                    Tab1ActionBar, Tab2LeftBorder, Tab3InfoBorder, Tab3ActionBar, 
-                    Tab4ThemeBar, Tab4PreviewCard, Tab5StartupCard, Tab5ShortcutCard, Tab5GuideCard 
-                };
-                foreach (var card in cards)
-                {
-                    if (card != null)
-                    {
-                        card.Background = cardBrush;
-                        card.BorderBrush = borderBrush;
-                    }
-                }
-
-                if (ItemsListView != null)
-                {
-                    ItemsListView.Background = new SolidColorBrush(Color.FromRgb((byte)Math.Max(10, darkBg.R - 4), (byte)Math.Max(10, darkBg.G - 4), (byte)Math.Max(12, darkBg.B - 4)));
-                    ItemsListView.BorderBrush = borderBrush;
-                }
-                if (ScannedAppsListView != null)
-                {
-                    ScannedAppsListView.Background = new SolidColorBrush(Color.FromRgb((byte)Math.Max(10, darkBg.R - 4), (byte)Math.Max(10, darkBg.G - 4), (byte)Math.Max(12, darkBg.B - 4)));
-                    ScannedAppsListView.BorderBrush = borderBrush;
-                }
-                if (CategoriesListView != null)
-                {
-                    CategoriesListView.BorderBrush = borderBrush;
-                }
-            }
-            catch { }
-        }
-
-        private void StartupCheckBox_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing) return;
-            StartupManager.SetRunOnStartup(StartupCheckBox.IsChecked == true);
-        }
-
-        // ==================== TAB 1: ITEM OPERATIONS ====================
-
-        private void AddButton_Click(object sender, RoutedEventArgs e)
-        {
-            var addWin = new AddItemWindow
-            {
-                Owner = this
+                "MiddleClick" => 0,
+                "CtrlRightClick" => 1,
+                "ShiftRightClick" => 2,
+                "AltRightClick" => 3,
+                "AltSpace" => 4,
+                "CtrlSpace" => 5,
+                "F4" => 6,
+                "Tilde" => 7,
+                _ => 0
             };
+        }
 
-            if (addWin.ShowDialog() == true && addWin.CreatedItem != null)
+        private void LoadStartupState()
+        {
+            RunOnStartupCheck.IsChecked = Services.StartupManager.IsRunOnStartup();
+        }
+
+        private void RefreshGrid()
+        {
+            var catMap = _viewModel.Categories.ToDictionary(c => c.Id, c => c.Name);
+            var query = SearchBox.Text?.Trim().ToLowerInvariant() ?? "";
+            int selectedCatId = 0;
+            if (CategoryFilterCombo.SelectedItem is ComboBoxItem cbi && cbi.Tag is int id)
             {
-                int maxPos = _allItems.Count > 0 ? _allItems.Max(i => i.Position) : -1;
-                addWin.CreatedItem.Position = maxPos + 1;
-                addWin.CreatedItem.IsUserAdded = true;
+                selectedCatId = id;
+            }
 
-                _dbManager.InsertItem(addWin.CreatedItem);
-                LoadCategoriesAndItems();
+            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "Genel"))).ToList();
+            if (selectedCatId > 0)
+            {
+                items = items.Where(i => i.Item.CategoryId == selectedCatId).ToList();
+            }
+            if (!string.IsNullOrEmpty(query))
+            {
+                items = items.Where(i => i.Name.ToLowerInvariant().Contains(query) || i.Target.ToLowerInvariant().Contains(query)).ToList();
+            }
+
+            ItemsGrid.ItemsSource = items;
+            StatusText.Text = $"Toplam {items.Count} öğe listelendi.";
+        }
+
+        private void CategoryFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshGrid();
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshGrid();
+
+        private void AddItemButton_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new AddItemWindow();
+            win.Owner = this;
+            if (win.ShowDialog() == true)
+            {
+                _viewModel.RefreshItems();
+                RefreshGrid();
             }
         }
 
-        private void EditButton_Click(object sender, RoutedEventArgs e)
+        private void EditItem_Click(object sender, RoutedEventArgs e)
         {
-            OpenEditDialog();
-        }
-
-        private void ItemsListView_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            OpenEditDialog();
-        }
-
-        private void OpenEditDialog()
-        {
-            if (ItemsListView.SelectedItem is LauncherItemViewModel vm)
+            if (sender is Button btn && btn.DataContext is LauncherItemViewModel lvm)
             {
-                var editWin = new EditItemWindow(vm.Item)
+                var win = new EditItemWindow(lvm.Item);
+                win.Owner = this;
+                if (win.ShowDialog() == true)
                 {
-                    Owner = this
-                };
-
-                if (editWin.ShowDialog() == true)
-                {
-                    _dbManager.UpdateItem(editWin.Item);
-                    LoadCategoriesAndItems();
-                    SelectById(editWin.Item.Id);
+                    _viewModel.RefreshItems();
+                    RefreshGrid();
                 }
             }
         }
 
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
-            var selectedItems = ItemsListView.SelectedItems.OfType<LauncherItemViewModel>().ToList();
-            if (selectedItems.Count == 0) return;
-
-            string confirmMsg = selectedItems.Count == 1
-                ? $"'{selectedItems[0].Name}' öğesini silmek istediğinize emin misiniz?"
-                : $"Seçilen {selectedItems.Count} öğeyi silmek istediğinize emin misiniz?";
-
-            var result = MessageBox.Show(confirmMsg, "Silme Onayı",
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result == MessageBoxResult.Yes)
+            if (sender is Button btn && btn.DataContext is LauncherItemViewModel lvm)
             {
-                foreach (var vm in selectedItems)
+                if (MessageBox.Show($"'{lvm.Name}' silinsin mi?", "Silme Onayı", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    _dbManager.DeleteItem(vm.Item.Id);
+                    _viewModel.DeleteItem(lvm.Item);
+                    RefreshGrid();
                 }
-                LoadCategoriesAndItems();
             }
         }
 
         private void ToggleFavorite_Click(object sender, RoutedEventArgs e)
         {
-            var selectedItems = ItemsListView.SelectedItems.OfType<LauncherItemViewModel>().ToList();
-            if (selectedItems.Count == 0) return;
-
-            foreach (var vm in selectedItems)
+            if (sender is Button btn && btn.DataContext is LauncherItemViewModel lvm)
             {
-                _dbManager.ToggleFavorite(vm.Item.Id);
+                _viewModel.ToggleFavorite(lvm.Item);
+                RefreshGrid();
             }
-            LoadCategoriesAndItems();
         }
 
-        private void MoveUp_Click(object sender, RoutedEventArgs e)
+        private void ThemesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (ItemsListView.SelectedItem is LauncherItemViewModel vm)
+            if (ThemesListBox.SelectedItem is string themeName)
             {
-                int index = _allItems.FindIndex(i => i.Id == vm.Item.Id);
-                if (index > 0)
+                var theme = _viewModel.Themes.FirstOrDefault(t => t.Name == themeName);
+                if (theme != null)
                 {
-                    var current = _allItems[index];
-                    var prev = _allItems[index - 1];
-
-                    int tempPos = current.Position;
-                    current.Position = prev.Position;
-                    prev.Position = tempPos;
-
-                    _dbManager.UpdatePositions(new List<LauncherItem> { current, prev });
-                    LoadCategoriesAndItems();
-                    SelectById(current.Id);
+                    _viewModel.ApplyTheme(theme);
+                    LivePreviewControl.Theme = theme;
                 }
             }
         }
 
-        private void MoveDown_Click(object sender, RoutedEventArgs e)
+        private void CustomColor_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (ItemsListView.SelectedItem is LauncherItemViewModel vm)
-            {
-                int index = _allItems.FindIndex(i => i.Id == vm.Item.Id);
-                if (index >= 0 && index < _allItems.Count - 1)
-                {
-                    var current = _allItems[index];
-                    var next = _allItems[index + 1];
-
-                    int tempPos = current.Position;
-                    current.Position = next.Position;
-                    next.Position = tempPos;
-
-                    _dbManager.UpdatePositions(new List<LauncherItem> { current, next });
-                    LoadCategoriesAndItems();
-                    SelectById(current.Id);
-                }
-            }
-        }
-
-        private void SelectById(int id)
-        {
-            foreach (var obj in ItemsListView.Items)
-            {
-                if (obj is LauncherItemViewModel vm && vm.Item.Id == id)
-                {
-                    ItemsListView.SelectedItem = vm;
-                    ItemsListView.ScrollIntoView(vm);
-                    break;
-                }
-            }
-        }
-
-        // ==================== TAB 2: CATEGORY MANAGEMENT ====================
-
-        private void CategoriesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (CategoriesListView.SelectedItem is Category cat)
-            {
-                EditCategoryNameBox.Text = cat.Name;
-                EditCategoryColorBox.Text = cat.Color;
-            }
-        }
-
-        private void UpdateCategory_Click(object sender, RoutedEventArgs e)
-        {
-            if (CategoriesListView.SelectedItem is Category cat)
-            {
-                string newName = EditCategoryNameBox.Text.Trim();
-                string newColor = EditCategoryColorBox.Text.Trim();
-
-                if (string.IsNullOrEmpty(newName))
-                {
-                    MessageBox.Show("Kategori adı boş olamaz!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                cat.Name = newName;
-                if (!string.IsNullOrEmpty(newColor)) cat.Color = newColor;
-
-                _dbManager.UpdateCategory(cat);
-                LoadCategoriesAndItems();
-                MessageBox.Show($"'{cat.Name}' kategorisi başarıyla güncellendi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                MessageBox.Show("Lütfen önce listeden güncellenecek bir kategori seçin.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        private void AddCategory_Click(object sender, RoutedEventArgs e)
-        {
-            string name = NewCategoryNameBox.Text.Trim();
-            string color = NewCategoryColorBox.Text.Trim();
-
-            if (string.IsNullOrEmpty(name))
-            {
-                MessageBox.Show("Lütfen kategori adı girin!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (string.IsNullOrEmpty(color)) color = "#3498db";
-
-            int nextPos = _categories.Count > 0 ? _categories.Max(c => c.Position) + 1 : 0;
-            _dbManager.InsertCategory(new Category
-            {
-                Name = name,
-                Color = color,
-                Position = nextPos
-            });
-
-            NewCategoryNameBox.Text = "";
-            LoadCategoriesAndItems();
-            MessageBox.Show($"'{name}' kategorisi başarıyla oluşturuldu!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void DeleteCategory_Click(object sender, RoutedEventArgs e)
-        {
-            if (CategoriesListView.SelectedItem is Category cat)
-            {
-                if (cat.Id <= 1 || cat.Name.Equals("Hepsi", StringComparison.OrdinalIgnoreCase))
-                {
-                    MessageBox.Show("'Hepsi' ana kategorisi silinemez!", "Engellendi", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                var confirm = MessageBox.Show($"'{cat.Name}' kategorisini silmek istediğinize emin misiniz?\n\nBu kategorideki tüm öğeler 'Hepsi'ne aktarılacaktır.", "Kategori Silme", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (confirm == MessageBoxResult.Yes)
-                {
-                    _dbManager.DeleteCategory(cat.Id);
-                    EditCategoryNameBox.Text = "";
-                    EditCategoryColorBox.Text = "";
-                    LoadCategoriesAndItems();
-                    MessageBox.Show("Kategori başarıyla silindi.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Lütfen silmek için bir kategori seçin.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        // ==================== TAB 3: SMART PC SCANNER ====================
-
-        private async void RunFullScan_Click(object sender, RoutedEventArgs e)
-        {
-            ScanStatusText.Text = "⏳ Bilgisayar taranıyor, lütfen bekleyin...";
-            var button = sender as Button;
-            if (button != null) button.IsEnabled = false;
-
             try
             {
-                _scannedApps = await Task.Run(() => PCScannerService.ScanAll());
-                ScannedAppsListView.ItemsSource = null;
-                ScannedAppsListView.ItemsSource = _scannedApps;
+                var accent = (Color)ColorConverter.ConvertFromString(CustomAccentBox.Text.Trim());
+                var bg = (Color)ColorConverter.ConvertFromString(CustomBgBox.Text.Trim());
+                var card = (Color)ColorConverter.ConvertFromString(CustomCardBox.Text.Trim());
 
-                int gamesCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatGames);
-                int internetCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatInternet);
-                int devCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatDev);
-                int toolsCount = _scannedApps.Count(a => a.CategoryName == PCScannerService.CatTools);
+                var previewTheme = new Theme
+                {
+                    Name = CustomThemeNameBox.Text,
+                    AccentR = accent.R, AccentG = accent.G, AccentB = accent.B,
+                    BgR = bg.R, BgG = bg.G, BgB = bg.B,
+                    IconBgR = card.R, IconBgG = card.G, IconBgB = card.B
+                };
+                LivePreviewControl.Theme = previewTheme;
+            }
+            catch { }
+        }
 
-                ScanStatusText.Text = $"✅ {_scannedApps.Count} uygulama bulundu ({gamesCount} Oyun, {internetCount} İnternet, {devCount} Geliştirme, {toolsCount} Sistem)";
+        private void SaveCustomTheme_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var accent = (Color)ColorConverter.ConvertFromString(CustomAccentBox.Text.Trim());
+                var bg = (Color)ColorConverter.ConvertFromString(CustomBgBox.Text.Trim());
+                var card = (Color)ColorConverter.ConvertFromString(CustomCardBox.Text.Trim());
+
+                _viewModel.CustomThemeName = CustomThemeNameBox.Text.Trim();
+                _viewModel.CustomAccentColor = accent;
+                _viewModel.CustomBgColor = bg;
+                _viewModel.CustomCardColor = card;
+                _viewModel.SaveCustomTheme();
+
+                LoadThemes();
+                StatusText.Text = _viewModel.StatusMessage;
             }
             catch (Exception ex)
             {
-                ScanStatusText.Text = "❌ Tarama sırasında hata oluştu: " + ex.Message;
-            }
-            finally
-            {
-                if (button != null) button.IsEnabled = true;
+                MessageBox.Show($"Geçersiz renk kodu: {ex.Message}", "Hata");
             }
         }
 
-        private void SelectAllScanned_Click(object sender, RoutedEventArgs e)
+        private void FollowWindowsTheme_Click(object sender, RoutedEventArgs e)
         {
-            foreach (var app in _scannedApps) app.IsSelected = true;
-            ScannedAppsListView.Items.Refresh();
+            _viewModel.FollowWindowsTheme = FollowWindowsThemeCheck.IsChecked ?? false;
+            Services.Themes.ThemeService.Instance.SetFollowWindowsTheme(_viewModel.FollowWindowsTheme);
+            LivePreviewControl.Theme = Services.Themes.ThemeService.Instance.GetCurrentTheme();
         }
 
-        private void DeselectAllScanned_Click(object sender, RoutedEventArgs e)
+        private void ExtractAccent_Click(object sender, RoutedEventArgs e)
         {
-            foreach (var app in _scannedApps) app.IsSelected = false;
-            ScannedAppsListView.Items.Refresh();
+            _viewModel.ExtractAccentFromWallpaper = ExtractAccentCheck.IsChecked ?? false;
+            Services.Themes.ThemeService.Instance.SetExtractAccentFromWallpaper(_viewModel.ExtractAccentFromWallpaper);
+            LivePreviewControl.Theme = Services.Themes.ThemeService.Instance.GetCurrentTheme();
         }
 
-        private int _lastScannedClickIndex = -1;
-
-        private void ScannedAppsListView_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void ReduceMotion_Click(object sender, RoutedEventArgs e)
         {
-            var item = GetScannedAppAtPoint(e.GetPosition(ScannedAppsListView));
-            if (item != null)
+            _viewModel.ReduceMotion = ReduceMotionCheck.IsChecked ?? false;
+            var t = Services.Themes.ThemeService.Instance.GetCurrentTheme();
+            t.ReduceMotion = _viewModel.ReduceMotion;
+            Services.Themes.ThemeService.Instance.SaveCustomTheme(t);
+        }
+
+        private void DensityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DensityCombo.SelectedItem is ComboBoxItem cbi)
             {
-                int curIndex = _scannedApps.IndexOf(item);
-                if ((System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftShift) || 
-                     System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.RightShift)) &&
-                    _lastScannedClickIndex >= 0 && _lastScannedClickIndex < _scannedApps.Count)
+                string mode = cbi.Content.ToString()!.Contains("Kompakt") ? "Compact" : "Expanded";
+                _viewModel.DensityMode = mode;
+                var t = Services.Themes.ThemeService.Instance.GetCurrentTheme();
+                t.DensityMode = mode;
+                Services.Themes.ThemeService.Instance.SaveCustomTheme(t);
+            }
+        }
+
+        private void ShortcutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ShortcutCombo.SelectedItem is ComboBoxItem cbi)
+            {
+                string sc = cbi.Content.ToString() switch
                 {
-                    int start = Math.Min(_lastScannedClickIndex, curIndex);
-                    int end = Math.Max(_lastScannedClickIndex, curIndex);
-                    bool newState = true;
-                    for (int i = start; i <= end; i++)
-                    {
-                        _scannedApps[i].IsSelected = newState;
-                    }
-                    ScannedAppsListView.Items.Refresh();
-                }
-                _lastScannedClickIndex = curIndex;
+                    "Orta Tuş (Fare Tekerleği)" => "MiddleClick",
+                    "Ctrl + Sağ Tık" => "CtrlRightClick",
+                    "Shift + Sağ Tık" => "ShiftRightClick",
+                    "Alt + Sağ Tık" => "AltRightClick",
+                    "Alt + Boşluk (Alt+Space)" => "AltSpace",
+                    "Ctrl + Boşluk (Ctrl+Space)" => "CtrlSpace",
+                    "F4 Tuşu" => "F4",
+                    "~ (Tilde Tuşu)" => "Tilde",
+                    _ => "MiddleClick"
+                };
+                Services.Themes.ThemeService.Instance.SetActivationShortcut(sc);
             }
         }
 
-        private ScannedApp? GetScannedAppAtPoint(Point point)
+        private void RunOnStartupCheck_Click(object sender, RoutedEventArgs e)
         {
-            var hitTest = VisualTreeHelper.HitTest(ScannedAppsListView, point);
-            if (hitTest == null) return null;
-
-            var visual = hitTest.VisualHit;
-            while (visual != null && visual != ScannedAppsListView)
-            {
-                if (visual is ListViewItem lvi && lvi.DataContext is ScannedApp app)
-                {
-                    return app;
-                }
-                visual = VisualTreeHelper.GetParent(visual);
-            }
-            return null;
+            bool enable = RunOnStartupCheck.IsChecked ?? false;
+            Services.StartupManager.SetRunOnStartup(enable);
         }
 
-        private void ScannedAppsListView_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private async void ScanButton_Click(object sender, RoutedEventArgs e)
         {
-            if (e.Key == System.Windows.Input.Key.Space)
+            StatusText.Text = "Tarama başlatılıyor...";
+            await _viewModel.ScanPc();
+            RefreshGrid();
+            StatusText.Text = _viewModel.StatusMessage;
+        }
+
+        private async void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            var sfd = new SaveFileDialog { Filter = "JSON Dosyası (*.json)|*.json", FileName = "radial_backup.json" };
+            if (sfd.ShowDialog() == true)
             {
-                var selected = ScannedAppsListView.SelectedItems.OfType<ScannedApp>().ToList();
-                if (selected.Count > 0)
-                {
-                    bool targetState = !selected[0].IsSelected;
-                    foreach (var app in selected) app.IsSelected = targetState;
-                    ScannedAppsListView.Items.Refresh();
-                    e.Handled = true;
-                }
+                await _viewModel.ExportData(sfd.FileName);
+                StatusText.Text = _viewModel.StatusMessage;
             }
         }
 
-        private void CheckSelectedScanned_Click(object sender, RoutedEventArgs e)
+        private async void ImportButton_Click(object sender, RoutedEventArgs e)
         {
-            var selected = ScannedAppsListView.SelectedItems.OfType<ScannedApp>().ToList();
-            if (selected.Count == 0) return;
-            foreach (var app in selected) app.IsSelected = true;
-            ScannedAppsListView.Items.Refresh();
-        }
-
-        private void UncheckSelectedScanned_Click(object sender, RoutedEventArgs e)
-        {
-            var selected = ScannedAppsListView.SelectedItems.OfType<ScannedApp>().ToList();
-            if (selected.Count == 0) return;
-            foreach (var app in selected) app.IsSelected = false;
-            ScannedAppsListView.Items.Refresh();
-        }
-
-        private void ImportScanned_Click(object sender, RoutedEventArgs e)
-        {
-            if (_scannedApps.Count == 0)
+            var ofd = new OpenFileDialog { Filter = "JSON Dosyası (*.json)|*.json" };
+            if (ofd.ShowDialog() == true)
             {
-                MessageBox.Show("Önce 'Tüm Bilgisayarı Tara' butonuna basarak tarama yapmalısınız.", "Bilgi", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                await _viewModel.ImportData(ofd.FileName);
+                RefreshGrid();
+                StatusText.Text = _viewModel.StatusMessage;
             }
-
-            var selected = _scannedApps.Where(a => a.IsSelected).ToList();
-            if (selected.Count == 0)
-            {
-                MessageBox.Show("Lütfen aktarılacak en az bir uygulama seçin.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var summary = PCScannerService.ImportToDatabase(_dbManager, selected);
-            LoadCategoriesAndItems();
-
-            MessageBox.Show(
-                $"Toplam {summary.TotalAdded} yeni uygulama başarıyla eklendi!\n\n" +
-                $"🎮 Oyunlar: {summary.GamesCount}\n" +
-                $"🌐 İnternet & İletişim: {summary.InternetCount}\n" +
-                $"💼 Geliştirme & İş: {summary.DevCount}\n" +
-                $"🛠️ Sistem & Araçlar: {summary.SystemCount}\n\n" +
-                $"💡 Not: Ana 'Hepsi' menünüz tertemiz kaldı; tarananlar yalnızca kendi sekmelerinde listelenir.",
-                "Aktarım Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        // ==================== TAB 5: BACKUP & GENERAL ====================
-
-        private void ExportButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new SaveFileDialog
-            {
-                Title = "Öğeleri Dışa Aktar (JSON)",
-                Filter = "JSON Dosyaları (*.json)|*.json",
-                FileName = "RadialLauncher_Items.json"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                _exporter.Export(dialog.FileName);
-                MessageBox.Show("Öğeler başarıyla dışa aktarıldı!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        private void ImportButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new OpenFileDialog
-            {
-                Title = "Öğeleri İçe Aktar (JSON)",
-                Filter = "JSON Dosyaları (*.json)|*.json"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                _exporter.Import(dialog.FileName);
-                LoadCategoriesAndItems();
-                MessageBox.Show("Öğeler başarıyla içe aktarıldı!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        // --- Drag & Drop Reordering in Tab 1 ---
-        private Point _startPoint;
-        private LauncherItemViewModel? _draggedItem;
-
-        private void ItemsListView_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            _startPoint = e.GetPosition(null);
-            _draggedItem = GetItemAtPoint(e.GetPosition(ItemsListView));
-        }
-
-        private void ItemsListView_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && _draggedItem != null)
-            {
-                Point mousePos = e.GetPosition(null);
-                Vector diff = _startPoint - mousePos;
-
-                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
-                {
-                    DragDrop.DoDragDrop(ItemsListView, _draggedItem, DragDropEffects.Move);
-                }
-            }
-        }
-
-        private void ItemsListView_DragEnter(object sender, DragEventArgs e)
-        {
-            if (!e.Data.GetDataPresent(typeof(LauncherItemViewModel)))
-            {
-                e.Effects = DragDropEffects.None;
-            }
-        }
-
-        private void ItemsListView_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(typeof(LauncherItemViewModel)))
-            {
-                var droppedData = e.Data.GetData(typeof(LauncherItemViewModel)) as LauncherItemViewModel;
-                var target = GetItemAtPoint(e.GetPosition(ItemsListView));
-
-                if (droppedData != null && target != null && droppedData.Item.Id != target.Item.Id)
-                {
-                    int oldIndex = _allItems.FindIndex(i => i.Id == droppedData.Item.Id);
-                    int newIndex = _allItems.FindIndex(i => i.Id == target.Item.Id);
-
-                    if (oldIndex >= 0 && newIndex >= 0)
-                    {
-                        var item = _allItems[oldIndex];
-                        _allItems.RemoveAt(oldIndex);
-                        _allItems.Insert(newIndex, item);
-
-                        for (int i = 0; i < _allItems.Count; i++)
-                        {
-                            _allItems[i].Position = i;
-                        }
-
-                        _dbManager.UpdatePositions(_allItems);
-                        LoadCategoriesAndItems();
-                        SelectById(item.Id);
-                    }
-                }
-            }
-        }
-
-        private LauncherItemViewModel? GetItemAtPoint(Point point)
-        {
-            var hitTest = VisualTreeHelper.HitTest(ItemsListView, point);
-            if (hitTest == null) return null;
-
-            var visual = hitTest.VisualHit;
-            while (visual != null && visual != ItemsListView)
-            {
-                if (visual is ListViewItem lvi && lvi.DataContext is LauncherItemViewModel vm)
-                {
-                    return vm;
-                }
-                visual = VisualTreeHelper.GetParent(visual);
-            }
-            return null;
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
         }
     }
 }

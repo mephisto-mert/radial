@@ -1,53 +1,58 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using RadialLauncher.Models;
+using RadialLauncher.UI.Animations;
+using RadialLauncher.UI.Helpers;
+using RadialLauncher.UI.ViewModels;
+using Serilog;
 
 namespace RadialLauncher.UI.Windows
 {
     public partial class RadialMenuWindow : Window
     {
-        private const int MaxItemsPerPage = 15;
+        private readonly RadialMenuViewModel _viewModel;
+        private readonly List<(Button btn, Border labelBorder, LauncherItem item)> _visibleButtons = new();
+        private readonly List<IntPtr> _activeDwmThumbs = new();
+        private int _keyboardFocusIndex = -1;
 
-        private readonly Services.ProcessRunner _processRunner = new();
-        private readonly Data.DatabaseManager _dbManager = new();
-        private readonly Services.WindowSwitcherService _windowSwitcher = new();
-        private readonly Stack<(int parentId, string title)> _navStack = new();
-        private readonly Dictionary<string, ImageSource> _windowIcons = new();
-
-        private List<LauncherItem> _allItems = new();
-        private List<Category> _categories = new();
-        private int _currentCategoryIndex = 0;
-        private int _currentPageIndex = 0;
-        private string _searchQuery = "";
-        private bool _isSearchMode = false;
-
-        private List<(Button btn, LauncherItem item)> _visibleButtons = new();
+        public RadialMenuViewModel ViewModel => _viewModel;
 
         public RadialMenuWindow()
         {
             InitializeComponent();
-            Services.ThemeManager.OnThemeChanged += (t) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    ApplyTheme();
-                    if (this.IsVisible)
-                    {
-                        GenerateItems();
-                    }
-                });
-            };
+
+            // Resolve ViewModel from DI or create default
+            _viewModel = (App.ServiceProvider?.GetService(typeof(RadialMenuViewModel)) as RadialMenuViewModel) 
+                         ?? new RadialMenuViewModel(
+                             new Data.Repositories.ItemRepository(new Data.DatabaseManager()),
+                             new Data.Repositories.CategoryRepository(new Data.DatabaseManager()),
+                             new Services.Processes.ProcessRunner(),
+                             Services.Themes.ThemeService.Instance,
+                             new Services.Clipboard.ClipboardService(),
+                             new Services.VirtualDesktop.VirtualDesktopService());
+
+            DataContext = _viewModel;
+
+            _viewModel.RequestClose += () => Dispatcher.Invoke(this.Hide);
+            _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
+
+            Loaded += (s, e) => WindowAcrylicHelper.EnableBlur(this);
+            MouseMove += Window_MouseMove;
         }
 
-        public void ShowAt(int x, int y)
+        public RadialMenuWindow(RadialMenuViewModel viewModel) : this()
+        {
+            _viewModel = viewModel;
+            DataContext = _viewModel;
+        }
+
+        public void ShowAt(int screenX, int screenY)
         {
             try
             {
@@ -55,86 +60,47 @@ namespace RadialLauncher.UI.Windows
                 double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
                 double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
 
-                double logicalX = x / dpiX;
-                double logicalY = y / dpiY;
+                double logicalX = screenX / dpiX;
+                double logicalY = screenY / dpiY;
 
-                this.Left = logicalX - (this.Width / 2);
-                this.Top = logicalY - (this.Height / 2);
+                var clamped = MultiMonitorHelper.ClampWindowToCursorScreen(this.Width, this.Height, logicalX, logicalY);
+                this.Left = clamped.X;
+                this.Top = clamped.Y;
 
-                if (this.Left < 0) this.Left = 0;
-                if (this.Top < 0) this.Top = 0;
+                _keyboardFocusIndex = -1;
+                _viewModel.InitializeForDisplay();
 
-                // Reset state
-                _searchQuery = "";
-                _isSearchMode = false;
-                _navStack.Clear();
-                _currentCategoryIndex = 0;
-                _currentPageIndex = 0;
-                SearchBorder.Visibility = Visibility.Collapsed;
-                SearchText.Text = "";
-                HoverInfoText.Text = "";
-
-                // Load data
-                _allItems = _dbManager.GetAllItems();
-                var allDbCats = _dbManager.GetAllCategories();
-                
-                // Hide any empty category tabs from radial wheel so user never sees an empty screen
-                _categories = allDbCats.Where(c =>
-                    c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) ||
-                    (c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)) ||
-                    _allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0)
-                ).ToList();
-
-                if (_currentCategoryIndex >= _categories.Count) _currentCategoryIndex = 0;
-
-                ApplyTheme();
-                GenerateItems();
+                ApplyThemeVisuals(_viewModel.ActiveTheme);
+                RenderLayout();
 
                 this.Opacity = 1;
                 this.Show();
                 this.Activate();
                 this.Focus();
+
+                RadialMotionSystem.AnimateWindowOpen(RootGrid, _viewModel.ActiveTheme.ReduceMotion);
             }
             catch (Exception ex)
             {
-                try
-                {
-                    var logFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
-                    System.IO.File.WriteAllText(System.IO.Path.Combine(logFolder, "showat_error.log"), ex.ToString());
-                }
-                catch { }
+                Log.Error(ex, "Failed to ShowAt {X},{Y}", screenX, screenY);
             }
         }
 
-        private void ApplyTheme()
+        private void ApplyThemeVisuals(Theme theme)
         {
-            var theme = Services.ThemeManager.GetCurrentTheme();
-
             byte alpha = (byte)(theme.BackgroundOpacity * 255);
-            BaseCircle.Fill = new SolidColorBrush(Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B));
+            BaseFill.Color = Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B);
 
-            var strokeBrush = new LinearGradientBrush
-            {
-                StartPoint = new Point(0, 0),
-                EndPoint = new Point(1, 1)
-            };
-            strokeBrush.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.0));
-            strokeBrush.GradientStops.Add(new GradientStop(Color.FromArgb(25, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.5));
-            strokeBrush.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
-            BaseCircle.Stroke = strokeBrush;
+            var stroke = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.0));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(25, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.5));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.Accent2Color.R, theme.Accent2Color.G, theme.Accent2Color.B), 1.0));
+            BaseCircle.Stroke = stroke;
 
-            var glowBrush = new RadialGradientBrush();
-            glowBrush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.82));
-            glowBrush.GradientStops.Add(new GradientStop(Color.FromArgb(45, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
-            GlowEllipse.Fill = glowBrush;
-
-            GlowEllipse.Effect = new System.Windows.Media.Effects.DropShadowEffect
-            {
-                BlurRadius = 36,
-                ShadowDepth = 0,
-                Color = theme.AccentColor,
-                Opacity = 0.6
-            };
+            var glow = new RadialGradientBrush();
+            glow.GradientStops.Add(new GradientStop(Colors.Transparent, 0.82));
+            glow.GradientStops.Add(new GradientStop(Color.FromArgb(45, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
+            GlowEllipse.Fill = glow;
 
             CenterButton.Background = new SolidColorBrush(theme.CenterButtonColor);
             CenterText.Foreground = new SolidColorBrush(theme.TextColor);
@@ -144,824 +110,329 @@ namespace RadialLauncher.UI.Windows
             CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
         }
 
-        private List<LauncherItem> GetCurrentFilteredItems()
+        private void RenderLayout()
         {
-            if (_isSearchMode && !string.IsNullOrEmpty(_searchQuery))
+            // Clear existing DWM thumbs
+            foreach (var thumb in _activeDwmThumbs)
             {
-                return _allItems.Where(i => i.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+                DwmThumbnailHelper.UnregisterThumbnail(thumb);
             }
+            _activeDwmThumbs.Clear();
 
-            if (_navStack.Count > 0)
-            {
-                int parentId = _navStack.Peek().parentId;
-                return _allItems.Where(i => i.ParentId == parentId).ToList();
-            }
-
-            var currentCategory = _currentCategoryIndex < _categories.Count ? _categories[_currentCategoryIndex] : null;
-
-            // Check if user selected Open Windows category
-            if (currentCategory != null && currentCategory.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase))
-            {
-                var openWins = _windowSwitcher.GetOpenWindows();
-                _windowIcons.Clear();
-                var winItems = new List<LauncherItem>();
-                for (int w = 0; w < openWins.Count; w++)
-                {
-                    var win = openWins[w];
-                    string targetKey = win.Handle.ToString();
-                    if (win.Icon != null) _windowIcons[targetKey] = win.Icon;
-                    winItems.Add(new LauncherItem
-                    {
-                        Id = -1000 - w,
-                        Name = win.Title,
-                        Type = "WINDOW",
-                        Target = targetKey,
-                        Position = w
-                    });
-                }
-                return winItems;
-            }
-
-            if (currentCategory != null && currentCategory.Id > 1 && 
-                !currentCategory.Name.Equals("Hepsi", StringComparison.OrdinalIgnoreCase) && 
-                !currentCategory.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase))
-            {
-                return _allItems.Where(i => i.CategoryId == currentCategory.Id && i.ParentId == 0)
-                                .OrderBy(i => i.Position)
-                                .ThenBy(i => i.Id)
-                                .ToList();
-            }
-
-            // ⭐ En Çok Kullanılanlar: User's top desktop apps, websites, and favorites in exact configured Position order
-            var primaryItems = _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite) && i.ParentId == 0)
-                                        .OrderBy(i => i.Position)
-                                        .ThenBy(i => i.Id)
-                                        .ToList();
-
-            if (primaryItems.Count == 0)
-            {
-                primaryItems = _allItems.Where(i => i.ParentId == 0).OrderBy(i => i.Position).Take(15).ToList();
-            }
-
-            return primaryItems;
-        }
-
-        private void GenerateCategoryDots(int totalPages)
-        {
-            CategoryDots.Children.Clear();
-
-            if (_navStack.Count > 0)
-            {
-                CategoryTitleText.Text = $"📁 {_navStack.Peek().title} (Merkez: ⬅ Geri)";
-                return;
-            }
-
-            var currentCategory = _currentCategoryIndex < _categories.Count ? _categories[_currentCategoryIndex] : null;
-            string categoryName = currentCategory?.Name ?? "Hepsi";
-
-            if (_isSearchMode)
-            {
-                CategoryTitleText.Text = $"Arama: \"{_searchQuery}\" ({_visibleButtons.Count} sonuç)";
-                return;
-            }
-
-            CategoryTitleText.Text = totalPages > 1 
-                ? $"{categoryName} (Sayfa {_currentPageIndex + 1}/{totalPages})" 
-                : categoryName;
-
-            var theme = Services.ThemeManager.GetCurrentTheme();
-            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
-
-            // Dots for categories
-            for (int i = 0; i < _categories.Count; i++)
-            {
-                var cat = _categories[i];
-                bool isCatActive = i == _currentCategoryIndex;
-
-                var dot = new Ellipse
-                {
-                    Width = isCatActive ? 9 : 6,
-                    Height = isCatActive ? 9 : 6,
-                    Margin = new Thickness(3, 0, 3, 0),
-                    Cursor = Cursors.Hand,
-                    ToolTip = cat.Name
-                };
-
-                dot.Fill = isCatActive 
-                    ? new SolidColorBrush(theme.AccentColor) 
-                    : new SolidColorBrush(Color.FromArgb(120, 120, 125, 135));
-
-                int catIndex = i;
-                dot.MouseLeftButtonDown += (s, e) =>
-                {
-                    _currentCategoryIndex = catIndex;
-                    _currentPageIndex = 0;
-                    GenerateItems();
-                };
-
-                CategoryDots.Children.Add(dot);
-            }
-        }
-
-        private void GenerateItems()
-        {
+            // Clear previous buttons from canvas except CenterButton
             var toRemove = new List<UIElement>();
             foreach (UIElement child in ItemsCanvas.Children)
             {
                 if (child != CenterButton) toRemove.Add(child);
             }
-            foreach (var c in toRemove) ItemsCanvas.Children.Remove(c);
+            foreach (var el in toRemove) ItemsCanvas.Children.Remove(el);
             _visibleButtons.Clear();
 
-            // Center button update (Back button or Close button)
-            if (_navStack.Count > 0)
+            var items = _viewModel.CurrentPageItems;
+            if (items.Count == 0) return;
+
+            bool isCompact = _viewModel.ActiveTheme.DensityMode == "Compact";
+            var placements = RadialLayoutCalculator.CalculatePlacements(items.Count, 270, 270, isCompact);
+
+            var theme = _viewModel.ActiveTheme;
+
+            for (int i = 0; i < placements.Count; i++)
             {
-                CenterText.Text = "⬅";
-                CenterButton.ToolTip = "Üst Menüye Dön (Geri)";
-            }
-            else
-            {
-                CenterText.Text = "✕";
-                CenterButton.ToolTip = "Sol Tık: Kapat | Sağ Tık: Ayarlar";
-            }
-
-            var allCategoryItems = GetCurrentFilteredItems();
-            int totalPages = Math.Max(1, (int)Math.Ceiling(allCategoryItems.Count / (double)MaxItemsPerPage));
-            if (_currentPageIndex >= totalPages) _currentPageIndex = totalPages - 1;
-            if (_currentPageIndex < 0) _currentPageIndex = 0;
-
-            var pageItems = allCategoryItems.Skip(_currentPageIndex * MaxItemsPerPage).Take(MaxItemsPerPage).ToList();
-
-            GenerateCategoryDots(totalPages);
-
-            int count = pageItems.Count;
-            if (count == 0) return;
-
-            var theme = Services.ThemeManager.GetCurrentTheme();
-            double centerX = 270;
-            double centerY = 270;
-            double radius = 170;
-
-            for (int i = 0; i < count; i++)
-            {
-                var item = pageItems[i];
-                double angle = i * (2 * Math.PI / count) - (Math.PI / 2);
-                double x = centerX + radius * Math.Cos(angle);
-                double y = centerY + radius * Math.Sin(angle);
-
-                bool isMissing = item.Type != "URL"
-                    && item.Type != "ACTION"
-                    && item.Type != "SUBMENU"
-                    && item.Type != "WINDOW"
-                    && !item.Target.StartsWith("steam://", StringComparison.OrdinalIgnoreCase)
-                    && !item.Target.StartsWith("com.epicgames.", StringComparison.OrdinalIgnoreCase)
-                    && !File.Exists(item.Target)
-                    && !Directory.Exists(item.Target);
-
-                ImageSource? icon = null;
-
-                if (item.Type == "WINDOW")
-                {
-                    if (_windowIcons.TryGetValue(item.Target, out var wIcon))
-                        icon = wIcon;
-                }
-                else
-                {
-                    // 1. Explicit valid icon file takes top precedence (Steam game .ico, custom file icon)
-                    if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
-                    {
-                        icon = Services.IconExtractor.GetIconForFile(item.IconPath);
-                    }
-
-                    // 2. Web favicon for URLs (official crisp website logo from cache or web)
-                    if (icon == null && item.Type == "URL")
-                    {
-                        icon = Services.IconExtractor.GetFaviconForUrl(item.Target);
-                    }
-
-                    // 3. Sleek vector dark brand icon (for YouTube, Discord, Spotify, etc.)
-                    if (icon == null)
-                    {
-                        icon = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
-                    }
-
-                    // 4. Executable icon or shortcut icon
-                    if (icon == null)
-                    {
-                        if (!string.IsNullOrEmpty(item.Target))
-                        {
-                            icon = Services.IconExtractor.GetIconForFile(item.Target);
-                        }
-                    }
-                }
-
-                int circleSize = 52;
-                int iconSize = 40;
-
-                // Dark-glass circular border
-                var iconBorder = new Border
-                {
-                    Width = circleSize,
-                    Height = circleSize,
-                    CornerRadius = new CornerRadius(circleSize / 2.0),
-                    BorderThickness = new Thickness(1.4),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
-                    SnapsToDevicePixels = true,
-                    ClipToBounds = true
-                };
-
-                var bgGrad = new LinearGradientBrush
-                {
-                    StartPoint = new Point(0, 0),
-                    EndPoint = new Point(1, 1)
-                };
-                bgGrad.GradientStops.Add(new GradientStop(Color.FromArgb(235, theme.IconBackgroundColor.R, theme.IconBackgroundColor.G, theme.IconBackgroundColor.B), 0.0));
-                bgGrad.GradientStops.Add(new GradientStop(Color.FromArgb(250, (byte)Math.Max(0, theme.IconBackgroundColor.R - 15), (byte)Math.Max(0, theme.IconBackgroundColor.G - 15), (byte)Math.Max(0, theme.IconBackgroundColor.B - 15)), 1.0));
-                iconBorder.Background = bgGrad;
-
-                var dropShadow = new System.Windows.Media.Effects.DropShadowEffect
-                {
-                    BlurRadius = 14,
-                    ShadowDepth = 2,
-                    Opacity = 0.5,
-                    Color = Colors.Black
-                };
-                iconBorder.Effect = dropShadow;
-
-                var iconContainer = new Grid
-                {
-                    Width = circleSize,
-                    Height = circleSize
-                };
-                iconBorder.Child = iconContainer;
-
-                if (icon != null)
-                {
-                    var img = new Image
-                    {
-                        Source = icon,
-                        Width = iconSize,
-                        Height = iconSize,
-                        Stretch = Stretch.Uniform,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Opacity = isMissing ? 0.3 : 1.0
-                    };
-                    RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
-                    iconContainer.Children.Add(img);
-                }
-                else if (item.Type == "ACTION")
-                {
-                    string symbol = Services.SystemActionService.GetIconForAction(item.Target);
-                    iconContainer.Children.Add(new TextBlock
-                    {
-                        Text = symbol,
-                        FontSize = 24,
-                        Foreground = new SolidColorBrush(theme.AccentColor),
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    });
-                }
-                else if (item.Type == "SUBMENU")
-                {
-                    iconContainer.Children.Add(new TextBlock
-                    {
-                        Text = "📁",
-                        FontSize = 24,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    });
-                }
-                else if (item.Type == "WINDOW")
-                {
-                    iconContainer.Children.Add(new TextBlock
-                    {
-                        Text = "🪟",
-                        FontSize = 22,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    });
-                }
-                else
-                {
-                    var monogram = Services.IconExtractor.CreateMonogramIcon(item.Name, theme.AccentColor);
-                    var img = new Image
-                    {
-                        Source = monogram,
-                        Width = iconSize,
-                        Height = iconSize,
-                        Stretch = Stretch.Uniform,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    };
-                    RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
-                    iconContainer.Children.Add(img);
-                }
-
-                // Wrapper for icon + favorite badge
-                var iconWrapper = new Grid
-                {
-                    Width = circleSize + 2,
-                    Height = circleSize + 2,
-                    HorizontalAlignment = HorizontalAlignment.Center
-                };
-                iconBorder.HorizontalAlignment = HorizontalAlignment.Center;
-                iconBorder.VerticalAlignment = VerticalAlignment.Center;
-                iconWrapper.Children.Add(iconBorder);
-
-                // Favorite star indicator
-                if (item.IsFavorite && item.Type != "WINDOW")
-                {
-                    var star = new TextBlock
-                    {
-                        Text = "⭐",
-                        FontSize = 11,
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        VerticalAlignment = VerticalAlignment.Top,
-                        Margin = new Thickness(0, -3, -3, 0)
-                    };
-                    iconWrapper.Children.Add(star);
-                }
-
-                // Outward radial name label with mathematically verified non-overlapping clearance
-                double bubbleR = circleSize / 2.0;
-                double labelW = 72;
-                double labelH = 26;
-                double cosA = Math.Cos(angle);
-                double sinA = Math.Sin(angle);
-                double D = bubbleR + 8.0 + (labelW / 2.0) * Math.Abs(cosA) + (labelH / 2.0) * Math.Abs(sinA);
-                double lx = x + D * cosA;
-                double ly = y + D * sinA;
-
-                var nameLabel = new TextBlock
-                {
-                    Text = item.Name,
-                    Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor),
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextWrapping = TextWrapping.Wrap,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = labelW - 6,
-                    MaxHeight = labelH,
-                    IsHitTestVisible = false
-                };
-
-                var labelBorder = new Border
-                {
-                    Width = labelW,
-                    Height = labelH,
-                    Background = new SolidColorBrush(Color.FromArgb(135, 16, 16, 22)),
-                    CornerRadius = new CornerRadius(5),
-                    BorderThickness = new Thickness(1),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(35, 255, 255, 255)),
-                    Child = nameLabel,
-                    Cursor = Cursors.Hand,
-                    SnapsToDevicePixels = true,
-                    RenderTransformOrigin = new Point(0.5, 0.5)
-                };
-
-                labelBorder.Effect = new System.Windows.Media.Effects.DropShadowEffect
-                {
-                    BlurRadius = 8,
-                    ShadowDepth = 1,
-                    Opacity = 0.8,
-                    Color = Colors.Black
-                };
-
-                var labelScale = new ScaleTransform(1.0, 1.0);
-                labelBorder.RenderTransform = labelScale;
-                labelBorder.Opacity = 0;
-
-                Canvas.SetLeft(labelBorder, lx - (labelW / 2.0));
-                Canvas.SetTop(labelBorder, ly - (labelH / 2.0));
-                Panel.SetZIndex(labelBorder, 25);
-
-                string tooltipText = item.Type switch
-                {
-                    "WINDOW" => $"{item.Name}\n[Sol Tık: Pencereye Geç | Orta Tık: Pencereyi Kapat]",
-                    "SUBMENU" => $"📁 {item.Name} (Alt Menüye Gir)",
-                    "ACTION" => $"⚡ {item.Name}",
-                    _ => item.Name
-                };
+                var p = placements[i];
+                var item = items[i];
 
                 var btn = new Button
                 {
-                    Content = iconWrapper,
-                    Width = circleSize,
-                    Height = circleSize,
-                    Background = Brushes.Transparent,
-                    BorderThickness = new Thickness(0),
-                    Padding = new Thickness(0),
+                    Width = p.CircleSize,
+                    Height = p.CircleSize,
+                    Tag = item,
+                    BorderThickness = new Thickness(1.5),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
+                    Background = new SolidColorBrush(theme.IconBackgroundColor),
                     Cursor = Cursors.Hand,
-                    ToolTip = tooltipText
+                    RenderTransformOrigin = new Point(0.5, 0.5)
                 };
-                btn.Style = CreateTransparentButtonStyle();
-                btn.RenderTransformOrigin = new Point(0.5, 0.5);
-
-                var scaleTransform = new ScaleTransform(0, 0);
-                btn.RenderTransform = scaleTransform;
-                btn.Opacity = 0;
-
-                // Hover animation: elevate both bubble AND label to front (Z-Index 100/101) & scale smoothly
-                var capturedBorder = iconBorder;
-                var capturedShadow = dropShadow;
-                string itemName = item.Name;
-
-                Action<bool> setHover = (hovered) =>
-                {
-                    if (hovered)
-                    {
-                        HoverInfoText.Text = itemName;
-                        Panel.SetZIndex(btn, 100);
-                        Panel.SetZIndex(labelBorder, 101);
-
-                        nameLabel.Foreground = new SolidColorBrush(theme.AccentColor);
-                        nameLabel.FontWeight = FontWeights.Bold;
-                        labelBorder.Background = new SolidColorBrush(Color.FromArgb(235, 24, 24, 32));
-                        labelBorder.BorderBrush = new SolidColorBrush(theme.AccentColor);
-
-                        var grow = new DoubleAnimation(1.22, TimeSpan.FromMilliseconds(130))
-                        {
-                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                        };
-                        scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
-                        scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
-
-                        var lGrow = new DoubleAnimation(1.15, TimeSpan.FromMilliseconds(130))
-                        {
-                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                        };
-                        labelScale.BeginAnimation(ScaleTransform.ScaleXProperty, lGrow);
-                        labelScale.BeginAnimation(ScaleTransform.ScaleYProperty, lGrow);
-
-                        capturedBorder.BorderBrush = new SolidColorBrush(theme.AccentColor);
-                        capturedBorder.BorderThickness = new Thickness(2.0);
-                        capturedShadow.Color = theme.AccentColor;
-                        capturedShadow.BlurRadius = 24;
-                        capturedShadow.Opacity = 0.95;
-                    }
-                    else
-                    {
-                        if (HoverInfoText.Text == itemName) HoverInfoText.Text = "";
-                        Panel.SetZIndex(btn, 15);
-                        Panel.SetZIndex(labelBorder, 25);
-
-                        nameLabel.Foreground = new SolidColorBrush(isMissing ? Colors.Red : theme.TextColor);
-                        nameLabel.FontWeight = FontWeights.SemiBold;
-                        labelBorder.Background = new SolidColorBrush(Color.FromArgb(135, 16, 16, 22));
-                        labelBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(35, 255, 255, 255));
-
-                        var shrink = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180))
-                        {
-                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                        };
-                        scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
-                        scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
-
-                        var lShrink = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180))
-                        {
-                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                        };
-                        labelScale.BeginAnimation(ScaleTransform.ScaleXProperty, lShrink);
-                        labelScale.BeginAnimation(ScaleTransform.ScaleYProperty, lShrink);
-
-                        capturedBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255));
-                        capturedBorder.BorderThickness = new Thickness(1.4);
-                        capturedShadow.Color = Colors.Black;
-                        capturedShadow.BlurRadius = 14;
-                        capturedShadow.Opacity = 0.5;
-                    }
-                };
-
-                btn.MouseEnter += (s, e) => setHover(true);
-                btn.MouseLeave += (s, e) => setHover(false);
-                labelBorder.MouseEnter += (s, e) => setHover(true);
-                labelBorder.MouseLeave += (s, e) => setHover(false);
-
-                Canvas.SetLeft(btn, x - (circleSize / 2.0));
-                Canvas.SetTop(btn, y - (circleSize / 2.0));
+                Canvas.SetLeft(btn, p.ButtonX);
+                Canvas.SetTop(btn, p.ButtonY);
                 Panel.SetZIndex(btn, 15);
 
-                Action executeLaunch = () =>
+                btn.Resources.Add(typeof(Border), new Style(typeof(Border))
                 {
-                    if (item.Type == "SUBMENU")
-                    {
-                        _navStack.Push((item.Id, item.Name));
-                        _currentPageIndex = 0;
-                        GenerateItems();
-                        return;
-                    }
-                    if (item.Type == "WINDOW")
-                    {
-                        if (long.TryParse(item.Target, out long hVal))
-                        {
-                            _windowSwitcher.SwitchToWindow(new IntPtr(hVal));
-                            this.Hide();
-                        }
-                        return;
-                    }
-                    if (item.Type == "ACTION")
-                    {
-                        Services.SystemActionService.ExecuteAction(item.Target);
-                        if (!item.Target.StartsWith("VOLUME_", StringComparison.OrdinalIgnoreCase))
-                        {
-                            this.Hide();
-                        }
-                        return;
-                    }
+                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(p.CircleSize / 2.0)) }
+                });
 
-                    _processRunner.Launch(item);
-                    this.Hide();
-                };
-
-                btn.Click += (s, e) => executeLaunch();
-                labelBorder.MouseLeftButtonUp += (s, e) => executeLaunch();
-
-                // Middle click: Close window if item is a WINDOW
-                btn.MouseDown += (s, e) =>
+                // Icon content
+                var iconImg = ResolveItemIcon(item);
+                if (iconImg != null)
                 {
-                    if (e.ChangedButton == MouseButton.Middle && item.Type == "WINDOW")
+                    var img = new Image
                     {
-                        if (long.TryParse(item.Target, out long hVal))
-                        {
-                            _windowSwitcher.CloseWindow(new IntPtr(hVal));
-                            System.Threading.Tasks.Task.Delay(150).ContinueWith(_ =>
-                            {
-                                Dispatcher.Invoke(() => GenerateItems());
-                            });
-                        }
-                        e.Handled = true;
-                    }
-                };
-
-                // Right click: toggle favorite (only for stored database items)
-                if (item.Id > 0)
+                        Source = iconImg,
+                        Width = p.IconSize,
+                        Height = p.IconSize,
+                        Stretch = Stretch.Uniform
+                    };
+                    RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+                    btn.Content = img;
+                }
+                else
                 {
-                    btn.MouseRightButtonUp += (s, e) =>
+                    btn.Content = new TextBlock
                     {
-                        _dbManager.ToggleFavorite(item.Id);
-                        _allItems = _dbManager.GetAllItems();
-                        GenerateItems();
-                        e.Handled = true;
+                        Text = item.Name.Length > 0 ? item.Name.Substring(0, 1).ToUpper() : "?",
+                        FontSize = 18,
+                        FontWeight = FontWeights.Bold,
+                        Foreground = Brushes.White
                     };
                 }
 
+                // Label badge
+                var lblBorder = new Border
+                {
+                    Width = RadialLayoutCalculator.LabelWidth,
+                    Height = RadialLayoutCalculator.LabelHeight,
+                    CornerRadius = new CornerRadius(5),
+                    Background = new SolidColorBrush(Color.FromArgb(200, 16, 16, 20)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(60, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B)),
+                    BorderThickness = new Thickness(1),
+                    Cursor = Cursors.Hand,
+                    RenderTransformOrigin = new Point(0.5, 0.5)
+                };
+                Panel.SetZIndex(lblBorder, 25);
+                Canvas.SetLeft(lblBorder, p.LabelX);
+                Canvas.SetTop(lblBorder, p.LabelY);
+
+                var txt = new TextBlock
+                {
+                    Text = item.Name,
+                    FontSize = 11,
+                    FontWeight = FontWeights.Normal,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    MaxWidth = 66
+                };
+                lblBorder.Child = txt;
+
+                // Wire interactions
+                int localIndex = i;
+                btn.Click += (s, e) => _viewModel.LaunchItem(item);
+                lblBorder.MouseLeftButtonUp += (s, e) => _viewModel.LaunchItem(item);
+
+                void OnEnter(object s, MouseEventArgs e)
+                {
+                    _keyboardFocusIndex = localIndex;
+                    Panel.SetZIndex(btn, 100);
+                    Panel.SetZIndex(lblBorder, 101);
+                    btn.BorderBrush = theme.AccentBrush;
+                    txt.Foreground = theme.AccentBrush;
+                    txt.FontWeight = FontWeights.Bold;
+                    _viewModel.HoveredItemTitle = item.Name;
+                    RadialMotionSystem.AnimateHover(btn, lblBorder, true, theme.ReduceMotion);
+                }
+
+                void OnLeave(object s, MouseEventArgs e)
+                {
+                    Panel.SetZIndex(btn, 15);
+                    Panel.SetZIndex(lblBorder, 25);
+                    btn.BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
+                    txt.Foreground = Brushes.White;
+                    txt.FontWeight = FontWeights.Normal;
+                    _viewModel.HoveredItemTitle = string.Empty;
+                    RadialMotionSystem.AnimateHover(btn, lblBorder, false, theme.ReduceMotion);
+                }
+
+                btn.MouseEnter += OnEnter;
+                btn.MouseLeave += OnLeave;
+                lblBorder.MouseEnter += OnEnter;
+                lblBorder.MouseLeave += OnLeave;
+
                 ItemsCanvas.Children.Add(btn);
-                ItemsCanvas.Children.Add(labelBorder);
-                _visibleButtons.Add((btn, item));
+                ItemsCanvas.Children.Add(lblBorder);
+                _visibleButtons.Add((btn, lblBorder, item));
 
-                // Entry animation
-                var sb = new Storyboard();
-                var scaleXAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
-                {
-                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
-                };
-                Storyboard.SetTarget(scaleXAnim, btn);
-                Storyboard.SetTargetProperty(scaleXAnim, new PropertyPath("RenderTransform.ScaleX"));
-
-                var scaleYAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
-                {
-                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
-                };
-                Storyboard.SetTarget(scaleYAnim, btn);
-                Storyboard.SetTargetProperty(scaleYAnim, new PropertyPath("RenderTransform.ScaleY"));
-
-                var fadeAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
-                Storyboard.SetTarget(fadeAnim, btn);
-                Storyboard.SetTargetProperty(fadeAnim, new PropertyPath("Opacity"));
-
-                var fadeLabelAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
-                Storyboard.SetTarget(fadeLabelAnim, labelBorder);
-                Storyboard.SetTargetProperty(fadeLabelAnim, new PropertyPath("Opacity"));
-
-                sb.Children.Add(scaleXAnim);
-                sb.Children.Add(scaleYAnim);
-                sb.Children.Add(fadeAnim);
-                sb.Children.Add(fadeLabelAnim);
-                sb.BeginTime = TimeSpan.FromMilliseconds(i * 22);
-                sb.Begin();
+                RadialMotionSystem.AnimateItemBloom(btn, i, theme.ReduceMotion);
+                RadialMotionSystem.AnimateItemBloom(lblBorder, i, theme.ReduceMotion);
             }
+
+            // Update Center Button Morph
+            CenterText.Text = _viewModel.IsSubmenu ? "←" : "✕";
+            RadialMotionSystem.AnimateCenterMorph(CenterButton, _viewModel.IsSubmenu, theme.ReduceMotion);
+
+            RenderCategoryDots();
+        }
+
+        private ImageSource? ResolveItemIcon(LauncherItem item)
+        {
+            if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
+            {
+                var f = Services.IconExtractor.GetIconForFile(item.IconPath);
+                if (f != null) return f;
+            }
+            if (item.Type == "URL")
+            {
+                var fav = Services.IconExtractor.GetFaviconForUrl(item.Target);
+                if (fav != null) return fav;
+            }
+            var brand = Services.IconExtractor.GetBrandIcon(item.Name, item.Target);
+            if (brand != null) return brand;
+
+            if (!string.IsNullOrEmpty(item.Target))
+            {
+                var t = Services.IconExtractor.GetIconForFile(item.Target);
+                if (t != null) return t;
+            }
+            return Services.IconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(88, 140, 236));
+        }
+
+        private void RenderCategoryDots()
+        {
+            CategoryDots.Children.Clear();
+            var cats = _viewModel.Categories;
+            for (int i = 0; i < cats.Count; i++)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 6,
+                    Height = 6,
+                    Margin = new Thickness(2, 0, 2, 0),
+                    Fill = (i == _viewModel.CurrentCategoryIndex) 
+                        ? _viewModel.ActiveTheme.AccentBrush 
+                        : new SolidColorBrush(Color.FromArgb(100, 255, 255, 255))
+                };
+                CategoryDots.Children.Add(dot);
+            }
+        }
+
+        private void Window_MouseMove(object sender, MouseEventArgs e)
+        {
+            // Magnetic snap subtle pull towards nearest hovered item
+            var pos = e.GetPosition(ItemsCanvas);
+            foreach (var (btn, _, _) in _visibleButtons)
+            {
+                double bx = Canvas.GetLeft(btn) + (btn.Width / 2.0);
+                double by = Canvas.GetTop(btn) + (btn.Height / 2.0);
+                var offset = RadialLayoutCalculator.CalculateMagneticHoverOffset(new Point(bx, by), pos, 6.0);
+                if (btn.RenderTransform is TransformGroup group)
+                {
+                    var translate = group.Children.Count > 1 ? group.Children[1] as TranslateTransform : null;
+                    if (translate == null)
+                    {
+                        translate = new TranslateTransform();
+                        group.Children.Add(translate);
+                    }
+                    translate.X = offset.X;
+                    translate.Y = offset.Y;
+                }
+            }
+        }
+
+        private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (e.Delta > 0) _viewModel.PrevPage();
+            else if (e.Delta < 0) _viewModel.NextPage();
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                if (_isSearchMode)
+                _viewModel.CenterButtonClick();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Right || e.Key == Key.Down)
+            {
+                if (_visibleButtons.Count > 0)
                 {
-                    _isSearchMode = false;
-                    _searchQuery = "";
-                    SearchBorder.Visibility = Visibility.Collapsed;
-                    SearchText.Text = "";
-                    GenerateItems();
+                    _keyboardFocusIndex = (_keyboardFocusIndex + 1) % _visibleButtons.Count;
+                    HighlightKeyboardFocused();
                 }
-                else if (_navStack.Count > 0)
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Left || e.Key == Key.Up)
+            {
+                if (_visibleButtons.Count > 0)
                 {
-                    _navStack.Pop();
-                    _currentPageIndex = 0;
-                    GenerateItems();
+                    _keyboardFocusIndex = (_keyboardFocusIndex - 1 + _visibleButtons.Count) % _visibleButtons.Count;
+                    HighlightKeyboardFocused();
+                }
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Enter)
+            {
+                if (_keyboardFocusIndex >= 0 && _keyboardFocusIndex < _visibleButtons.Count)
+                {
+                    _viewModel.LaunchItem(_visibleButtons[_keyboardFocusIndex].item);
+                }
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Tab)
+            {
+                int nextCat = (_viewModel.CurrentCategoryIndex + 1) % Math.Max(1, _viewModel.Categories.Count);
+                _viewModel.SwitchCategory(nextCat);
+                e.Handled = true;
+            }
+        }
+
+        private void HighlightKeyboardFocused()
+        {
+            for (int i = 0; i < _visibleButtons.Count; i++)
+            {
+                var (btn, lbl, item) = _visibleButtons[i];
+                if (i == _keyboardFocusIndex)
+                {
+                    Panel.SetZIndex(btn, 100);
+                    Panel.SetZIndex(lbl, 101);
+                    btn.BorderBrush = _viewModel.ActiveTheme.AccentBrush;
+                    _viewModel.HoveredItemTitle = item.Name;
+                    RadialMotionSystem.AnimateHover(btn, lbl, true, _viewModel.ActiveTheme.ReduceMotion);
                 }
                 else
                 {
-                    this.Hide();
+                    Panel.SetZIndex(btn, 15);
+                    Panel.SetZIndex(lbl, 25);
+                    btn.BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
+                    RadialMotionSystem.AnimateHover(btn, lbl, false, _viewModel.ActiveTheme.ReduceMotion);
                 }
-                e.Handled = true;
-                return;
-            }
-
-            // Left / Right arrow navigation: pages & categories
-            if (e.Key == Key.Left)
-            {
-                NavigatePrevious();
-                e.Handled = true;
-                return;
-            }
-            if (e.Key == Key.Right)
-            {
-                NavigateNext();
-                e.Handled = true;
-                return;
-            }
-
-            if (e.Key == Key.Back && _isSearchMode)
-            {
-                if (_searchQuery.Length > 0)
-                {
-                    _searchQuery = _searchQuery.Substring(0, _searchQuery.Length - 1);
-                    SearchText.Text = _searchQuery;
-                    if (_searchQuery.Length == 0)
-                    {
-                        _isSearchMode = false;
-                        SearchBorder.Visibility = Visibility.Collapsed;
-                    }
-                    GenerateItems();
-                }
-                e.Handled = true;
-                return;
-            }
-            else if (e.Key == Key.Back && _navStack.Count > 0)
-            {
-                _navStack.Pop();
-                _currentPageIndex = 0;
-                GenerateItems();
-                e.Handled = true;
-                return;
-            }
-
-            if (e.Key == Key.Enter && _visibleButtons.Count > 0)
-            {
-                var item = _visibleButtons[0].item;
-                if (item.Type == "SUBMENU")
-                {
-                    _navStack.Push((item.Id, item.Name));
-                    _currentPageIndex = 0;
-                    GenerateItems();
-                }
-                else if (item.Type == "WINDOW")
-                {
-                    if (long.TryParse(item.Target, out long hVal))
-                    {
-                        _windowSwitcher.SwitchToWindow(new IntPtr(hVal));
-                        this.Hide();
-                    }
-                }
-                else if (item.Type == "ACTION")
-                {
-                    Services.SystemActionService.ExecuteAction(item.Target);
-                    this.Hide();
-                }
-                else
-                {
-                    _processRunner.Launch(item);
-                    this.Hide();
-                }
-                e.Handled = true;
-                return;
             }
         }
 
         private void Window_TextInput(object sender, TextCompositionEventArgs e)
         {
-            if (!string.IsNullOrEmpty(e.Text) && char.IsLetterOrDigit(e.Text[0]))
+            if (string.IsNullOrEmpty(e.Text)) return;
+            char c = e.Text[0];
+            if (char.IsLetterOrDigit(c) || char.IsPunctuation(c) || c == ' ')
             {
-                if (!_isSearchMode)
-                {
-                    _isSearchMode = true;
-                    _searchQuery = "";
-                    SearchBorder.Visibility = Visibility.Visible;
-                }
-                _searchQuery += e.Text;
-                SearchText.Text = _searchQuery;
-                GenerateItems();
-                e.Handled = true;
-            }
-        }
-
-        protected override void OnMouseWheel(MouseWheelEventArgs e)
-        {
-            base.OnMouseWheel(e);
-            if (e.Delta > 0)
-            {
-                NavigatePrevious();
-            }
-            else
-            {
-                NavigateNext();
-            }
-        }
-
-        private void NavigateNext()
-        {
-            _isSearchMode = false;
-            _searchQuery = "";
-            SearchBorder.Visibility = Visibility.Collapsed;
-
-            var items = GetCurrentFilteredItems();
-            int totalPages = Math.Max(1, (int)Math.Ceiling(items.Count / (double)MaxItemsPerPage));
-
-            if (_currentPageIndex < totalPages - 1)
-            {
-                _currentPageIndex++;
-            }
-            else
-            {
-                _currentCategoryIndex = (_currentCategoryIndex + 1) % _categories.Count;
-                _currentPageIndex = 0;
-            }
-
-            GenerateItems();
-        }
-
-        private void NavigatePrevious()
-        {
-            _isSearchMode = false;
-            _searchQuery = "";
-            SearchBorder.Visibility = Visibility.Collapsed;
-
-            if (_currentPageIndex > 0)
-            {
-                _currentPageIndex--;
-            }
-            else
-            {
-                _currentCategoryIndex = (_currentCategoryIndex - 1 + _categories.Count) % _categories.Count;
-                var items = GetCurrentFilteredItems();
-                int totalPages = Math.Max(1, (int)Math.Ceiling(items.Count / (double)MaxItemsPerPage));
-                _currentPageIndex = Math.Max(0, totalPages - 1);
-            }
-
-            GenerateItems();
-        }
-
-        private static Style CreateTransparentButtonStyle()
-        {
-            var style = new Style(typeof(Button));
-            var template = new ControlTemplate(typeof(Button));
-            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
-            presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-            template.VisualTree = presenter;
-            style.Setters.Add(new Setter(Button.TemplateProperty, template));
-            style.Setters.Add(new Setter(Button.BackgroundProperty, Brushes.Transparent));
-            style.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(0)));
-            return style;
-        }
-
-        private void Window_Deactivated(object sender, EventArgs e)
-        {
-            this.Hide();
-        }
-
-        private void CenterButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_navStack.Count > 0)
-            {
-                _navStack.Pop();
-                _currentPageIndex = 0;
-                GenerateItems();
-            }
-            else
-            {
-                this.Hide();
+                _viewModel.ApplySearch(_viewModel.SearchQuery + c);
             }
         }
 
         private void CenterButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             this.Hide();
-            if (Application.Current is App app)
-            {
-                app.OpenSettings();
-            }
-            else
-            {
-                var mgmt = new ManagementWindow();
-                mgmt.Show();
-            }
-            e.Handled = true;
+            var mgmt = new ManagementWindow();
+            mgmt.Show();
+        }
+
+        private void CategoryPill_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            int nextCat = (_viewModel.CurrentCategoryIndex + 1) % Math.Max(1, _viewModel.Categories.Count);
+            _viewModel.SwitchCategory(nextCat);
+        }
+
+        private void Window_Deactivated(object sender, EventArgs e)
+        {
+            this.Hide();
         }
     }
 }

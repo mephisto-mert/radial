@@ -1,10 +1,12 @@
+using System;
+
 namespace RadialLauncher.Models
 {
     public class LauncherItem
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = "EXE"; // "EXE", "URL", "FILE", "FOLDER"
+        public string Type { get; set; } = "EXE"; // "EXE", "URL", "FILE", "FOLDER", "ACTION", "SUBMENU", "CLIPBOARD", "WINDOW"
         public string Target { get; set; } = string.Empty;
         public string Arguments { get; set; } = string.Empty;
         public string WorkingDirectory { get; set; } = string.Empty;
@@ -14,6 +16,11 @@ namespace RadialLauncher.Models
         public bool IsFavorite { get; set; }
         public int ParentId { get; set; } = 0; // 0 = root level, >0 = sub-item of a SUBMENU
         public bool IsUserAdded { get; set; } = true;
+        
+        // Smart usage tracking & tags
+        public int LaunchCount { get; set; } = 0;
+        public DateTime? LastLaunched { get; set; }
+        public string Tags { get; set; } = string.Empty;
     }
 
     public class Category
@@ -22,5 +29,14 @@ namespace RadialLauncher.Models
         public string Name { get; set; } = string.Empty;
         public string Color { get; set; } = "#3498db"; // Hex color
         public int Position { get; set; }
+    }
+
+    public class QuickActionItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string IconSymbol { get; set; } = string.Empty;
+        public string ActionKey { get; set; } = string.Empty;
+        public int Order { get; set; }
     }
 }

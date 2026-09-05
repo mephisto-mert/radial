@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media;
 
-namespace RadialLauncher.Services
+namespace RadialLauncher.Services.Windows
 {
     public class WindowInfo
     {
@@ -17,7 +17,7 @@ namespace RadialLauncher.Services
         public ImageSource? Icon { get; set; }
     }
 
-    public class WindowSwitcherService
+    public class WindowSwitcherService : IWindowSwitcherService
     {
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 

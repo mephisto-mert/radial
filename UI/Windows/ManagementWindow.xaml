@@ -1,445 +1,211 @@
 <Window x:Class="RadialLauncher.UI.Windows.ManagementWindow"
-        x:Name="RootWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Radial Launcher — Ayarlar ve Yönetim Paneli" Height="650" Width="920"
-        WindowStartupLocation="CenterScreen" Background="#16161A" Foreground="#EEEEEE">
-    
+        xmlns:controls="clr-namespace:RadialLauncher.UI.Controls"
+        Title="Radial Launcher — Yönetim &amp; Ayarlar" Height="680" Width="960"
+        WindowStartupLocation="CenterScreen" Background="#0F0F14" Foreground="#ECECF1"
+        WindowStyle="SingleBorderWindow">
     <Window.Resources>
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="Background" Value="#2A2A32"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="6,4"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#2C2C36"/>
-            <Setter Property="Foreground" Value="#EEEEEE"/>
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="18,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#AAA"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3E3E4C"/>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="#588CEC"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
-
-        <!-- Custom Tab Item Style -->
-        <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="#AAAAAA"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder" Background="#202028" CornerRadius="6,6,0,0" Margin="0,0,4,0" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="#2B3A4C"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="#282834"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
-    <Grid Margin="18">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Main Header -->
-            <RowDefinition Height="*"/>    <!-- Tab Control -->
-            <RowDefinition Height="Auto"/> <!-- Bottom Status & Close -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Top Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Vertical">
-                <TextBlock Text="Radial Launcher — Kontrol Merkezi" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF"/>
-                <TextBlock Text="Kısayolları yönetin, kategorileri düzenleyin, akıllı PC tarayıcısını çalıştırın ve temayı kişiselleştirin." FontSize="12" Foreground="#888899" Margin="0,2,0,0"/>
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="⚙️" FontSize="22" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Radial Launcher" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                <TextBlock Text="PRO ARCHITECTURE v2.0" FontSize="11" FontWeight="Bold" Foreground="#588CEC" Margin="10,0,0,0" VerticalAlignment="Center" Background="#22588CEC" Padding="6,2"/>
             </StackPanel>
-            <Border x:Name="HeaderBadgeBorder" Grid.Column="1" Background="#22222C" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
-                <TextBlock x:Name="HeaderBadgeText" Text="v2.1 Pro" FontSize="11" Foreground="#588CEC" FontWeight="Bold"/>
-            </Border>
-        </Grid>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="🔍 Bilgisayarı Tara" Padding="14,6" Margin="4,0" Background="#22222E" Foreground="White" BorderBrush="#35FFFFFF" Click="ScanButton_Click"/>
+                <Button Content="💾 Yedekle / Dışa Aktar" Padding="14,6" Margin="4,0" Background="#22222E" Foreground="White" BorderBrush="#35FFFFFF" Click="ExportButton_Click"/>
+                <Button Content="📂 Yedekten Yükle" Padding="14,6" Margin="4,0" Background="#22222E" Foreground="White" BorderBrush="#35FFFFFF" Click="ImportButton_Click"/>
+            </StackPanel>
+        </DockPanel>
 
         <!-- Main Tab Control -->
-        <TabControl x:Name="MainTabControl" Grid.Row="1" Background="Transparent" BorderThickness="0">
-            
-            <!-- TAB 1: ITEMS & SHORTCUTS -->
-            <TabItem Header="📋 Kısayollarım">
-                <Grid Margin="0,12,0,0">
+        <TabControl Grid.Row="1" Background="#14141C" BorderBrush="#22FFFFFF" BorderThickness="1">
+            <!-- TAB 1: UYGULAMALAR & ÖĞELER -->
+            <TabItem Header="📋 Uygulamalar &amp; Kısayollar">
+                <Grid Margin="12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Action Bar -->
-                    <Border x:Name="Tab1ActionBar" Grid.Row="0" Background="#1E1E24" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                    <!-- Top Bar: Filter & Add -->
+                    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Kategori:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#AAA"/>
+                            <ComboBox x:Name="CategoryFilterCombo" Width="160" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C24" Foreground="White"/>
+                            <TextBox x:Name="SearchBox" Width="200" Margin="16,0,0,0" Padding="6,4" Background="#1C1C24" Foreground="White" BorderBrush="#33FFFFFF" TextChanged="SearchBox_TextChanged"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="➕ Yeni Öğe Ekle" Padding="14,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="AddItemButton_Click"/>
+                        </StackPanel>
+                    </DockPanel>
 
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="➕ Yeni Ekle" Background="#2980B9" FontWeight="SemiBold" Margin="0,0,6,0" Click="AddButton_Click"/>
-                                <Button Content="✏️ Düzenle" Background="#27AE60" FontWeight="SemiBold" Margin="0,0,6,0" Click="EditButton_Click" ToolTip="Seçili öğeyi düzenle"/>
-                                <Button Content="🗑️ Sil" Background="#C0392B" Margin="0,0,6,0" Click="DeleteButton_Click" ToolTip="Seçili öğeleri sil (Shift/Ctrl ile çoklu seçim)"/>
-                                <Button Content="⭐ Favori" Margin="0,0,6,0" Click="ToggleFavorite_Click" ToolTip="Seçililerin favori durumunu değiştir"/>
-                                <Button Content="▲" Margin="0,0,2,0" Width="30" Click="MoveUp_Click" ToolTip="Yukarı Taşı"/>
-                                <Button Content="▼" Margin="0,0,10,0" Width="30" Click="MoveDown_Click" ToolTip="Aşağı Taşı"/>
-
-                                <TextBlock Text="Kategori:" Foreground="#AAA" VerticalAlignment="Center" Margin="6,0,4,0"/>
-                                <ComboBox x:Name="CategoryFilterComboBox" Width="130" Height="28" Background="#262630" Foreground="White"
-                                          SelectionChanged="CategoryFilterComboBox_SelectionChanged" DisplayMemberPath="Name" SelectedValuePath="Id"/>
-                            </StackPanel>
-
-                            <!-- Search -->
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="🔍" FontSize="13" Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBox x:Name="SearchBox" Width="170" Height="28" Background="#262630" Foreground="White" BorderBrush="#444"
-                                         Padding="6,2" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- Items ListView -->
-                    <ListView x:Name="ItemsListView" Grid.Row="1" Background="#191920" BorderBrush="#2D2D38" BorderThickness="1"
-                              Foreground="#E0E0E0" SelectionMode="Extended" AllowDrop="True"
-                              MouseDoubleClick="ItemsListView_MouseDoubleClick"
-                              PreviewMouseLeftButtonDown="ItemsListView_PreviewMouseLeftButtonDown"
-                              MouseMove="ItemsListView_MouseMove"
-                              DragEnter="ItemsListView_DragEnter"
-                              Drop="ItemsListView_Drop">
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Favori" Width="45">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding IsFavoriteText}" HorizontalAlignment="Center" FontWeight="Bold"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="İkon" Width="48">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Image Source="{Binding Icon}" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="Sıra" DisplayMemberBinding="{Binding Position}" Width="42"/>
-                                <GridViewColumn Header="İsim" DisplayMemberBinding="{Binding Name}" Width="160"/>
-                                <GridViewColumn Header="Tür" DisplayMemberBinding="{Binding Type}" Width="65"/>
-                                <GridViewColumn Header="Hedef" DisplayMemberBinding="{Binding Target}" Width="310"/>
-                                <GridViewColumn Header="Kategori" DisplayMemberBinding="{Binding CategoryName}" Width="130"/>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
+                    <!-- Items DataGrid -->
+                    <DataGrid x:Name="ItemsGrid" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False"
+                              Background="#121218" Foreground="White" RowBackground="#161620" AlternatingRowBackground="#1B1B26"
+                              BorderBrush="#25FFFFFF" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1FFFFFFF"
+                              HeadersVisibility="Column" SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="⭐" Binding="{Binding IsFavoriteText}" Width="40"/>
+                            <DataGridTextColumn Header="Sıra" Binding="{Binding Position}" Width="50"/>
+                            <DataGridTemplateColumn Header="İkon" Width="50">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Image Source="{Binding Icon}" Width="24" Height="24" Stretch="Uniform"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="İsim" Binding="{Binding Name}" Width="160"/>
+                            <DataGridTextColumn Header="Tür" Binding="{Binding Type}" Width="70"/>
+                            <DataGridTextColumn Header="Kategori" Binding="{Binding CategoryName}" Width="130"/>
+                            <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="*"/>
+                            <DataGridTemplateColumn Header="İşlemler" Width="140">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="⭐" Padding="6,2" Margin="2,0" Background="#282835" Foreground="Gold" Click="ToggleFavorite_Click"/>
+                                            <Button Content="✏️" Padding="6,2" Margin="2,0" Background="#282835" Foreground="White" Click="EditItem_Click"/>
+                                            <Button Content="🗑️" Padding="6,2" Margin="2,0" Background="#3D1A1A" Foreground="#FF6B6B" Click="DeleteItem_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </TabItem>
 
-            <!-- TAB 2: CATEGORIES MANAGEMENT -->
-            <TabItem Header="🏷️ Kategori Yönetimi">
-                <Grid Margin="0,12,0,0">
+            <!-- TAB 2: TEMALAR & GÖRSEL DİZAYN SİSTEMİ -->
+            <TabItem Header="🎨 Temalar &amp; Görsellik">
+                <Grid Margin="16">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="340"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Categories List -->
-                    <Border x:Name="Tab2LeftBorder" Grid.Column="0" Background="#191920" CornerRadius="8" BorderBrush="#2D2D38" BorderThickness="1" Margin="0,0,12,0" Padding="10">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="Mevcut Kategoriler" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,8"/>
-                            <ListView x:Name="CategoriesListView" Grid.Row="1" Background="Transparent" BorderThickness="0"
-                                      Foreground="#E0E0E0" SelectionMode="Single" SelectionChanged="CategoriesListView_SelectionChanged">
-                                <ListView.View>
-                                    <GridView>
-                                        <GridViewColumn Header="ID" DisplayMemberBinding="{Binding Id}" Width="40"/>
-                                        <GridViewColumn Header="Kategori Adı" DisplayMemberBinding="{Binding Name}" Width="170"/>
-                                        <GridViewColumn Header="Renk Kodu" DisplayMemberBinding="{Binding Color}" Width="90"/>
-                                        <GridViewColumn Header="Sıra" DisplayMemberBinding="{Binding Position}" Width="50"/>
-                                    </GridView>
-                                </ListView.View>
-                            </ListView>
-                        </Grid>
-                    </Border>
+                    <!-- Left: Theme Selector & Live Radial Preview -->
+                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                        <TextBlock Text="Hazır Temalar" FontSize="14" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <ListBox x:Name="ThemesListBox" Height="160" Background="#161622" Foreground="White" BorderBrush="#33FFFFFF" SelectionChanged="ThemesListBox_SelectionChanged"/>
 
-                    <!-- Category Operations Panel -->
-                    <StackPanel Grid.Column="1" Orientation="Vertical">
-                        <!-- Edit Selected Category Card -->
-                        <Border Background="#1E1E26" CornerRadius="8" Padding="14" Margin="0,0,0,12" BorderBrush="#2D2D38" BorderThickness="1">
-                            <StackPanel Orientation="Vertical">
-                                <TextBlock Text="✏️ Seçili Kategoriyi Düzenle" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,10"/>
-                                <TextBlock Text="Kategori Adı:" FontSize="12" Foreground="#AAA" Margin="0,0,0,4"/>
-                                <TextBox x:Name="EditCategoryNameBox" Height="30" Background="#262632" Foreground="White" BorderBrush="#444" Padding="6,2" VerticalContentAlignment="Center" Margin="0,0,0,10"/>
-                                
-                                <TextBlock Text="Renk (Hex):" FontSize="12" Foreground="#AAA" Margin="0,0,0,4"/>
-                                <TextBox x:Name="EditCategoryColorBox" Height="30" Background="#262632" Foreground="White" BorderBrush="#444" Padding="6,2" VerticalContentAlignment="Center" Margin="0,0,0,12"/>
-
-                                <Button Content="💾 Kategori Adını Güncelle" Background="#27AE60" FontWeight="Bold" Height="34" Click="UpdateCategory_Click"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Add New Category Card -->
-                        <Border Background="#1E1E26" CornerRadius="8" Padding="14" Margin="0,0,0,12" BorderBrush="#2D2D38" BorderThickness="1">
-                            <StackPanel Orientation="Vertical">
-                                <TextBlock Text="➕ Yeni Kategori Ekle" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,10"/>
-                                <TextBlock Text="Yeni Kategori Adı:" FontSize="12" Foreground="#AAA" Margin="0,0,0,4"/>
-                                <TextBox x:Name="NewCategoryNameBox" Height="30" Background="#262632" Foreground="White" BorderBrush="#444" Padding="6,2" VerticalContentAlignment="Center" Margin="0,0,0,10"/>
-                                
-                                <TextBlock Text="Renk (Hex, örn: #3498db):" FontSize="12" Foreground="#AAA" Margin="0,0,0,4"/>
-                                <TextBox x:Name="NewCategoryColorBox" Text="#3498db" Height="30" Background="#262632" Foreground="White" BorderBrush="#444" Padding="6,2" VerticalContentAlignment="Center" Margin="0,0,0,12"/>
-
-                                <Button Content="➕ Yeni Kategori Oluştur" Background="#2980B9" FontWeight="Bold" Height="34" Click="AddCategory_Click"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Delete Category Card -->
-                        <Border Background="#1E1E26" CornerRadius="8" Padding="14" BorderBrush="#2D2D38" BorderThickness="1">
-                            <StackPanel Orientation="Vertical">
-                                <TextBlock Text="🗑️ Kategori Sil" FontSize="14" FontWeight="Bold" Foreground="#FF6B6B" Margin="0,0,0,6"/>
-                                <TextBlock Text="Kategori silindiğinde içerisindeki öğeler kaybolmaz, otomatik olarak 'Hepsi'ne aktarılır." FontSize="11" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                                <Button Content="🗑️ Seçili Kategoriyi Sil" Background="#C0392B" FontWeight="Bold" Height="34" Click="DeleteCategory_Click"/>
-                            </StackPanel>
+                        <TextBlock Text="Canlı Önizleme" FontSize="14" FontWeight="Bold" Margin="0,16,0,8"/>
+                        <Border Background="#0C0C10" CornerRadius="12" Padding="10" BorderBrush="#22FFFFFF" BorderThickness="1" HorizontalAlignment="Center">
+                            <controls:RadialPreviewControl x:Name="LivePreviewControl"/>
                         </Border>
                     </StackPanel>
-                </Grid>
-            </TabItem>
 
-            <!-- TAB 3: SMART PC SCANNER -->
-            <TabItem Header="🔍 Akıllı Bilgisayar Taraması">
-                <Grid Margin="0,12,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                    <!-- Right: Custom Theme Creator & System Options -->
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0,0,0">
+                            <TextBlock Text="Özel Tema Oluşturucu (Theme Engine v2)" FontSize="15" FontWeight="Bold" Margin="0,0,0,12"/>
 
-                    <!-- Info Box -->
-                    <Border x:Name="Tab3InfoBorder" Grid.Row="0" Background="#1D2230" BorderBrush="#2C3E50" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="💡 Akıllı Bilgisayar Taraması &amp; Kategori Ayrıştırması" FontWeight="Bold" Foreground="#588CEC" FontSize="13"/>
-                            <TextBlock Text="Bilgisayarınızdaki Başlat Menüsü, Masaüstü Kısayolları, Yüklü Programlar (Registry) ile Steam &amp; Epic oyunlarını tarar ve otomatik olarak 'Oyunlar', 'İnternet &amp; İletişim', 'Geliştirme &amp; İş' ve 'Sistem &amp; Araçlar' kategorilerine dağıtır. Ana menünüz ('Hepsi') taranan programlarla kirlenmez, sadece bizzat eklediğiniz kişisel favorileriniz kalır." 
-                                       Foreground="#BBBBCC" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Scan Actions Bar -->
-                    <Border x:Name="Tab3ActionBar" Grid.Row="1" Background="#1E1E24" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="🚀 Tüm Bilgisayarı Tara" Background="#27AE60" FontWeight="Bold" Margin="0,0,8,0" Click="RunFullScan_Click"/>
-                                <Button Content="📥 Bulunanları Menüye Aktar" Background="#2980B9" FontWeight="Bold" Margin="0,0,8,0" Click="ImportScanned_Click"/>
-                                <Button Content="Tümünü Seç" Margin="0,0,4,0" Click="SelectAllScanned_Click"/>
-                                <Button Content="Seçimi Kaldır" Margin="0,0,4,0" Click="DeselectAllScanned_Click"/>
-                                <Button Content="✓ Seçilileri İşaretle" Margin="0,0,4,0" Click="CheckSelectedScanned_Click" ToolTip="Shift/Ctrl ile seçtiğiniz satırları işaretler"/>
-                                <Button Content="✗ İşareti Kaldır" Margin="0,0,12,0" Click="UncheckSelectedScanned_Click"/>
-                            </StackPanel>
-
-                            <TextBlock x:Name="ScanStatusText" Grid.Column="1" Text="Tarama bekleniyor..." Foreground="#888899" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Scanned Apps List -->
-                    <ListView x:Name="ScannedAppsListView" Grid.Row="2" Background="#191920" BorderBrush="#2D2D38" BorderThickness="1"
-                              Foreground="#E0E0E0" SelectionMode="Extended"
-                              PreviewMouseLeftButtonDown="ScannedAppsListView_PreviewMouseLeftButtonDown"
-                              KeyDown="ScannedAppsListView_KeyDown">
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Seç" Width="45">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <CheckBox IsChecked="{Binding IsSelected}" HorizontalAlignment="Center"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="İkon" Width="48">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Image Source="{Binding Icon}" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="Uygulama Adı" DisplayMemberBinding="{Binding Name}" Width="190"/>
-                                <GridViewColumn Header="Atanan Kategori" DisplayMemberBinding="{Binding CategoryName}" Width="150"/>
-                                <GridViewColumn Header="Kaynak" DisplayMemberBinding="{Binding Source}" Width="100"/>
-                                <GridViewColumn Header="Hedef Konum / Komut" DisplayMemberBinding="{Binding Target}" Width="330"/>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
-                </Grid>
-            </TabItem>
-
-            <!-- TAB 4: THEMES -->
-            <TabItem Header="🎨 Temalar &amp; Renkler">
-                <Grid Margin="0,12,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <Border x:Name="Tab4ThemeBar" Grid.Row="0" Background="#1E1E24" CornerRadius="8" Padding="14" Margin="0,0,0,14">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="🎨 Aktif Renk Teması:" FontSize="13" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                            <ComboBox x:Name="ThemeComboBox" Width="180" Height="30" Background="#262632" Foreground="White" BorderBrush="#444"
-                                      SelectionChanged="ThemeComboBox_SelectionChanged"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border x:Name="Tab4PreviewCard" Grid.Row="1" Background="#191920" CornerRadius="8" BorderBrush="#2D2D38" BorderThickness="1" Padding="20">
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="Seçilen Tema Önizlemesi" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,12"/>
-                            
-                            <Grid Margin="0,0,0,16">
+                            <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="130"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                
-                                <Border Grid.Column="0" Background="#22222A" CornerRadius="8" Padding="12" Margin="0,0,8,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Arka Plan" Foreground="#888" FontSize="11"/>
-                                        <Rectangle x:Name="PreviewBgColor" Height="28" RadiusX="4" RadiusY="4" Margin="0,6,0,0" Fill="#121216"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="1" Background="#22222A" CornerRadius="8" Padding="12" Margin="0,0,8,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Vurgu &amp; Noktalar" Foreground="#888" FontSize="11"/>
-                                        <Rectangle x:Name="PreviewAccentColor" Height="28" RadiusX="4" RadiusY="4" Margin="0,6,0,0" Fill="#588CEC"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="2" Background="#22222A" CornerRadius="8" Padding="12" Margin="0,0,8,0">
-                                    <StackPanel>
-                                        <TextBlock Text="İkon Zemin" Foreground="#888" FontSize="11"/>
-                                        <Rectangle x:Name="PreviewIconBgColor" Height="28" RadiusX="4" RadiusY="4" Margin="0,6,0,0" Fill="#1E1E24"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="3" Background="#22222A" CornerRadius="8" Padding="12">
-                                    <StackPanel>
-                                        <TextBlock Text="Merkez Buton" Foreground="#888" FontSize="11"/>
-                                        <Rectangle x:Name="PreviewCenterColor" Height="28" RadiusX="4" RadiusY="4" Margin="0,6,0,0" Fill="#2C2C34"/>
-                                    </StackPanel>
-                                </Border>
+                                <TextBlock Text="Tema İsmi:" VerticalAlignment="Center" Foreground="#AAA"/>
+                                <TextBox x:Name="CustomThemeNameBox" Grid.Column="1" Text="Özel Temam" Padding="6,4" Background="#1A1A24" Foreground="White"/>
                             </Grid>
 
-                            <TextBlock Text="Seçilen tema, radyal menünüz açıldığında ve bu ayarlar panelinde anında dinamik olarak uygulanır. Radial Launcher modern akrilik cam ve koyu katmanlarla tasarlanmıştır."
-                                       Foreground="#888899" FontSize="12" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </TabItem>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Vurgu Rengi (Hex):" VerticalAlignment="Center" Foreground="#AAA"/>
+                                <TextBox x:Name="CustomAccentBox" Grid.Column="1" Text="#588CEC" Padding="6,4" Background="#1A1A24" Foreground="White" TextChanged="CustomColor_TextChanged"/>
+                            </Grid>
 
-            <!-- TAB 5: GENERAL SETTINGS & SHORTCUTS -->
-            <TabItem Header="⚙️ Genel &amp; Kısayollar">
-                <Grid Margin="0,12,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Arkaplan Rengi (Hex):" VerticalAlignment="Center" Foreground="#AAA"/>
+                                <TextBox x:Name="CustomBgBox" Grid.Column="1" Text="#121216" Padding="6,4" Background="#1A1A24" Foreground="White" TextChanged="CustomColor_TextChanged"/>
+                            </Grid>
 
-                    <!-- Activation Shortcut Card -->
-                    <Border x:Name="Tab5ShortcutCard" Grid.Row="0" Background="#1E1E24" CornerRadius="8" Padding="16" Margin="0,0,0,12" BorderBrush="#2D2D38" BorderThickness="1">
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="🎯 Radyal Menüyü Açma Kısayolu" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
-                            <TextBlock Text="Radyal menünün fare imlecinizin bulunduğu yerde açılmasını sağlayan tetikleyiciyi belirleyin:" FontSize="12" Foreground="#888899" Margin="0,0,0,10"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Kart/Baloncuk (Hex):" VerticalAlignment="Center" Foreground="#AAA"/>
+                                <TextBox x:Name="CustomCardBox" Grid.Column="1" Text="#26262E" Padding="6,4" Background="#1A1A24" Foreground="White" TextChanged="CustomColor_TextChanged"/>
+                            </Grid>
+
+                            <Button Content="💾 Özel Temayı Kaydet &amp; Uygula" Padding="12,8" Margin="0,10,0,16" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="SaveCustomTheme_Click"/>
+
+                            <Separator Background="#22FFFFFF" Margin="0,0,0,16"/>
+
+                            <TextBlock Text="Gelişmiş Görsel Seçenekler" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <CheckBox x:Name="FollowWindowsThemeCheck" Content="Windows Temasını Otomatik Takip Et (Açık / Koyu)" Margin="0,4" Foreground="White" Click="FollowWindowsTheme_Click"/>
+                            <CheckBox x:Name="ExtractAccentCheck" Content="Windows Duvar Kağıdı / DWM Vurgu Rengini Kullan" Margin="0,4" Foreground="White" Click="ExtractAccent_Click"/>
+                            <CheckBox x:Name="ReduceMotionCheck" Content="Hareketi Azalt / Animasyonları Sadeleştir (Accessibility)" Margin="0,4" Foreground="White" Click="ReduceMotion_Click"/>
                             
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Tetikleyici Kısayol:" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0,0,12,0" FontWeight="SemiBold"/>
-                                <ComboBox x:Name="ShortcutComboBox" Width="270" Height="30" Background="#262632" Foreground="White" BorderBrush="#444"
-                                          SelectionChanged="ShortcutComboBox_SelectionChanged">
-                                    <ComboBoxItem Tag="MiddleClick" Content="🖱️ Fare Orta Tık (Varsayılan)"/>
-                                    <ComboBoxItem Tag="AltRightClick" Content="🖱️ Alt + Sağ Tık"/>
-                                    <ComboBoxItem Tag="ShiftRightClick" Content="🖱️ Shift + Sağ Tık"/>
-                                    <ComboBoxItem Tag="CtrlRightClick" Content="🖱️ Ctrl + Sağ Tık"/>
-                                    <ComboBoxItem Tag="XButton1" Content="🖱️ Fare Yan Tuşu 1 (Geri / X1)"/>
-                                    <ComboBoxItem Tag="XButton2" Content="🖱️ Fare Yan Tuşu 2 (İleri / X2)"/>
-                                    <ComboBoxItem Tag="AltSpace" Content="⌨️ Alt + Space (Boşluk)"/>
-                                    <ComboBoxItem Tag="CtrlSpace" Content="⌨️ Ctrl + Space (Boşluk)"/>
-                                    <ComboBoxItem Tag="F4" Content="⌨️ F4 Tuşu"/>
-                                    <ComboBoxItem Tag="Tilde" Content="⌨️ ~ (Tilde / É Tuşu)"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8">
+                                <TextBlock Text="Halka Yoğunluğu (Density):" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#AAA"/>
+                                <ComboBox x:Name="DensityCombo" Width="130" Background="#1C1C24" Foreground="White" SelectionChanged="DensityCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Geniş (15 Öğeli)" IsSelected="True"/>
+                                    <ComboBoxItem Content="Kompakt (18 Öğeli)"/>
                                 </ComboBox>
                             </StackPanel>
                         </StackPanel>
-                    </Border>
-
-                    <!-- Windows Startup & Backup -->
-                    <Border x:Name="Tab5StartupCard" Grid.Row="1" Background="#1E1E24" CornerRadius="8" Padding="16" Margin="0,0,0,12" BorderBrush="#2D2D38" BorderThickness="1">
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="Sistem Başlangıcı ve Yedekleme" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,10"/>
-                            
-                            <CheckBox x:Name="StartupCheckBox" Content="Windows açılışında Radial Launcher'ı otomatik başlat" Foreground="#CCCCCC"
-                                      Margin="0,0,0,14" Checked="StartupCheckBox_Changed" Unchecked="StartupCheckBox_Changed"/>
-
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="📥 JSON Yedek Dışa Aktar" Background="#27AE60" FontWeight="SemiBold" Margin="0,0,10,0" Click="ExportButton_Click"/>
-                                <Button Content="📤 JSON Yedek İçe Aktar" Background="#2980B9" FontWeight="SemiBold" Click="ImportButton_Click"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Controls Guide Card -->
-                    <Border x:Name="Tab5GuideCard" Grid.Row="2" Background="#1E1E24" CornerRadius="8" Padding="16" BorderBrush="#2D2D38" BorderThickness="1">
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="Kullanım &amp; Kısayol İpuçları" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,8"/>
-                            <TextBlock Text="• Radyal Menüyü Açma: Seçtiğiniz kısayol (Varsayılan: Fare Orta Tık) ile fare imlecinizin tam olduğu yerde açılır." Foreground="#BBB" Margin="0,2,0,2"/>
-                            <TextBlock Text="• Sayfa &amp; Kategori Değiştirme: Menü açıkken fare tekerleğini yukarı/aşağı kaydırabilir veya alt kısımdaki kategori noktalarına tıklayabilirsiniz." Foreground="#BBB" Margin="0,2,0,2"/>
-                            <TextBlock Text="• Hızlı Arama: Menü açıkken hiçbir yere tıklamadan doğrudan klavyeden aradığınız uygulamanın adını yazmaya başlayın." Foreground="#BBB" Margin="0,2,0,2"/>
-                            <TextBlock Text="• Açık Pencereler: '🪟 Açık Pencereler' sekmesinden çalışan uygulamalar arasında tek tıkla geçiş yapabilir, orta tık ile kapatabilirsiniz." Foreground="#BBB" Margin="0,2,0,2"/>
-                            <TextBlock Text="• Hızlı Kapatma: ESC tuşuna basabilir, menü dışına tıklayabilir ya da merkezdeki '✕' düğmesine basabilirsiniz." Foreground="#BBB" Margin="0,2,0,2"/>
-                            <TextBlock Text="• Ayarları Açma: Merkez butona Sağ Tıklayarak veya Sistem Tepsisindeki simgeye sağ tıklayıp 'Settings' diyerek açabilirsiniz." Foreground="#BBB" Margin="0,2,0,2"/>
-                        </StackPanel>
-                    </Border>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
 
+            <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR -->
+            <TabItem Header="⚙️ Kısayol &amp; Başlangıç">
+                <StackPanel Margin="24" MaxWidth="520" HorizontalAlignment="Left">
+                    <TextBlock Text="Menüyü Tetikleme Kısayolu" FontSize="15" FontWeight="Bold" Margin="0,0,0,12"/>
+                    <ComboBox x:Name="ShortcutCombo" Width="260" HorizontalAlignment="Left" Background="#1C1C24" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
+                        <ComboBoxItem Content="Orta Tuş (Fare Tekerleği)"/>
+                        <ComboBoxItem Content="Ctrl + Sağ Tık"/>
+                        <ComboBoxItem Content="Shift + Sağ Tık"/>
+                        <ComboBoxItem Content="Alt + Sağ Tık"/>
+                        <ComboBoxItem Content="Alt + Boşluk (Alt+Space)"/>
+                        <ComboBoxItem Content="Ctrl + Boşluk (Ctrl+Space)"/>
+                        <ComboBoxItem Content="F4 Tuşu"/>
+                        <ComboBoxItem Content="~ (Tilde Tuşu)"/>
+                    </ComboBox>
+
+                    <Separator Background="#22FFFFFF" Margin="0,24,0,24"/>
+
+                    <TextBlock Text="Windows Başlangıcı" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <CheckBox x:Name="RunOnStartupCheck" Content="Windows açıldığında Radial Launcher'ı otomatik başlat" Foreground="White" Click="RunOnStartupCheck_Click"/>
+                </StackPanel>
+            </TabItem>
         </TabControl>
 
-        <!-- Bottom Bar -->
-        <Grid Grid.Row="2" Margin="0,14,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="Radial Launcher — Tam Ekran ve Oyun Uyumlu Radyal Kısayol Yöneticisi" Foreground="#666677" VerticalAlignment="Center" FontSize="11.5"/>
-            <Button Content="Kapat" Grid.Column="1" Width="90" Height="32" Background="#3E3E4C" Click="CloseButton_Click"/>
-        </Grid>
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="2" Background="#0C0C10" Foreground="#888" Margin="0,10,0,0">
+            <TextBlock x:Name="StatusText" Text="Hazır."/>
+        </StatusBar>
     </Grid>
 </Window>
