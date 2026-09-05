@@ -42,6 +42,7 @@ namespace RadialLauncher
                     try { System.IO.File.WriteAllText(System.IO.Path.Combine(diagFolder, "exit.log"), $"ExitCode={args.ApplicationExitCode}\nStackTrace:\n{Environment.StackTrace}"); } catch { }
                 };
 
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
                 base.OnStartup(e);
 
                 if (e.Args.Length > 0 && e.Args[0] == "--test-scan")

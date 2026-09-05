@@ -28,6 +28,7 @@ namespace RadialLauncher.UI.Windows
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (TargetTextBox == null || BrowseButton == null || ActionSelectComboBox == null) return;
             if (TypeComboBox.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 string type = cbi.Content.ToString()!;
