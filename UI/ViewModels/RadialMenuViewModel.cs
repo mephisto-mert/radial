@@ -164,7 +164,7 @@ namespace RadialLauncher.UI.ViewModels
             var allDbCats = _categoryRepo.GetAll();
 
             // 1. Most Used / Favorites is first category
-            var mostUsedCat = allDbCats.FirstOrDefault(c => c.Id == 1 || c.SystemKey == "Cat_MostUsed");
+            var mostUsedCat = allDbCats.FirstOrDefault(c => c.SystemKey == "Cat_MostUsed");
             if (mostUsedCat != null)
             {
                 mostUsedCat.SystemKey = "Cat_MostUsed";

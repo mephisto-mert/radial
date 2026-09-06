@@ -178,7 +178,7 @@ namespace RadialLauncher.Data.Repositories
             {
                 using var conn = CreateConnection();
                 conn.Open();
-                var existing = conn.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE Name LIKE @name", new { name = $"%{name}%" });
+                var existing = conn.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE LOWER(TRIM(Name)) = LOWER(TRIM(@name))", new { name });
                 if (existing != null) return existing.Id;
 
                 int nextPos = conn.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");

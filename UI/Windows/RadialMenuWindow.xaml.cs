@@ -311,7 +311,7 @@ namespace RadialLauncher.UI.Windows
                         var desktops = _viewModel.DesktopService.GetDesktops();
                         if (desktops == null || desktops.Count == 0)
                         {
-                            var disabledItem = new MenuItem { Header = "⚠️ Virtual Desktops Unavailable", IsEnabled = false };
+                            var disabledItem = new MenuItem { Header = LocalizationService.Instance.GetString("Desktops_Unavailable", "⚠️ Virtual Desktops Unavailable"), IsEnabled = false };
                             cm.Items.Add(disabledItem);
                         }
                         else
@@ -321,8 +321,8 @@ namespace RadialLauncher.UI.Windows
                                 int targetDesktop = d;
                                 string dName = !string.IsNullOrEmpty(desktops[d].Name) 
                                     ? desktops[d].Name 
-                                    : $"Desktop {d + 1}";
-                                var mi = new MenuItem { Header = $"🪟 Move to {dName}" };
+                                    : string.Format(LocalizationService.Instance.GetString("Desktop_Name_Format", "Desktop {0}"), d + 1);
+                                var mi = new MenuItem { Header = string.Format(LocalizationService.Instance.GetString("Move_To_Desktop", "🪟 Move to {0}"), dName) };
                                 mi.Click += (ms, me) =>
                                 {
                                     _viewModel.DesktopService.MoveWindowToDesktop((IntPtr)hWndVal, targetDesktop);

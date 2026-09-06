@@ -21,6 +21,30 @@ namespace RadialLauncher.Services.Actions
         }
         public string IconSymbol { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
+
+        public string LocalizedCategory
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(Category))
+                {
+                    return Localization.LocalizationService.Instance.GetString($"SysCat_{Category}", Category);
+                }
+                return string.Empty;
+            }
+        }
+
+        public string Description
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(ActionKey))
+                {
+                    return Localization.LocalizationService.Instance.GetString($"SysDesc_{ActionKey}", DisplayName);
+                }
+                return DisplayName;
+            }
+        }
     }
 
     public interface ISystemActionService

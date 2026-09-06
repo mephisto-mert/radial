@@ -92,7 +92,7 @@ namespace RadialLauncher.UI.ViewModels
         public void RefreshItems()
         {
             var all = _itemRepo.GetAll();
-            if (SelectedCategory != null && (SelectedCategory.SystemKey == "Cat_MostUsed" || SelectedCategory.Id == 1))
+            if (SelectedCategory != null && SelectedCategory.SystemKey == "Cat_MostUsed")
             {
                 // Exact same recency/frequency weighted calculation as RadialMenuViewModel
                 DateTime now = DateTime.UtcNow;
@@ -102,7 +102,7 @@ namespace RadialLauncher.UI.ViewModels
                          .ThenBy(i => i.Position)
                          .ToList();
             }
-            else if (SelectedCategory != null && SelectedCategory.Id > 1)
+            else if (SelectedCategory != null && SelectedCategory.SystemKey != "Cat_MostUsed")
             {
                 all = all.Where(i => i.CategoryId == SelectedCategory.Id && i.ParentId == 0)
                          .OrderBy(i => i.Position)

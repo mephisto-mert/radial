@@ -91,14 +91,14 @@ namespace RadialLauncher.UI.Windows
                 "XButton1" => loc.GetString("Mouse_XButton1", "🖱️ Mouse 4 (XButton1)"),
                 "XButton2" => loc.GetString("Mouse_XButton2", "🖱️ Mouse 5 (XButton2)"),
                 "Ctrl+XButton1" => loc.GetString("Mouse_Ctrl_XButton1", "🖱️ Ctrl + Mouse 4"),
-                "Ctrl+XButton2" => "🖱️ Ctrl + Mouse 5",
+                "Ctrl+XButton2" => loc.GetString("Mouse_Ctrl_XButton2", "🖱️ Ctrl + Mouse 5"),
                 "AltRightClick" => loc.GetString("Mouse_Alt_Right", "🖱️ Alt + Right Click"),
                 "ShiftRightClick" => loc.GetString("Mouse_Shift_Right", "🖱️ Shift + Right Click"),
                 "CtrlRightClick" => loc.GetString("Mouse_Ctrl_Right", "🖱️ Ctrl + Right Click"),
                 "AltSpace" => loc.GetString("Shortcut_Alt_Space", "⌨️ Alt + Space"),
                 "CtrlSpace" => loc.GetString("Shortcut_Ctrl_Space", "⌨️ Ctrl + Space"),
-                "F4" => "⌨️ F4",
-                "Tilde" => "⌨️ ~ (Tilde)",
+                "F4" => loc.GetString("Shortcut_F4", "⌨️ F4"),
+                "Tilde" => loc.GetString("Shortcut_Tilde", "⌨️ ~ (Tilde)"),
                 _ => FormatArbitraryShortcut(code)
             };
         }

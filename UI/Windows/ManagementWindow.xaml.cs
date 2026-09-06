@@ -943,7 +943,7 @@ namespace RadialLauncher.UI.Windows
                 s.Language = langCode;
                 _themeService.UpdateSettings(s);
                 ApplyLocalization();
-                StatusText.Text = $"Language changed: {selectedItem.Content}";
+                StatusText.Text = string.Format(LocalizationService.Instance.GetString("Language_Changed_Status", "Language changed: {0}"), selectedItem.Content);
             }
         }
 

@@ -124,6 +124,10 @@ namespace RadialLauncher.Tests
                 {
                     Assert.False(string.IsNullOrWhiteSpace(action.DisplayName),
                         $"Action {action.ActionKey} has empty DisplayName in {lang.Code}");
+                    Assert.False(string.IsNullOrWhiteSpace(action.LocalizedCategory),
+                        $"Action {action.ActionKey} has empty LocalizedCategory in {lang.Code}");
+                    Assert.False(string.IsNullOrWhiteSpace(action.Description),
+                        $"Action {action.ActionKey} has empty Description in {lang.Code}");
                 }
             }
 
