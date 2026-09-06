@@ -225,6 +225,38 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+
+            <!-- TAB 4: GÜNCELLEMELER & TANILAMA & SİSTEM -->
+            <TabItem Header="ℹ️ Güncelleme &amp; Tanılama">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24" MaxWidth="580" HorizontalAlignment="Left">
+                        <TextBlock Text="🚀 Yazılım Güncellemeleri" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="CurrentVersionText" Text="Yüklü Sürüm: v1.0.0 (Release Candidate)" FontSize="13" Foreground="#AAA" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="AutoCheckUpdatesCheck" Content="Açılışta güncellemeleri otomatik kontrol et" Foreground="White" Margin="0,0,0,12" Click="AutoCheckUpdatesCheck_Click"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Button x:Name="CheckUpdatesNowBtn" Content="🔄 Güncellemeleri Şimdi Kontrol Et" Padding="14,8" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CheckUpdatesNowBtn_Click"/>
+                        </StackPanel>
+                        <TextBlock x:Name="UpdateCheckStatusLabel" Text="" FontSize="12" Foreground="#AAA" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                        <Separator Background="#22FFFFFF" Margin="0,16,0,20"/>
+
+                        <TextBlock Text="🩺 Tanılama &amp; Log Kayıtları" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Uygulama log dosyaları ve sistem tanılama bilgileri." FontSize="12" Foreground="#AAA" Margin="0,0,0,12"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Button Content="📁 Log Klasörünü Aç" Padding="14,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="OpenLogsFolderBtn_Click"/>
+                            <Button Content="📋 Tanılamayı Kopyala" Padding="14,8" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="CopyDiagnosticsBtn_Click"/>
+                        </StackPanel>
+
+                        <Separator Background="#22FFFFFF" Margin="0,16,0,20"/>
+
+                        <TextBlock Text="⚠️ Fabrika Ayarlarına Sıfırla" FontSize="15" FontWeight="Bold" Foreground="#FF6B6B" Margin="0,0,0,8"/>
+                        <TextBlock Text="Tüm tema, kısayol ve görsel ayarları varsayılan fabrika değerlerine geri döndürür." FontSize="12" Foreground="#AAA" Margin="0,0,0,12"/>
+                        <Button Content="Fabrika Ayarlarına Sıfırla" Padding="14,8" Background="#3D1A1A" Foreground="#FF6B6B" FontWeight="Bold" BorderThickness="1" BorderBrush="#66FF6B6B" HorizontalAlignment="Left" Click="ResetSettingsBtn_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
 
         <!-- Status Bar -->

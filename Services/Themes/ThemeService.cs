@@ -334,6 +334,31 @@ namespace RadialLauncher.Services.Themes
             OnThemeChanged?.Invoke(GetCurrentTheme());
         }
 
+        public bool GetAutoCheckUpdates() => LoadSettings().AutoCheckUpdates;
+
+        public void SetAutoCheckUpdates(bool autoCheck)
+        {
+            var settings = LoadSettings();
+            settings.AutoCheckUpdates = autoCheck;
+            SaveSettings(settings);
+        }
+
+        public void ResetSettingsToDefault()
+        {
+            try
+            {
+                var defaultSettings = new AppSettings();
+                SaveSettings(defaultSettings);
+                SetCurrentTheme(defaultSettings.ThemeName);
+                SetActivationShortcut(defaultSettings.ActivationShortcut);
+                Log.Information("Reset settings to factory defaults");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to reset settings to default");
+            }
+        }
+
         private void ListenWindowsThemeChanges()
         {
             try
@@ -396,7 +421,22 @@ namespace RadialLauncher.Services.Themes
                 if (File.Exists(SettingsPath))
                 {
                     var json = File.ReadAllText(SettingsPath);
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                    if (settings != null) return settings;
+                }
+            }
+            catch (JsonException jsonEx)
+            {
+                Log.Warning(jsonEx, "Corrupted settings file at {Path}. Creating backup and resetting to defaults.", SettingsPath);
+                try
+                {
+                    string backupPath = $"{SettingsPath}.corrupt.{DateTime.UtcNow:yyyyMMdd_HHmmss}.bak";
+                    File.Copy(SettingsPath, backupPath, true);
+                    Log.Information("Backed up corrupted settings to {BackupPath}", backupPath);
+                }
+                catch (Exception backupEx)
+                {
+                    Log.Warning(backupEx, "Failed to create backup copy of corrupted settings");
                 }
             }
             catch (Exception ex)
@@ -422,12 +462,14 @@ namespace RadialLauncher.Services.Themes
 
         public class AppSettings
         {
+            public int SchemaVersion { get; set; } = 1;
             public string ThemeName { get; set; } = "Dark";
             public string ActivationShortcut { get; set; } = "MiddleClick";
             public bool FollowWindowsTheme { get; set; } = false;
             public bool ExtractAccentFromWallpaper { get; set; } = false;
             public string DensityMode { get; set; } = "Expanded";
             public bool HasSeenTutorial { get; set; } = false;
+            public bool AutoCheckUpdates { get; set; } = true;
         }
     }
 }

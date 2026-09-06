@@ -18,6 +18,9 @@ namespace RadialLauncher.Services.Themes
         void SetFollowWindowsTheme(bool follow);
         bool GetExtractAccentFromWallpaper();
         void SetExtractAccentFromWallpaper(bool extract);
+        bool GetAutoCheckUpdates();
+        void SetAutoCheckUpdates(bool autoCheck);
+        void ResetSettingsToDefault();
 
         event Action<Theme>? OnThemeChanged;
         event Action<string>? OnShortcutChanged;

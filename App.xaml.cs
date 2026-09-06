@@ -176,11 +176,13 @@ namespace RadialLauncher
                     SetupHotKey(newShortcut);
                 };
 
-                // 7. Check for application updates non-blockingly
+                // 7. Check for application updates non-blockingly (if enabled)
                 _ = System.Threading.Tasks.Task.Run(async () =>
                 {
                     try
                     {
+                        if (!themeService.GetAutoCheckUpdates()) return;
+
                         var updateService = ServiceProvider.GetService<IUpdateCheckService>();
                         if (updateService != null)
                         {

@@ -46,5 +46,30 @@ namespace RadialLauncher.Tests
             var all = themeService.GetAllThemes();
             Assert.Contains(all, t => t.Name == themeName);
         }
+
+        [Fact]
+        public void AutoCheckUpdates_CanBeToggledAndPersisted()
+        {
+            var themeService = ThemeService.Instance;
+            bool current = themeService.GetAutoCheckUpdates();
+
+            themeService.SetAutoCheckUpdates(!current);
+            Assert.Equal(!current, themeService.GetAutoCheckUpdates());
+
+            // Revert
+            themeService.SetAutoCheckUpdates(current);
+            Assert.Equal(current, themeService.GetAutoCheckUpdates());
+        }
+
+        [Fact]
+        public void ResetSettingsToDefault_RestoresDefaultValuesSafely()
+        {
+            var themeService = ThemeService.Instance;
+            themeService.ResetSettingsToDefault();
+
+            Assert.Equal("Dark", themeService.GetCurrentTheme().Name);
+            Assert.Equal("MiddleClick", themeService.GetActivationShortcut());
+            Assert.True(themeService.GetAutoCheckUpdates());
+        }
     }
 }

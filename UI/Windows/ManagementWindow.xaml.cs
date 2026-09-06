@@ -12,6 +12,7 @@ using RadialLauncher.Services.Icons;
 using RadialLauncher.Services.Scanning;
 using RadialLauncher.Services.Sync;
 using RadialLauncher.Services.Themes;
+using RadialLauncher.Services.Updates;
 using RadialLauncher.Services.Windows;
 using RadialLauncher.UI.ViewModels;
 using Serilog;
@@ -110,6 +111,10 @@ namespace RadialLauncher.UI.Windows
             LoadShortcutState();
             LoadDensityState();
             UpdateSyncUiState();
+            if (AutoCheckUpdatesCheck != null)
+            {
+                AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
+            }
         }
 
         private void LoadCategories()
@@ -515,6 +520,150 @@ namespace RadialLauncher.UI.Windows
             finally
             {
                 UpdateSyncUiState();
+            }
+        }
+
+        private void AutoCheckUpdatesCheck_Click(object sender, RoutedEventArgs e)
+        {
+            bool isChecked = AutoCheckUpdatesCheck.IsChecked == true;
+            _themeService.SetAutoCheckUpdates(isChecked);
+            StatusText.Text = isChecked ? "Otomatik güncelleme kontrolü etkinleştirildi." : "Otomatik güncelleme kontrolü devre dışı bırakıldı.";
+        }
+
+        private async void CheckUpdatesNowBtn_Click(object sender, RoutedEventArgs e)
+        {
+            CheckUpdatesNowBtn.IsEnabled = false;
+            UpdateCheckStatusLabel.Text = "GitHub Release kontrol ediliyor...";
+            StatusText.Text = "Güncellemeler kontrol ediliyor...";
+
+            try
+            {
+                var updateService = App.ServiceProvider?.GetService(typeof(IUpdateCheckService)) as IUpdateCheckService;
+                if (updateService == null)
+                {
+                    UpdateCheckStatusLabel.Text = "Güncelleme servisi bulunamadı.";
+                    return;
+                }
+
+                var info = await updateService.CheckForUpdatesAsync();
+                if (info == null)
+                {
+                    UpdateCheckStatusLabel.Text = "Güncelleme sunucusuna ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.";
+                    StatusText.Text = "Güncelleme kontrolü başarısız.";
+                }
+                else if (info.IsUpdateAvailable)
+                {
+                    UpdateCheckStatusLabel.Text = $"🎉 Yeni bir sürüm mevcut: v{info.LatestVersion}\n{info.ReleaseUrl}";
+                    StatusText.Text = $"Yeni sürüm v{info.LatestVersion} mevcut!";
+                    var res = MessageBox.Show($"Yeni bir sürüm yayınlandı (v{info.LatestVersion}).\n\nİndirme sayfasına gitmek ister misiniz?", "Güncelleme Mevcut", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    if (res == MessageBoxResult.Yes && !string.IsNullOrWhiteSpace(info.ReleaseUrl))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = info.ReleaseUrl,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                else
+                {
+                    UpdateCheckStatusLabel.Text = $"✅ En güncel sürümü kullanıyorsunuz (v{info.CurrentVersion}).";
+                    StatusText.Text = "Uygulama güncel.";
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Error checking for updates from UI");
+                UpdateCheckStatusLabel.Text = "Güncelleme kontrolü sırasında bir sorun oluştu.";
+                StatusText.Text = "Güncelleme hatası.";
+            }
+            finally
+            {
+                CheckUpdatesNowBtn.IsEnabled = true;
+            }
+        }
+
+        private void OpenLogsFolderBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string logDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "RadialLauncher", "Logs");
+
+                if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = logDir,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to open logs folder");
+                MessageBox.Show("Log klasörü açılamadı.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void CopyDiagnosticsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var diag = new System.Text.StringBuilder();
+                diag.AppendLine("=== Radial Launcher Diagnostics ===");
+                diag.AppendLine($"App Version: 1.0.0-rc1");
+                diag.AppendLine($"OS: {Environment.OSVersion}");
+                diag.AppendLine($"64-Bit OS: {Environment.Is64BitOperatingSystem}");
+                diag.AppendLine($"64-Bit Process: {Environment.Is64BitProcess}");
+                diag.AppendLine($".NET Runtime: {Environment.Version}");
+                diag.AppendLine($"Current Theme: {_themeService.GetCurrentTheme()?.Name}");
+                diag.AppendLine($"Shortcut: {_themeService.GetActivationShortcut()}");
+                diag.AppendLine($"Follow Windows Theme: {_themeService.GetFollowWindowsTheme()}");
+                diag.AppendLine($"Extract Accent: {_themeService.GetExtractAccentFromWallpaper()}");
+                diag.AppendLine($"Auto Check Updates: {_themeService.GetAutoCheckUpdates()}");
+                diag.AppendLine($"Categories Count: {_viewModel.Categories.Count}");
+                diag.AppendLine($"Total Items Count: {_viewModel.Items.Count}");
+                diag.AppendLine($"Timestamp UTC: {DateTime.UtcNow:O}");
+
+                Clipboard.SetText(diag.ToString());
+                StatusText.Text = "Tanılama bilgileri panoya kopyalandı!";
+                MessageBox.Show("Sistem tanılama bilgileri panoya kopyalandı.", "Tanılama", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed copying diagnostics");
+            }
+        }
+
+        private void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var res = MessageBox.Show(
+                "Tüm tema, kısayol ve görsel ayarlarınız fabrika varsayılanlarına sıfırlanacaktır.\nDevam etmek istiyor musunuz?",
+                "Ayarları Sıfırla",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (res != MessageBoxResult.Yes) return;
+
+            try
+            {
+                _themeService.ResetSettingsToDefault();
+                _viewModel.LoadInitialData();
+                LoadThemes();
+                LoadShortcutState();
+                LoadDensityState();
+                if (AutoCheckUpdatesCheck != null)
+                {
+                    AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
+                }
+                StatusText.Text = "Ayarlar başarıyla varsayılanlara sıfırlandı.";
+                MessageBox.Show("Ayarlar varsayılan değerlere sıfırlandı.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed resetting settings");
+                MessageBox.Show("Ayarlar sıfırlanırken bir sorun oluştu.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
