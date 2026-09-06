@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Moq;
 using RadialLauncher.Data.Repositories;
@@ -13,9 +15,34 @@ namespace RadialLauncher.Tests
 {
     public class SyncServiceTests
     {
-        private class DummyHttpClientFactory : IHttpClientFactory
+        private class MockHttpClientFactory : IHttpClientFactory
         {
-            public HttpClient CreateClient(string name) => new HttpClient();
+            private readonly HttpResponseMessage _response;
+
+            public MockHttpClientFactory(HttpResponseMessage response)
+            {
+                _response = response;
+            }
+
+            public HttpClient CreateClient(string name)
+            {
+                return new HttpClient(new MockHttpMessageHandler(_response));
+            }
+        }
+
+        private class MockHttpMessageHandler : HttpMessageHandler
+        {
+            private readonly HttpResponseMessage _response;
+
+            public MockHttpMessageHandler(HttpResponseMessage response)
+            {
+                _response = response;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(_response);
+            }
         }
 
         [Fact]
@@ -23,7 +50,7 @@ namespace RadialLauncher.Tests
         {
             var mockItemRepo = new Mock<IItemRepository>();
             var mockCatRepo = new Mock<ICategoryRepository>();
-            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new DummyHttpClientFactory());
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
 
             try
             {
@@ -64,7 +91,7 @@ namespace RadialLauncher.Tests
             mockCatRepo.Setup(r => r.GetAll()).Returns(categories);
             mockCatRepo.Setup(r => r.GetById(1)).Returns(categories[0]);
 
-            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new DummyHttpClientFactory());
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
 
             string tempFile = Path.Combine(Path.GetTempPath(), $"sync_test_{Guid.NewGuid():N}.json");
             try
@@ -83,17 +110,48 @@ namespace RadialLauncher.Tests
         }
 
         [Fact]
-        public async Task PushToGist_WithoutPat_ReturnsError()
+        public async Task PushToGist_WithoutPat_ReturnsErrorSafely()
         {
             var mockItemRepo = new Mock<IItemRepository>();
             var mockCatRepo = new Mock<ICategoryRepository>();
-            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new DummyHttpClientFactory());
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
 
             syncService.ClearPat();
             var result = await syncService.PushToGistAsync();
 
             Assert.False(result.success);
             Assert.Contains("PAT", result.message);
+        }
+
+        [Fact]
+        public async Task ImportFromFile_MalformedJson_ReturnsFalseSafely()
+        {
+            var mockItemRepo = new Mock<IItemRepository>();
+            var mockCatRepo = new Mock<ICategoryRepository>();
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
+
+            string tempFile = Path.Combine(Path.GetTempPath(), $"sync_malformed_{Guid.NewGuid():N}.json");
+            try
+            {
+                await File.WriteAllTextAsync(tempFile, "{ broken json content");
+                bool imported = await syncService.ImportFromFileAsync(tempFile);
+                Assert.False(imported);
+            }
+            finally
+            {
+                if (File.Exists(tempFile)) File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task ImportFromFile_NonExistentFile_ReturnsFalseSafely()
+        {
+            var mockItemRepo = new Mock<IItemRepository>();
+            var mockCatRepo = new Mock<ICategoryRepository>();
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
+
+            bool imported = await syncService.ImportFromFileAsync("C:\\NonExistentPath_XYZ_123.json");
+            Assert.False(imported);
         }
     }
 }
