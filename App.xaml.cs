@@ -235,6 +235,7 @@ namespace RadialLauncher
             services.AddHttpClient("GitHubClient", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(15);
+                client.DefaultRequestHeaders.Add("User-Agent", "RadialLauncher-App");
             });
 
             // Database & Repositories

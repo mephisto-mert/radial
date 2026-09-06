@@ -1,15 +1,21 @@
-# Radial Launcher Packaging Script v1.0.0
-# Generates published directory, portable zip, and checksums
+﻿# Radial Launcher Automated Release Packaging Script v1.0.0
+# Builds binaries, creates standalone installer wizard, portable zip, and checksums
 
 $ErrorActionPreference = "Stop"
 
 $rootDir = Resolve-Path "$PSScriptRoot\.."
 $publishDir = "$rootDir\publish\RadialLauncher-1.0.0-win-x64"
+$installerProjectDir = "$rootDir\installer\RadialLauncher.Installer"
 $artifactsDir = "$rootDir\artifacts"
 $zipFile = "$artifactsDir\RadialLauncher-1.0.0-win-x64.zip"
+$setupExeTarget = "$artifactsDir\RadialLauncher-Setup-v1.0.0.exe"
+$payloadZip = "$installerProjectDir\payload.zip"
 
-Write-Host "=== Building & Publishing Radial Launcher (Release win-x64) ===" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host "   RADIAL LAUNCHER - v1.0.0 RELEASE PACKAGING PIPELINE" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
 
+# 1. Prepare directories
 if (Test-Path $publishDir) {
     Remove-Item -Recurse -Force $publishDir
 }
@@ -17,35 +23,58 @@ if (!(Test-Path $artifactsDir)) {
     New-Item -ItemType Directory -Force -Path $artifactsDir | Out-Null
 }
 
+# 2. Publish clean Release win-x64
+Write-Host "`n[1/5] Publishing clean Release binaries (win-x64)..." -ForegroundColor Yellow
 dotnet publish "$rootDir\RadialLauncher.csproj" -c Release -r win-x64 --self-contained false -o $publishDir
 
-# Remove pdb from publish package for clean distribution
 if (Test-Path "$publishDir\RadialLauncher.pdb") {
     Remove-Item "$publishDir\RadialLauncher.pdb" -Force
 }
-
-# Copy Readme to published folder
 if (Test-Path "$rootDir\README.md") {
     Copy-Item "$rootDir\README.md" "$publishDir\README.md" -Force
 }
 
-Write-Host "=== Creating Portable Zip Package ===" -ForegroundColor Cyan
-if (Test-Path $zipFile) {
-    Remove-Item $zipFile -Force
+# 3. Create Payload Zip for Installer & Standalone Portable Zip
+Write-Host "`n[2/5] Creating distribution ZIP packages..." -ForegroundColor Yellow
+if (Test-Path $payloadZip) { Remove-Item $payloadZip -Force }
+if (Test-Path $zipFile) { Remove-Item $zipFile -Force }
+
+Compress-Archive -Path "$publishDir\*" -DestinationPath $payloadZip -CompressionLevel Optimal
+Copy-Item $payloadZip $zipFile -Force
+
+# 4. Compile Standalone Single-File Setup Wizard
+Write-Host "`n[3/5] Compiling Standalone Setup Wizard (RadialLauncher-Setup-v1.0.0.exe)..." -ForegroundColor Yellow
+$installerPublishTemp = "$rootDir\installer\publish_temp"
+if (Test-Path $installerPublishTemp) { Remove-Item -Recurse -Force $installerPublishTemp }
+
+dotnet publish "$installerProjectDir\RadialLauncher.Installer.csproj" `
+    -c Release `
+    -r win-x64 `
+    --self-contained false `
+    /p:PublishSingleFile=true `
+    /p:IncludeNativeLibrariesForSelfExtract=true `
+    -o $installerPublishTemp
+
+if (Test-Path "$installerPublishTemp\RadialLauncher.Installer.exe") {
+    Copy-Item "$installerPublishTemp\RadialLauncher.Installer.exe" $setupExeTarget -Force
 }
+Remove-Item -Recurse -Force $installerPublishTemp
 
-Compress-Archive -Path "$publishDir\*" -DestinationPath $zipFile -CompressionLevel Optimal
-
-Write-Host "=== Generating SHA256 Checksums ===" -ForegroundColor Cyan
+# 5. Generate SHA-256 Checksums
+Write-Host "`n[4/5] Generating SHA256 verification checksums..." -ForegroundColor Yellow
 $checksums = @()
-Get-ChildItem -Path $artifactsDir -Filter *.zip | ForEach-Object {
+Get-ChildItem -Path $artifactsDir -Include *.zip,*.exe -Recurse | ForEach-Object {
     $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
     $checksums += "$hash  $($_.Name)"
+    Write-Host "  $($_.Name) -> $hash" -ForegroundColor Gray
 }
 
 $checksumFile = "$artifactsDir\SHA256SUMS.txt"
 $checksums | Set-Content -Path $checksumFile -Encoding utf8
 
-Write-Host "=== Packaging Complete! ===" -ForegroundColor Green
-Write-Host "Portable package: $zipFile"
-Write-Host "Checksum file:    $checksumFile"
+Write-Host "`n[5/5] Packaging Completed Successfully!" -ForegroundColor Green
+Write-Host "----------------------------------------------------------" -ForegroundColor Green
+Write-Host "Installer:    $setupExeTarget" -ForegroundColor White
+Write-Host "Portable ZIP: $zipFile" -ForegroundColor White
+Write-Host "Checksums:    $checksumFile" -ForegroundColor White
+Write-Host "----------------------------------------------------------" -ForegroundColor Green

@@ -34,6 +34,9 @@
     <None Remove="RadialLauncher.Tests\**" />
     <Compile Remove="Plugins\**" />
     <None Remove="Plugins\**" />
+    <Compile Remove="installer\**" />
+    <None Remove="installer\**" />
+    <Page Remove="installer\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,9 +18,9 @@ namespace RadialLauncher.Services.Windows
                 {
                     if (enable)
                     {
-                        string path = Assembly.GetExecutingAssembly().Location;
-                        if (path.EndsWith(".dll")) path = path.Replace(".dll", ".exe");
-                        key.SetValue(AppName, path);
+                        string path = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+                        if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) path = path[..^4] + ".exe";
+                        key.SetValue(AppName, $"\"{path}\"");
                         Log.Information("Added startup registry entry: {Path}", path);
                     }
                     else

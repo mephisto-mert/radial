@@ -6,6 +6,8 @@ publish/
 artifacts/*.zip
 artifacts/*.exe
 *.log
+**/payload.zip
+**/publish_temp/
 
 ## Visual Studio & IDEs
 .vs/

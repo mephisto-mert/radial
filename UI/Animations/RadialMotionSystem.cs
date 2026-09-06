@@ -75,29 +75,29 @@ namespace RadialLauncher.UI.Animations
             }
 
             var transformGroup = element.RenderTransform as TransformGroup ?? new TransformGroup();
-            var scale = new ScaleTransform(0.5, 0.5);
+            var scale = new ScaleTransform(0.35, 0.35);
             transformGroup.Children.Clear();
             transformGroup.Children.Add(scale);
             element.RenderTransform = transformGroup;
             element.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            int delayMs = Math.Min(index * 16, 260); // Staggered gentle entrance
+            int delayMs = index * 48; // 3x slower, smooth cinematic clockwise bloom ripple
 
             var opacityAnim = new DoubleAnimation
             {
                 From = 0.0,
                 To = 1.0,
                 BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                Duration = TimeSpan.FromMilliseconds(220),
+                Duration = TimeSpan.FromMilliseconds(420),
                 EasingFunction = SoftQuartic
             };
 
             var scaleAnim = new DoubleAnimation
             {
-                From = 0.5,
+                From = 0.35,
                 To = 1.0,
                 BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                Duration = TimeSpan.FromMilliseconds(260),
+                Duration = TimeSpan.FromMilliseconds(520),
                 EasingFunction = SubtleSpring
             };
 

@@ -24,7 +24,7 @@ namespace RadialLauncher.Services.Updates
         {
             try
             {
-                var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 0, 0);
+                var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
                 var client = _httpClientFactory.CreateClient("GitHubClient");
 
                 Log.Information("Checking for updates from {Url}...", ReleasesApiUrl);
