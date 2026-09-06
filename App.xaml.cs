@@ -383,6 +383,9 @@ namespace RadialLauncher
         {
             try
             {
+                var processRunner = ServiceProvider?.GetService<IProcessRunner>();
+                processRunner?.CancelAllRunningMacros();
+
                 if (_hwndSource != null)
                 {
                     var clipboardService = ServiceProvider?.GetService<IClipboardService>();

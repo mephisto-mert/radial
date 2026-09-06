@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using RadialLauncher.Data.Repositories;
@@ -14,13 +16,40 @@ namespace RadialLauncher.Services.Processes
 {
     public class ProcessRunner : IProcessRunner
     {
+        private const int MaxMacroDelayMs = 60000; // Max 60 seconds delay per step
+
         private readonly IItemRepository? _itemRepo;
         private readonly ISystemActionService _actionService;
+        private readonly ConcurrentDictionary<CancellationTokenSource, byte> _activeMacroTokens = new();
 
         public ProcessRunner(IItemRepository? itemRepo = null, ISystemActionService? actionService = null)
         {
             _itemRepo = itemRepo;
             _actionService = actionService ?? Actions.SystemActionService.Instance;
+        }
+
+        public void CancelAllRunningMacros()
+        {
+            try
+            {
+                foreach (var cts in _activeMacroTokens.Keys)
+                {
+                    try
+                    {
+                        cts.Cancel();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Error canceling macro token during bulk cancel");
+                    }
+                }
+                _activeMacroTokens.Clear();
+                Log.Information("Cancelled all running macro tasks");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Error in CancelAllRunningMacros");
+            }
         }
 
         public void Launch(LauncherItem item)
@@ -36,7 +65,29 @@ namespace RadialLauncher.Services.Processes
 
                 if (string.Equals(item.Type, "MACRO", StringComparison.OrdinalIgnoreCase))
                 {
-                    _ = ExecuteMacroAsync(item.Target);
+                    var cts = new CancellationTokenSource();
+                    _activeMacroTokens.TryAdd(cts, 0);
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await ExecuteMacroAsync(item.Target, cts.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Log.Information("Macro execution cancelled for item: {Name}", item.Name);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Unhandled exception in background macro task for item: {Name}", item.Name);
+                        }
+                        finally
+                        {
+                            _activeMacroTokens.TryRemove(cts, out _);
+                            cts.Dispose();
+                        }
+                    });
                     return;
                 }
 
@@ -73,9 +124,11 @@ namespace RadialLauncher.Services.Processes
             }
         }
 
-        public async Task ExecuteMacroAsync(string jsonSteps)
+        public async Task ExecuteMacroAsync(string jsonSteps, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(jsonSteps)) return;
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 var steps = JsonSerializer.Deserialize<List<MacroStep>>(jsonSteps);
@@ -84,6 +137,8 @@ namespace RadialLauncher.Services.Processes
                 Log.Information("Executing macro with {Count} steps", steps.Count);
                 foreach (var step in steps)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     try
                     {
                         var stepItem = new LauncherItem
@@ -96,16 +151,26 @@ namespace RadialLauncher.Services.Processes
 
                         Launch(stepItem);
 
-                        if (step.DelayMs > 0)
+                        // Clamp delay: negative -> 0, max -> 60000ms
+                        int delay = Math.Clamp(step.DelayMs, 0, MaxMacroDelayMs);
+                        if (delay > 0)
                         {
-                            await Task.Delay(step.DelayMs);
+                            await Task.Delay(delay, cancellationToken);
                         }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception stepEx)
                     {
                         Log.Warning(stepEx, "Error executing macro step: {StepName}", step.Name);
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
