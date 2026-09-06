@@ -164,30 +164,27 @@ namespace RadialLauncher.UI.ViewModels
             var allDbCats = _categoryRepo.GetAll();
 
             // 1. Most Used / Favorites is first category
-            var mostUsedCat = allDbCats.FirstOrDefault(c => c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase) || c.Name.Equals("TestCategory", StringComparison.OrdinalIgnoreCase));
+            var mostUsedCat = allDbCats.FirstOrDefault(c => c.Id == 1 || c.SystemKey == "Cat_MostUsed");
             if (mostUsedCat != null)
             {
-                if (mostUsedCat.Name.Equals("TestCategory", StringComparison.OrdinalIgnoreCase) || mostUsedCat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || mostUsedCat.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase))
-                {
-                    mostUsedCat.Name = loc.GetString("Cat_MostUsed", "⭐ Most Used");
-                }
+                mostUsedCat.SystemKey = "Cat_MostUsed";
             }
             else
             {
-                mostUsedCat = new Category { Id = 1, Name = loc.GetString("Cat_MostUsed", "⭐ Most Used"), Color = "#f39c12", Position = 0 };
+                mostUsedCat = new Category { Id = 1, Name = "⭐ Most Used", SystemKey = "Cat_MostUsed", Color = "#f39c12", Position = 0 };
             }
 
             // 2. Open Windows category placed immediately next to Most Used
-            var openWinCat = new Category { Id = -99, Name = loc.GetString("Cat_OpenWindows", "🪟 Open Windows"), Color = "#9b59b6", Position = 1 };
+            var openWinCat = new Category { Id = -99, Name = "🪟 Open Windows", SystemKey = "Cat_OpenWindows", Color = "#9b59b6", Position = 1 };
 
             // 2b. Clipboard History category
-            var clipboardCat = new Category { Id = -98, Name = loc.GetString("Cat_ClipboardHistory", "📋 Clipboard History"), Color = "#e67e22", Position = 2 };
+            var clipboardCat = new Category { Id = -98, Name = "📋 Clipboard History", SystemKey = "Cat_ClipboardHistory", Color = "#e67e22", Position = 2 };
 
             var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat };
 
             foreach (var c in allDbCats)
             {
-                if (c.Id == mostUsedCat.Id || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase) || c.Name.Equals("TestCategory", StringComparison.OrdinalIgnoreCase)) continue;
+                if (c.Id == mostUsedCat.Id || c.SystemKey == "Cat_MostUsed" || c.SystemKey == "Cat_OpenWindows" || c.SystemKey == "Cat_ClipboardHistory") continue;
                 if (c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Open Windows", StringComparison.OrdinalIgnoreCase)) continue;
                 if (c.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Clipboard History", StringComparison.OrdinalIgnoreCase)) continue;
                 if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
@@ -266,7 +263,7 @@ namespace RadialLauncher.UI.ViewModels
                 {
                     filtered = new List<LauncherItem>();
                 }
-                else if (cat.Id == -99 || cat.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase))
+                else if (cat.SystemKey == "Cat_OpenWindows" || cat.Id == -99 || cat.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Open Windows", StringComparison.OrdinalIgnoreCase))
                 {
                     var openWins = _windowSwitcher?.GetOpenWindows() ?? new List<WindowInfo>();
                     WindowIcons?.Clear();
@@ -285,7 +282,7 @@ namespace RadialLauncher.UI.ViewModels
                         Position = idx
                     }).ToList();
                 }
-                else if (cat.Id == -98 || cat.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase))
+                else if (cat.SystemKey == "Cat_ClipboardHistory" || cat.Id == -98 || cat.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Clipboard History", StringComparison.OrdinalIgnoreCase))
                 {
                     var clips = _clipboardService?.GetRecentHistory(20) ?? new List<ClipboardItem>();
                     filtered = clips.Select((c, idx) => new LauncherItem
@@ -303,7 +300,7 @@ namespace RadialLauncher.UI.ViewModels
                     int providerIndex = (-cat.Id) - 200;
                     filtered = _pluginService?.GetSafeItems(providerIndex)?.ToList() ?? new List<LauncherItem>();
                 }
-                else if (cat.Id <= 1 || cat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Hepsi", StringComparison.OrdinalIgnoreCase))
+                else if (cat.SystemKey == "Cat_MostUsed" || cat.Id <= 1 || cat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Hepsi", StringComparison.OrdinalIgnoreCase))
                 {
                     // Recency/frequency-aware weighted ranking:
                     DateTime now = DateTime.UtcNow;

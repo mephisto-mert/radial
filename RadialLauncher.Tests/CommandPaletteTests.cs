@@ -16,8 +16,27 @@ using Xunit;
 
 namespace RadialLauncher.Tests
 {
-    public class CommandPaletteTests
+    public class CommandPaletteTests : IDisposable
     {
+        private readonly string _tempDir;
+
+        public CommandPaletteTests()
+        {
+            _tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"cmd_test_root_{Guid.NewGuid():N}");
+            System.IO.Directory.CreateDirectory(_tempDir);
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(_tempDir);
+        }
+
+        public void Dispose()
+        {
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(null);
+            try
+            {
+                if (System.IO.Directory.Exists(_tempDir)) System.IO.Directory.Delete(_tempDir, recursive: true);
+            }
+            catch { }
+        }
+
         private RadialMenuViewModel CreateTestViewModel(List<LauncherItem>? customItems = null)
         {
             var itemRepoMock = new Mock<IItemRepository>();

@@ -74,8 +74,8 @@ namespace RadialLauncher.Data.Repositories
                 using var conn = CreateConnection();
                 conn.Open();
                 string sql = @"
-                    INSERT INTO Categories (Name, Color, Position) 
-                    VALUES (@Name, @Color, @Position);
+                    INSERT INTO Categories (Name, Color, Position, SystemKey) 
+                    VALUES (@Name, @Color, @Position, @SystemKey);
                     SELECT last_insert_rowid();";
                 int id = conn.ExecuteScalar<int>(sql, category);
                 category.Id = id;
@@ -94,7 +94,7 @@ namespace RadialLauncher.Data.Repositories
             {
                 using var conn = CreateConnection();
                 conn.Open();
-                return conn.Execute("UPDATE Categories SET Name = @Name, Color = @Color, Position = @Position WHERE Id = @Id", category) > 0;
+                return conn.Execute("UPDATE Categories SET Name = @Name, Color = @Color, Position = @Position, SystemKey = @SystemKey WHERE Id = @Id", category) > 0;
             }
             catch (Exception ex)
             {

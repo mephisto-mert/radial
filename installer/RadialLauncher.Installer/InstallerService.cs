@@ -27,56 +27,42 @@ namespace RadialLauncher.Installer
             var assembly = Assembly.GetExecutingAssembly();
             using var resourceStream = assembly.GetManifestResourceStream("RadialLauncher.Installer.payload.zip");
 
-            if (resourceStream != null)
+            if (resourceStream == null)
             {
-                using var archive = new ZipArchive(resourceStream, ZipArchiveMode.Read);
-                int totalEntries = archive.Entries.Count;
-                int count = 0;
-
-                foreach (var entry in archive.Entries)
-                {
-                    count++;
-                    string destinationPath = Path.GetFullPath(Path.Combine(targetDirectory, entry.FullName));
-                    if (!destinationPath.StartsWith(Path.GetFullPath(targetDirectory), StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue; // Path traversal protection
-                    }
-
-                    if (string.IsNullOrEmpty(entry.Name))
-                    {
-                        Directory.CreateDirectory(destinationPath);
-                    }
-                    else
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-                        entry.ExtractToFile(destinationPath, overwrite: true);
-                    }
-
-                    int pct = 10 + (int)((count / (double)Math.Max(1, totalEntries)) * 70);
-                    reportProgress?.Invoke(pct, $"Extracting files: {entry.Name}");
-                }
+                throw new InvalidOperationException("Installer payload is missing or corrupted. Cannot continue installation.");
             }
-            else
+
+            using var archive = new ZipArchive(resourceStream, ZipArchiveMode.Read);
+            int totalEntries = archive.Entries.Count;
+            int count = 0;
+
+            foreach (var entry in archive.Entries)
             {
-                // Fallback: If running in dev/local mode without embedded zip, copy from current directory
-                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
-                string[] files = Directory.GetFiles(currentDir);
-                for (int i = 0; i < files.Length; i++)
+                count++;
+                string destinationPath = Path.GetFullPath(Path.Combine(targetDirectory, entry.FullName));
+                if (!destinationPath.StartsWith(Path.GetFullPath(targetDirectory), StringComparison.OrdinalIgnoreCase))
                 {
-                    string file = files[i];
-                    string name = Path.GetFileName(file);
-                    if (!name.Equals("RadialLauncher.Installer.exe", StringComparison.OrdinalIgnoreCase) &&
-                        !name.Equals("RadialLauncher-Setup-v1.0.0.exe", StringComparison.OrdinalIgnoreCase))
-                    {
-                        File.Copy(file, Path.Combine(targetDirectory, name), true);
-                    }
+                    continue; // Path traversal protection
                 }
+
+                if (string.IsNullOrEmpty(entry.Name))
+                {
+                    Directory.CreateDirectory(destinationPath);
+                }
+                else
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                    entry.ExtractToFile(destinationPath, overwrite: true);
+                }
+
+                int pct = 10 + (int)((count / (double)Math.Max(1, totalEntries)) * 70);
+                reportProgress?.Invoke(pct, $"Extracting files: {entry.Name}");
             }
 
             // Copy self as uninstaller
             try
             {
-                string currentExe = Environment.ProcessPath ?? assembly.Location;
+                string currentExe = Environment.ProcessPath ?? System.AppContext.BaseDirectory;
                 string uninstallerPath = Path.Combine(targetDirectory, "Uninstall.exe");
                 if (File.Exists(currentExe))
                 {

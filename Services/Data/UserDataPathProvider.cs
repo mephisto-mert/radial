@@ -8,7 +8,8 @@ namespace RadialLauncher.Services.Data
         private static UserDataPathProvider? _instance;
         public static UserDataPathProvider Instance => _instance ??= new UserDataPathProvider();
 
-        private string? _overrideRoot;
+        private readonly System.Threading.AsyncLocal<string?> _asyncOverrideRoot = new();
+        private volatile string? _overrideRoot;
 
         public UserDataPathProvider(string? overrideRoot = null)
         {
@@ -18,12 +19,34 @@ namespace RadialLauncher.Services.Data
         public void SetOverrideDataRoot(string? rootPath)
         {
             _overrideRoot = rootPath;
+            _asyncOverrideRoot.Value = rootPath;
+        }
+
+        public IDisposable SetScopedOverrideDataRoot(string rootPath)
+        {
+            var previous = _asyncOverrideRoot.Value;
+            _asyncOverrideRoot.Value = rootPath;
+            return new DisposableAction(() => _asyncOverrideRoot.Value = previous);
+        }
+
+        private sealed class DisposableAction : IDisposable
+        {
+            private readonly Action _action;
+            public DisposableAction(Action action) => _action = action;
+            public void Dispose() => _action();
         }
 
         public string GetDataDirectory() => GetAppDataFolder();
 
         public string GetAppDataFolder()
         {
+            string? scoped = _asyncOverrideRoot.Value;
+            if (!string.IsNullOrEmpty(scoped))
+            {
+                if (!Directory.Exists(scoped)) Directory.CreateDirectory(scoped);
+                return scoped;
+            }
+
             if (!string.IsNullOrEmpty(_overrideRoot))
             {
                 if (!Directory.Exists(_overrideRoot)) Directory.CreateDirectory(_overrideRoot);

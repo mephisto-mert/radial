@@ -57,7 +57,7 @@
         <!-- Category -->
         <TextBlock x:Name="TxtCategoryLabel" Text="Category:" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,14" FontWeight="SemiBold" Foreground="#94A3B8"/>
         <ComboBox x:Name="CategoryComboBox" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,14" Height="30"
-                  DisplayMemberPath="Name" SelectedValuePath="Id"/>
+                  DisplayMemberPath="DisplayName" SelectedValuePath="Id"/>
 
         <!-- Favorite Checkbox -->
         <CheckBox x:Name="FavoriteCheckBox" Content="Add to Favorites (Inner Ring ⭐)" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" 

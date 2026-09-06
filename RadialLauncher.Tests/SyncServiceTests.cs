@@ -13,8 +13,27 @@ using Xunit;
 
 namespace RadialLauncher.Tests
 {
-    public class SyncServiceTests
+    public class SyncServiceTests : IDisposable
     {
+        private readonly string _tempDir;
+
+        public SyncServiceTests()
+        {
+            _tempDir = Path.Combine(Path.GetTempPath(), $"sync_test_root_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(_tempDir);
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(_tempDir);
+        }
+
+        public void Dispose()
+        {
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(null);
+            try
+            {
+                if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
+            }
+            catch { }
+        }
+
         private class MockHttpClientFactory : IHttpClientFactory
         {
             private readonly HttpResponseMessage _response;
@@ -166,7 +185,7 @@ namespace RadialLauncher.Tests
             var mockCatRepo = new Mock<ICategoryRepository>();
             mockCatRepo.Setup(r => r.GetAll()).Returns(new List<Category>
             {
-                new Category { Id = 1, Name = "TestCategory" }
+                new Category { Id = 1, Name = "CustomDevTools" }
             });
 
             var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
@@ -182,7 +201,7 @@ namespace RadialLauncher.Tests
             // Verify content
             string content = await File.ReadAllTextAsync(filePath);
             Assert.Contains("TestApp", content);
-            Assert.Contains("TestCategory", content);
+            Assert.Contains("CustomDevTools", content);
         }
 
         [Fact]

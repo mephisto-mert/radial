@@ -119,7 +119,7 @@
             </Border.Effect>
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                 <StackPanel x:Name="CategoryDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.Name, FallbackValue='Categories'}" 
+                <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.DisplayName, FallbackValue='Categories'}" 
                            FontSize="10.5" FontWeight="SemiBold" Foreground="#FFFFFF" 
                            HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="140"/>
                 <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,1"/>

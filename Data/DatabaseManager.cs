@@ -78,7 +78,8 @@ namespace RadialLauncher.Data
                             Id INTEGER PRIMARY KEY AUTOINCREMENT,
                             Name TEXT NOT NULL,
                             Color TEXT DEFAULT '#3498db',
-                            Position INTEGER DEFAULT 0
+                            Position INTEGER DEFAULT 0,
+                            SystemKey TEXT
                         );
                     ");
                     connection.Execute("PRAGMA user_version = 1;");
@@ -92,20 +93,21 @@ namespace RadialLauncher.Data
                     EnsureColumnExists(connection, "Items", "IsFavorite", "INTEGER DEFAULT 0");
                     EnsureColumnExists(connection, "Items", "ParentId", "INTEGER DEFAULT 0");
                     EnsureColumnExists(connection, "Items", "IsUserAdded", "INTEGER DEFAULT 1");
+                    EnsureColumnExists(connection, "Categories", "SystemKey", "TEXT");
 
-                    int winCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE '%Açık Pencereler%' OR Name LIKE '%Open Windows%'");
+                    int winCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE SystemKey = 'Cat_OpenWindows' OR Name LIKE '%Açık Pencereler%' OR Name LIKE '%Open Windows%'");
                     if (winCat == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🪟 Open Windows', '#9b59b6', @nextPos)", new { nextPos });
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('🪟 Open Windows', '#9b59b6', @nextPos, 'Cat_OpenWindows')", new { nextPos });
                     }
 
-                    int sysCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE '%Sistem%' OR Name LIKE '%System%'");
+                    int sysCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE SystemKey = 'Cat_System' OR Name LIKE '%Sistem%' OR Name LIKE '%System%'");
                     if (sysCat == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('⚡ System', '#f1c40f', @nextPos)", new { nextPos });
-                        int newSysCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE Name LIKE '%Sistem%' OR Name LIKE '%System%'");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('⚡ System', '#f1c40f', @nextPos, 'Cat_System')", new { nextPos });
+                        int newSysCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE SystemKey = 'Cat_System' OR Name LIKE '%Sistem%' OR Name LIKE '%System%'");
 
                         var sysActions = new[]
                         {
@@ -193,6 +195,22 @@ namespace RadialLauncher.Data
                     Log.Information("Applied Database Migration 4: Recency/Frequency Tracking (UseCount and LastUsedAt)");
                 }
 
+                // Migration 5: Stable System Category Keys & Architecture
+                if (currentVersion < 5)
+                {
+                    EnsureColumnExists(connection, "Categories", "SystemKey", "TEXT");
+
+                    // Assign stable system keys to known built-in categories
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_OpenWindows' WHERE (SystemKey IS NULL OR SystemKey = '') AND (Name LIKE '%Open Windows%' OR Name LIKE '%Açık Pencereler%');");
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_System' WHERE (SystemKey IS NULL OR SystemKey = '') AND (Name LIKE '%System%' OR Name LIKE '%Sistem%');");
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_Games' WHERE (SystemKey IS NULL OR SystemKey = '') AND (Name LIKE '%Games%' OR Name LIKE '%Oyun%');");
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_MostUsed' WHERE Id = 1 AND (SystemKey IS NULL OR SystemKey = '');");
+
+                    connection.Execute("PRAGMA user_version = 5;");
+                    currentVersion = 5;
+                    Log.Information("Applied Database Migration 5: Category SystemKey Schema");
+                }
+
                 BackfillGamesAndIcons(connection);
             }
             catch (Exception ex)
@@ -223,16 +241,20 @@ namespace RadialLauncher.Data
             try
             {
                 int gamesCatId = 0;
-                var gamesCat = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE Name LIKE '%Oyun%'");
+                var gamesCat = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE SystemKey = 'Cat_Games' OR Name LIKE '%Games%' OR Name LIKE '%Oyun%'");
                 if (gamesCat != null)
                 {
                     gamesCatId = gamesCat.Id;
+                    if (string.IsNullOrEmpty(gamesCat.SystemKey))
+                    {
+                        connection.Execute("UPDATE Categories SET SystemKey = 'Cat_Games' WHERE Id = @Id", new { gamesCat.Id });
+                    }
                 }
                 else
                 {
                     int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                    connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🎮 Oyunlar', '#e67e22', @nextPos)", new { nextPos });
-                    gamesCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE Name LIKE '%Oyun%'");
+                    connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('🎮 Games', '#e67e22', @nextPos, 'Cat_Games')", new { nextPos });
+                    gamesCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE SystemKey = 'Cat_Games' OR Name LIKE '%Games%' OR Name LIKE '%Oyun%'");
                 }
 
                 var detectedGames = _gameDetector != null ? _gameDetector.DetectAll() : new List<DetectedGame>();

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -14,7 +14,7 @@
     <FileVersion>1.0.0.0</FileVersion>
     <InformationalVersion>1.0.0</InformationalVersion>
     <Product>Radial Launcher Setup</Product>
-    <Title>Radial Launcher Kurulum Sihirbazı</Title>
+    <Title>Radial Launcher Setup Wizard</Title>
     <Company>Radial Launcher Team</Company>
     <Authors>mephisto-mert</Authors>
     <Description>Standalone Installer for Radial Launcher</Description>

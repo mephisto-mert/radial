@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using Moq;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
@@ -17,12 +18,17 @@ using Xunit;
 
 namespace RadialLauncher.Tests
 {
-    public class RadialNavigationTests
+    public class RadialNavigationTests : IDisposable
     {
         private readonly RadialMenuViewModel _viewModel;
+        private readonly string _tempDir;
 
         public RadialNavigationTests()
         {
+            _tempDir = Path.Combine(Path.GetTempPath(), $"nav_test_root_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(_tempDir);
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(_tempDir);
+
             var itemRepoMock = new Mock<IItemRepository>();
             var catRepoMock = new Mock<ICategoryRepository>();
             var procRunnerMock = new Mock<IProcessRunner>();
@@ -39,9 +45,9 @@ namespace RadialLauncher.Tests
             clipMock.Setup(c => c.GetRecentHistory(Moq.It.IsAny<int>())).Returns(new List<ClipboardItem>());
             catRepoMock.Setup(c => c.GetAll()).Returns(new List<Category>
             {
-                new Category { Id = 1, Name = "Genel", Position = 0 },
-                new Category { Id = 2, Name = "Oyunlar", Position = 1 },
-                new Category { Id = 3, Name = "Araçlar", Position = 2 }
+                new Category { Id = 1, Name = "⭐ Most Used", SystemKey = "Cat_MostUsed", Position = 0 },
+                new Category { Id = 2, Name = "🎮 Games", SystemKey = "Cat_Games", Position = 1 },
+                new Category { Id = 3, Name = "Tools", Position = 2 }
             });
 
             var dummyItems = new List<LauncherItem>();
@@ -101,6 +107,16 @@ namespace RadialLauncher.Tests
             int initialCat = _viewModel.CurrentCategoryIndex;
             _viewModel.NavigatePrevGlobal();
             Assert.NotEqual(initialCat, _viewModel.CurrentCategoryIndex);
+        }
+
+        public void Dispose()
+        {
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(null);
+            try
+            {
+                if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
+            }
+            catch { }
         }
     }
 }

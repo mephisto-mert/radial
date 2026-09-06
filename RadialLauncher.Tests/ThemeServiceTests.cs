@@ -7,8 +7,26 @@ using Xunit;
 
 namespace RadialLauncher.Tests
 {
-    public class ThemeServiceTests
+    public class ThemeServiceTests : IDisposable
     {
+        private readonly string _tempDir;
+
+        public ThemeServiceTests()
+        {
+            _tempDir = Path.Combine(Path.GetTempPath(), $"theme_test_root_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(_tempDir);
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(_tempDir);
+        }
+
+        public void Dispose()
+        {
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(null);
+            try
+            {
+                if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
+            }
+            catch { }
+        }
         [Fact]
         public void GetAllThemes_ContainsDefaultThemes()
         {

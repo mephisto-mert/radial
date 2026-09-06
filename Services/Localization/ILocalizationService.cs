@@ -14,6 +14,8 @@ namespace RadialLauncher.Services.Localization
         string GetString(string key, string? fallback = null);
         bool HasKeyDirectly(string langCode, string key);
         IReadOnlyDictionary<string, string>? GetDictionaryForLanguage(string langCode);
+        string GetCategoryDisplayName(RadialLauncher.Models.Category? category);
+        string GetCategoryDisplayName(string rawName, string? systemKey = null);
         string this[string key] { get; }
     }
 }

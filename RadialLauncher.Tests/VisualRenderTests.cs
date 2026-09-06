@@ -28,9 +28,27 @@ using Xunit;
 
 namespace RadialLauncher.Tests
 {
-    public class VisualRenderTests
+    public class VisualRenderTests : IDisposable
     {
         private readonly string _outputDir = @"C:\Users\pc\.gemini\antigravity\brain\ec9198f0-b139-40e5-9f59-4bd46bf8bf13\scratch";
+        private readonly string _tempDir;
+
+        public VisualRenderTests()
+        {
+            _tempDir = Path.Combine(Path.GetTempPath(), $"visual_test_root_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(_tempDir);
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(_tempDir);
+        }
+
+        public void Dispose()
+        {
+            RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(null);
+            try
+            {
+                if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
+            }
+            catch { }
+        }
 
         [Fact]
         public void RenderAllManagementTabsAndRadialOverlay_ToPngs()
@@ -42,7 +60,11 @@ namespace RadialLauncher.Tests
                 {
                     if (Application.Current == null)
                     {
-                        new Application();
+                        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                    }
+                    else
+                    {
+                        Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
                     }
 
                     // Setup Mocks and Services
@@ -101,7 +123,6 @@ namespace RadialLauncher.Tests
                     managementWin.Height = 720;
                     managementWin.Measure(new Size(1050, 720));
                     managementWin.Arrange(new Rect(0, 0, 1050, 720));
-                    managementWin.Show();
                     managementWin.UpdateLayout();
 
                     var mainTabs = managementWin.FindName("MainTabs") as TabControl;
@@ -132,8 +153,6 @@ namespace RadialLauncher.Tests
                     managementWin.UpdateLayout();
                     SaveWindowToPng(managementWin, Path.Combine(_outputDir, "visual_tab5_diagnostics.png"), 1050, 720);
 
-                    managementWin.Close();
-
                     // Now Render RadialMenuWindow
                     var radialVm = new RadialMenuViewModel(
                         itemRepoMock.Object,
@@ -154,7 +173,6 @@ namespace RadialLauncher.Tests
                     radialWin.Height = 600;
                     radialWin.Measure(new Size(600, 600));
                     radialWin.Arrange(new Rect(0, 0, 600, 600));
-                    radialWin.Show();
 
                     var rootGrid = radialWin.FindName("RootGrid") as FrameworkElement;
                     if (rootGrid != null)
@@ -175,8 +193,6 @@ namespace RadialLauncher.Tests
                     radialWin.ShowContextActions(testItems[2]);
                     radialWin.UpdateLayout();
                     SaveWindowToPng(radialWin, Path.Combine(_outputDir, "visual_radial_hovered.png"), 600, 600);
-
-                    radialWin.Close();
                 }
                 catch (Exception ex)
                 {

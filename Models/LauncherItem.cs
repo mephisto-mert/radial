@@ -31,6 +31,9 @@ namespace RadialLauncher.Models
         public string Name { get; set; } = string.Empty;
         public string Color { get; set; } = "#3498db"; // Hex color
         public int Position { get; set; }
+        public string? SystemKey { get; set; }
+
+        public string DisplayName => RadialLauncher.Services.Localization.LocalizationService.Instance.GetCategoryDisplayName(this);
     }
 
     public class QuickActionItem

@@ -199,7 +199,7 @@ namespace RadialLauncher.UI.Windows
 
             foreach (var cat in _viewModel.Categories)
             {
-                CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = cat.Name, Tag = cat.Id });
+                CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = loc.GetCategoryDisplayName(cat), Tag = cat.Id });
             }
             CategoryFilterCombo.SelectedIndex = 0;
         }
@@ -321,7 +321,7 @@ namespace RadialLauncher.UI.Windows
         {
             if (_viewModel == null || CategoryFilterCombo == null || ItemsGrid == null || StatusText == null) return;
             var loc = LocalizationService.Instance;
-            var catMap = _viewModel.Categories?.GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First().Name) ?? new Dictionary<int, string>();
+            var catMap = _viewModel.Categories?.GroupBy(c => c.Id).ToDictionary(g => g.Key, g => loc.GetCategoryDisplayName(g.First())) ?? new Dictionary<int, string>();
             var query = SearchBox?.Text?.Trim() ?? "";
             int selectedCatId = 0;
             if (CategoryFilterCombo.SelectedItem is ComboBoxItem cbi && cbi.Tag is int id)
@@ -342,7 +342,8 @@ namespace RadialLauncher.UI.Windows
             _viewModel.FilterQuery = query;
             _viewModel.RefreshItems();
 
-            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "General"))).ToList();
+            string defaultCatName = loc.GetString("Cat_MostUsed", "General");
+            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, defaultCatName))).ToList();
             ItemsGrid.ItemsSource = items;
 
             if (items.Count == 0)
