@@ -1,4 +1,4 @@
-﻿# ⚡ Radial Launcher
+# ⚡ Radial Launcher
 
 <p align="center">
   <img src="docs/images/radial_overlay_main.png" alt="Radial Launcher Hero Screenshot" width="720"/>
@@ -49,7 +49,7 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 </p>
 
 ### 4. Curated Themes & Appearance (Tab 2)
-> 8+ built-in color themes (Dark, Midnight Blue, Cyberpunk, Forest, Crimson, Dracula, Obsidian, Solarized) with real-time contrast checking and ring density controls.
+> 8 curated color themes (Dark, White, Red, Blue, Purple, Forest, AMOLED Black, High Contrast) with real-time contrast checking and ring density controls.
 <p align="center">
   <img src="docs/images/settings_tab2_themes.png" alt="Themes & Appearance Tab" width="680"/>
 </p>

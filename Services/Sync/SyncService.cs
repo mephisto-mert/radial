@@ -19,9 +19,7 @@ namespace RadialLauncher.Services.Sync
     public class SyncService : ISyncService
     {
         private static readonly byte[] Entropy = new byte[] { 0x52, 0x61, 0x64, 0x69, 0x61, 0x6C, 0x53, 0x79, 0x6E, 0x63 }; // "RadialSync"
-        private static readonly string VaultPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RadialLauncher", "sync_vault.bin");
+        private static string VaultPath => Path.Combine(RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetAppDataFolder(), "sync_vault.bin");
 
         private readonly IItemRepository _itemRepo;
         private readonly ICategoryRepository _categoryRepo;
@@ -126,9 +124,7 @@ namespace RadialLauncher.Services.Sync
             File.WriteAllBytes(VaultPath, cipherBytes);
         }
 
-        private static readonly string BackupsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RadialLauncher", "Backups");
+        private static string BackupsDir => RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetBackupsFolder();
 
         public async Task<(bool success, string filePath)> CreateLocalBackupAsync()
         {

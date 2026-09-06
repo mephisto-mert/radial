@@ -12,13 +12,8 @@ namespace RadialLauncher.Services.Themes
 {
     public class ThemeService : IThemeService
     {
-        private static readonly string SettingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RadialLauncher", "settings.json");
-
-        private static readonly string CustomThemesDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RadialLauncher", "CustomThemes");
+        private static string SettingsPath => RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetSettingsPath();
+        private static string CustomThemesDir => RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetCustomThemesFolder();
 
         private static ThemeService? _instance;
         public static ThemeService Instance => _instance ??= new ThemeService();

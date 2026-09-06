@@ -11,6 +11,7 @@ namespace RadialLauncher.Data.Repositories
         Category? GetById(int id);
         int Insert(Category category);
         bool Update(Category category);
+        bool Rename(int id, string newName);
         bool Delete(int id);
         void UpdatePositions(IEnumerable<Category> categories);
         int GetOrCreateCategory(string name, string defaultColor);

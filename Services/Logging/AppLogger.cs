@@ -7,9 +7,7 @@ namespace RadialLauncher.Services.Logging
 {
     public static class AppLogger
     {
-        public static string LogDirectory => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RadialLauncher", "logs");
+        public static string LogDirectory => RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetLogsFolder();
 
         public static void Initialize()
         {

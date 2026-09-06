@@ -103,6 +103,24 @@ namespace RadialLauncher.Tests
         [InlineData("CtrlSpace", "Ctrl + Boşluk")]
         public void ToFriendlyName_ReturnsReadableTurkishDescriptions(string code, string expectedSubstring)
         {
+            var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
+            loc.SetLanguage("tr");
+            string friendly = RadialLauncher.UI.Windows.ShortcutAssignWindow.ToFriendlyName(code);
+            Assert.Contains(expectedSubstring, friendly);
+            loc.SetLanguage("en");
+        }
+
+        [Theory]
+        [InlineData("MiddleClick", "Middle Click")]
+        [InlineData("XButton1", "Mouse 4")]
+        [InlineData("XButton2", "Mouse 5")]
+        [InlineData("Ctrl+XButton1", "Ctrl + Mouse 4")]
+        [InlineData("AltSpace", "Alt + Space")]
+        [InlineData("CtrlSpace", "Ctrl + Space")]
+        public void ToFriendlyName_ReturnsReadableEnglishDescriptions(string code, string expectedSubstring)
+        {
+            var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
+            loc.SetLanguage("en");
             string friendly = RadialLauncher.UI.Windows.ShortcutAssignWindow.ToFriendlyName(code);
             Assert.Contains(expectedSubstring, friendly);
         }

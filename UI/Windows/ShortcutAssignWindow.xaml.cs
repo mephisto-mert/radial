@@ -3,6 +3,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using RadialLauncher.Services.Localization;
 
 namespace RadialLauncher.UI.Windows
 {
@@ -14,7 +15,33 @@ namespace RadialLauncher.UI.Windows
         public ShortcutAssignWindow(string currentShortcut = "MiddleClick")
         {
             InitializeComponent();
+            ApplyLocalization();
             SetShortcut(currentShortcut);
+
+            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+        }
+
+        public void ApplyLocalization()
+        {
+            var loc = LocalizationService.Instance;
+            Title = loc.GetString("ShortcutAssign_Title", "Assign Custom Shortcut — Radial Launcher");
+            if (TxtHeaderTitle != null) TxtHeaderTitle.Text = loc.GetString("ShortcutAssign_Header", "🎯 Assign New Hotkey or Mouse Button");
+            if (TxtHeaderDesc != null) TxtHeaderDesc.Text = loc.GetString("ShortcutAssign_Desc", "Press your desired keyboard combination or click one of the quick mouse buttons below.");
+            if (TxtDetectedLabel != null) TxtDetectedLabel.Text = loc.GetString("Detected_Shortcut", "Detected Shortcut:");
+            if (TxtQuickMouseLabel != null) TxtQuickMouseLabel.Text = loc.GetString("Quick_Mouse_Select", "Quick Mouse Button Selection:");
+            if (BtnMiddleClick != null) BtnMiddleClick.Content = loc.GetString("Mouse_Middle", "🖱️ Middle Click");
+            if (BtnXButton1 != null) BtnXButton1.Content = loc.GetString("Mouse_XButton1", "🖱️ Mouse 4 (XButton1)");
+            if (BtnXButton2 != null) BtnXButton2.Content = loc.GetString("Mouse_XButton2", "🖱️ Mouse 5 (XButton2)");
+            if (BtnCtrlXButton1 != null) BtnCtrlXButton1.Content = loc.GetString("Mouse_Ctrl_XButton1", "🖱️ Ctrl + Mouse 4");
+            if (BtnAltRight != null) BtnAltRight.Content = loc.GetString("Mouse_Alt_Right", "🖱️ Alt + Right Click");
+            if (BtnShiftRight != null) BtnShiftRight.Content = loc.GetString("Mouse_Shift_Right", "🖱️ Shift + Right Click");
+            if (CancelButton != null) CancelButton.Content = loc.GetString("Cancel", "Cancel");
+            if (SaveButton != null) SaveButton.Content = loc.GetString("Save", "Save");
+
+            if (!string.IsNullOrEmpty(SelectedShortcut))
+            {
+                SetShortcut(SelectedShortcut);
+            }
         }
 
         private void SetShortcut(string internalCode)
@@ -23,41 +50,50 @@ namespace RadialLauncher.UI.Windows
 
             string clean = internalCode.Trim();
             string lower = clean.ToLowerInvariant();
+            var loc = LocalizationService.Instance;
 
             // Validate against reserved system hotkeys
             if (lower == "alt+f4" || lower == "altf4" || lower == "ctrl+alt+del" || lower == "win+l")
             {
-                ValidationWarningText.Text = "⚠️ Bu kısayol Windows sistem işlevleri için ayrılmıştır.";
-                SaveButton.IsEnabled = false;
+                if (ValidationWarningText != null)
+                    ValidationWarningText.Text = loc.GetString("Shortcut_System_Reserved", "⚠️ This shortcut is reserved for Windows system functions.");
+                if (SaveButton != null)
+                    SaveButton.IsEnabled = false;
                 return;
             }
 
-            ValidationWarningText.Text = string.Empty;
+            if (ValidationWarningText != null)
+                ValidationWarningText.Text = string.Empty;
             SelectedShortcut = clean;
             FriendlyName = ToFriendlyName(clean);
 
-            ShortcutDisplayText.Text = FriendlyName;
-            ShortcutRawText.Text = $"Internal Kod: {SelectedShortcut}";
-            SaveButton.IsEnabled = true;
+            if (ShortcutDisplayText != null)
+                ShortcutDisplayText.Text = FriendlyName;
+            if (ShortcutRawText != null)
+                ShortcutRawText.Text = $"{loc.GetString("Internal_Code", "Internal Code:")} {SelectedShortcut}";
+            if (SaveButton != null)
+                SaveButton.IsEnabled = true;
         }
 
         public static string ToFriendlyName(string code)
         {
-            if (string.IsNullOrWhiteSpace(code)) return "Kısayol Yok";
+            if (string.IsNullOrWhiteSpace(code)) return LocalizationService.Instance.GetString("Shortcut_None", "No Shortcut");
+
+            var loc = LocalizationService.Instance;
 
             return code switch
             {
-                "MiddleClick" => "🖱️ Orta Tuş (Fare Tekerleği)",
-                "XButton1" => "🖱️ Fare 4 (Geri Tuşu)",
-                "XButton2" => "🖱️ Fare 5 (İleri Tuşu)",
-                "Ctrl+XButton1" => "🖱️ Ctrl + Fare 4",
-                "Ctrl+XButton2" => "🖱️ Ctrl + Fare 5",
-                "AltRightClick" => "🖱️ Alt + Sağ Tık",
-                "ShiftRightClick" => "🖱️ Shift + Sağ Tık",
-                "CtrlRightClick" => "🖱️ Ctrl + Sağ Tık",
-                "AltSpace" => "⌨️ Alt + Boşluk (Alt+Space)",
-                "CtrlSpace" => "⌨️ Ctrl + Boşluk (Ctrl+Space)",
-                "F4" => "⌨️ F4 Tuşu",
+                "MiddleClick" => loc.GetString("Mouse_Middle", "🖱️ Middle Click"),
+                "XButton1" => loc.GetString("Mouse_XButton1", "🖱️ Mouse 4 (XButton1)"),
+                "XButton2" => loc.GetString("Mouse_XButton2", "🖱️ Mouse 5 (XButton2)"),
+                "Ctrl+XButton1" => loc.GetString("Mouse_Ctrl_XButton1", "🖱️ Ctrl + Mouse 4"),
+                "Ctrl+XButton2" => "🖱️ Ctrl + Mouse 5",
+                "AltRightClick" => loc.GetString("Mouse_Alt_Right", "🖱️ Alt + Right Click"),
+                "ShiftRightClick" => loc.GetString("Mouse_Shift_Right", "🖱️ Shift + Right Click"),
+                "CtrlRightClick" => loc.GetString("Mouse_Ctrl_Right", "🖱️ Ctrl + Right Click"),
+                "AltSpace" => loc.GetString("Shortcut_Alt_Space", "⌨️ Alt + Space"),
+                "CtrlSpace" => loc.GetString("Shortcut_Ctrl_Space", "⌨️ Ctrl + Space"),
+                "F4" => "⌨️ F4",
                 "Tilde" => "⌨️ ~ (Tilde)",
                 _ => FormatArbitraryShortcut(code)
             };
@@ -78,17 +114,17 @@ namespace RadialLauncher.UI.Windows
                               .Replace("+", "").Trim();
 
             if (rest.Equals("XButton1", StringComparison.OrdinalIgnoreCase) || rest.Equals("Mouse4", StringComparison.OrdinalIgnoreCase))
-                sb.Append("Fare 4");
+                sb.Append("Mouse 4");
             else if (rest.Equals("XButton2", StringComparison.OrdinalIgnoreCase) || rest.Equals("Mouse5", StringComparison.OrdinalIgnoreCase))
-                sb.Append("Fare 5");
+                sb.Append("Mouse 5");
             else if (rest.Equals("MiddleClick", StringComparison.OrdinalIgnoreCase) || rest.Equals("Middle", StringComparison.OrdinalIgnoreCase))
-                sb.Append("Orta Tuş");
+                sb.Append("Middle Click");
             else if (rest.Equals("RightClick", StringComparison.OrdinalIgnoreCase) || rest.Equals("Right", StringComparison.OrdinalIgnoreCase))
-                sb.Append("Sağ Tık");
+                sb.Append("Right Click");
             else if (rest.Equals("LeftClick", StringComparison.OrdinalIgnoreCase) || rest.Equals("Left", StringComparison.OrdinalIgnoreCase))
-                sb.Append("Sol Tık");
+                sb.Append("Left Click");
             else if (rest.Equals("Space", StringComparison.OrdinalIgnoreCase))
-                sb.Append("Boşluk (Space)");
+                sb.Append("Space");
             else if (!string.IsNullOrEmpty(rest))
                 sb.Append(rest);
 
@@ -136,7 +172,6 @@ namespace RadialLauncher.UI.Windows
             sb.Append(keyName);
             string constructed = sb.ToString();
 
-            // Check if Alt+Space or Ctrl+Space (normalize without plus for legacy compatibility if needed)
             if (constructed == "Alt+Space") constructed = "AltSpace";
             else if (constructed == "Ctrl+Space") constructed = "CtrlSpace";
 
@@ -150,7 +185,6 @@ namespace RadialLauncher.UI.Windows
 
         private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Only capture if clicking with middle / XButton / right with modifier
             if (e.MiddleButton == MouseButtonState.Pressed)
             {
                 bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;

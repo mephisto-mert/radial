@@ -209,8 +209,8 @@ namespace RadialLauncher.Services.Actions
                 try
                 {
                     string actionLogPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "RadialLauncher", "logs", "action_error.log");
+                        RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetLogsFolder(),
+                        "action_error.log");
                     File.AppendAllText(actionLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}: {ex}\n");
                 }
                 catch (Exception writeEx)

@@ -108,7 +108,10 @@ namespace RadialLauncher
                         if (notifyIcon != null)
                         {
                             notifyIcon.ToolTipText = "Radial Launcher (Pro v2.0)";
-                            notifyIcon.ShowBalloonTip("🍅 Odaklanma Tamamlandı!", "25 dakikalık odaklanma süreniz başarıyla bitti. Harika iş!", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+                            notifyIcon.ShowBalloonTip(
+                                LocalizationService.Instance.GetString("TrayFocusCompletedTitle", "🍅 Focus Session Complete!"),
+                                LocalizationService.Instance.GetString("TrayFocusCompletedBody", "Your 25-minute focus session ended successfully. Great job!"),
+                                Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
                         }
                     });
                 };
@@ -135,23 +138,8 @@ namespace RadialLauncher
                     Log.Warning(ex, "Could not set tray icon image");
                 }
 
-                var menu = new System.Windows.Controls.ContextMenu();
-                
-                var openItem = new System.Windows.Controls.MenuItem { Header = "Menüyü Aç" };
-                openItem.Click += (s, args) => OpenLauncher();
-                
-                var settingsItem = new System.Windows.Controls.MenuItem { Header = "Ayarlar & Yönetim" };
-                settingsItem.Click += (s, args) => Current.Dispatcher.Invoke(OpenSettings);
-                
-                var exitItem = new System.Windows.Controls.MenuItem { Header = "Çıkış" };
-                exitItem.Click += (s, args) => ExitApplication();
-
-                menu.Items.Add(openItem);
-                menu.Items.Add(settingsItem);
-                menu.Items.Add(new System.Windows.Controls.Separator());
-                menu.Items.Add(exitItem);
-
-                notifyIcon.ContextMenu = menu;
+                BuildTrayContextMenu();
+                LocalizationService.Instance.OnLanguageChanged += () => Current.Dispatcher.Invoke(BuildTrayContextMenu);
                 notifyIcon.TrayMouseDoubleClick += (s, args) => OpenLauncher();
 
                 // 5. Setup Global Mouse Hook
@@ -192,7 +180,10 @@ namespace RadialLauncher
                             {
                                 await Current.Dispatcher.InvokeAsync(() =>
                                 {
-                                    notifyIcon?.ShowBalloonTip("🚀 Güncelleme Mevcut!", $"Yeni sürüm v{updateInfo.LatestVersion} yayınlandı.\nGitHub üzerinden indirebilirsiniz.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+                                    notifyIcon?.ShowBalloonTip(
+                                        LocalizationService.Instance.GetString("TrayUpdateTitle", "🚀 Update Available!"),
+                                        string.Format(LocalizationService.Instance.GetString("TrayUpdateBody", "New version v{0} is available.\nYou can download it from GitHub."), updateInfo.LatestVersion),
+                                        Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
                                 });
                             }
                         }
@@ -395,6 +386,28 @@ namespace RadialLauncher
                 Log.Error(ex, "Failed to open ManagementWindow");
                 MessageBox.Show("Ayarlar penceresi açılırken bir sorun oluştu. Detaylar için uygulama loglarını kontrol edebilirsiniz.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        private void BuildTrayContextMenu()
+        {
+            if (notifyIcon == null) return;
+            var menu = new System.Windows.Controls.ContextMenu();
+            
+            var openItem = new System.Windows.Controls.MenuItem { Header = LocalizationService.Instance.GetString("TrayOpenMenu", "Open Menu") };
+            openItem.Click += (s, args) => OpenLauncher();
+            
+            var settingsItem = new System.Windows.Controls.MenuItem { Header = LocalizationService.Instance.GetString("TraySettings", "Settings & Management") };
+            settingsItem.Click += (s, args) => Current.Dispatcher.Invoke(OpenSettings);
+            
+            var exitItem = new System.Windows.Controls.MenuItem { Header = LocalizationService.Instance.GetString("TrayExit", "Exit") };
+            exitItem.Click += (s, args) => ExitApplication();
+
+            menu.Items.Add(openItem);
+            menu.Items.Add(settingsItem);
+            menu.Items.Add(new System.Windows.Controls.Separator());
+            menu.Items.Add(exitItem);
+
+            notifyIcon.ContextMenu = menu;
         }
 
         private void ExitApplication()

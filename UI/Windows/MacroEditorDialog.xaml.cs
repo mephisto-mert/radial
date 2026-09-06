@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
+using RadialLauncher.Services.Localization;
 using Serilog;
 
 namespace RadialLauncher.UI.Windows
@@ -41,6 +42,29 @@ namespace RadialLauncher.UI.Windows
             }
 
             NewStepActionComboBox.ItemsSource = _actionService.GetAvailableActions();
+            ApplyLocalization();
+
+            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+        }
+
+        public void ApplyLocalization()
+        {
+            var loc = LocalizationService.Instance;
+            Title = loc.GetString("Macro_Title", "Macro Steps Editor");
+            if (TxtHeader != null) TxtHeader.Text = loc.GetString("Macro_Header", "⚡ Macro Sequential Action List");
+            if (MoveUpBtn != null) MoveUpBtn.Content = loc.GetString("Macro_MoveUp", "⬆️ Move Up");
+            if (MoveDownBtn != null) MoveDownBtn.Content = loc.GetString("Macro_MoveDown", "⬇️ Move Down");
+            if (DeleteStepBtn != null) DeleteStepBtn.Content = loc.GetString("Macro_Delete", "🗑️ Delete");
+            if (TxtNewStepHeader != null) TxtNewStepHeader.Text = loc.GetString("Macro_NewStep", "➕ Add New Step");
+            if (TxtStepNameLabel != null) TxtStepNameLabel.Text = loc.GetString("Macro_StepName", "Step Name:");
+            if (TxtStepTypeLabel != null) TxtStepTypeLabel.Text = loc.GetString("Macro_StepType", "Type:");
+            if (TxtStepTargetLabel != null) TxtStepTargetLabel.Text = loc.GetString("Macro_StepTarget", "Target:");
+            if (NewStepBrowseBtn != null) NewStepBrowseBtn.Content = loc.GetString("Browse", "Browse...");
+            if (TxtStepArgsLabel != null) TxtStepArgsLabel.Text = loc.GetString("Macro_StepArgs", "Arguments:");
+            if (TxtStepDelayLabel != null) TxtStepDelayLabel.Text = loc.GetString("Macro_StepDelay", "Delay (ms):");
+            if (AddStepBtn != null) AddStepBtn.Content = loc.GetString("Macro_Add", "Add");
+            if (SaveBtn != null) SaveBtn.Content = loc.GetString("Save", "Save");
+            if (CancelBtn != null) CancelBtn.Content = loc.GetString("Cancel", "Cancel");
         }
 
         public string GetSerializedSteps()
@@ -90,10 +114,11 @@ namespace RadialLauncher.UI.Windows
 
         private void NewStepBrowseBtn_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             var dlg = new OpenFileDialog
             {
-                Title = "Makro Adımı için Program/Dosya Seç",
-                Filter = "Uygulamalar (*.exe)|*.exe|Tüm Dosyalar (*.*)|*.*"
+                Title = loc.GetString("Macro_Browse_Title", "Select Application/File for Macro Step"),
+                Filter = "Applications (*.exe)|*.exe|All Files (*.*)|*.*"
             };
 
             if (dlg.ShowDialog() == true)
@@ -108,51 +133,46 @@ namespace RadialLauncher.UI.Windows
 
         private void AddStepBtn_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             string name = NewStepNameTextBox.Text.Trim();
             string target = NewStepTargetTextBox.Text.Trim();
-            string type = (NewStepTypeComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "EXE";
-            string args = NewStepArgsTextBox.Text.Trim();
-            int delay = int.TryParse(NewStepDelayTextBox.Text, out int d) ? d : 200;
 
-            if (type == "ACTION" && NewStepActionComboBox.SelectedItem is SystemActionInfo act)
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(target))
             {
-                target = act.ActionKey;
-                if (string.IsNullOrEmpty(name)) name = act.DisplayName;
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                name = !string.IsNullOrEmpty(target) ? target : "Adım " + (Steps.Count + 1);
-            }
-
-            if (string.IsNullOrWhiteSpace(target))
-            {
-                MessageBox.Show("Lütfen adım hedefini giriniz.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    loc.GetString("Macro_Validation_Error", "Step Name and Target are required."),
+                    loc.GetString("Warning", "Warning"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
-            Steps.Add(new MacroStep
+            string type = "EXE";
+            if (NewStepTypeComboBox.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
+            {
+                type = cbi.Content.ToString()!;
+            }
+
+            int delay = 200;
+            int.TryParse(NewStepDelayTextBox.Text.Trim(), out delay);
+            if (delay < 0) delay = 0;
+
+            var step = new MacroStep
             {
                 Name = name,
-                Type = type,
                 Target = target,
-                Arguments = args,
+                Arguments = NewStepArgsTextBox.Text.Trim(),
+                Type = type,
                 DelayMs = delay
-            });
+            };
 
-            // Clear inputs
-            NewStepNameTextBox.Clear();
-            NewStepTargetTextBox.Clear();
-            NewStepArgsTextBox.Clear();
+            Steps.Add(step);
+
+            // Reset inputs
+            NewStepNameTextBox.Text = string.Empty;
+            NewStepTargetTextBox.Text = string.Empty;
+            NewStepArgsTextBox.Text = string.Empty;
             NewStepDelayTextBox.Text = "200";
-        }
-
-        private void DeleteStepBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (StepsListBox.SelectedItem is MacroStep step)
-            {
-                Steps.Remove(step);
-            }
         }
 
         private void MoveUpBtn_Click(object sender, RoutedEventArgs e)
@@ -179,22 +199,21 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
+        private void DeleteStepBtn_Click(object sender, RoutedEventArgs e)
+        {
+            int idx = StepsListBox.SelectedIndex;
+            if (idx >= 0 && idx < Steps.Count)
+            {
+                Steps.RemoveAt(idx);
+            }
+        }
+
         private void StepsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            bool hasSelection = StepsListBox.SelectedItem != null;
-            DeleteStepBtn.IsEnabled = hasSelection;
-            MoveUpBtn.IsEnabled = hasSelection && StepsListBox.SelectedIndex > 0;
-            MoveDownBtn.IsEnabled = hasSelection && StepsListBox.SelectedIndex < Steps.Count - 1;
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (Steps.Count == 0)
-            {
-                MessageBox.Show("Makroda en az bir adım olmalıdır.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             DialogResult = true;
             Close();
         }

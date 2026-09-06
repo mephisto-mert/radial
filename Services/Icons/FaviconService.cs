@@ -11,9 +11,7 @@ namespace RadialLauncher.Services.Icons
     public class FaviconService
     {
         private readonly IHttpClientFactory _httpClientFactory;
-        private static readonly string CacheDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RadialLauncher", "FaviconCache");
+        private static string CacheDir => RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetFaviconCacheFolder();
 
         public FaviconService(IHttpClientFactory httpClientFactory)
         {

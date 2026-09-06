@@ -8,6 +8,7 @@ using RadialLauncher.Data;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Localization;
 using Serilog;
 
 namespace RadialLauncher.UI.Windows
@@ -62,6 +63,27 @@ namespace RadialLauncher.UI.Windows
             LoadCategories();
             ActionSelectComboBox.ItemsSource = _actionService.GetAvailableActions();
             PopulateData();
+            ApplyLocalization();
+
+            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+        }
+
+        public void ApplyLocalization()
+        {
+            var loc = LocalizationService.Instance;
+            Title = loc.GetString("EditItem_Title", "Edit Item");
+            if (TxtNameLabel != null) TxtNameLabel.Text = loc.GetString("Item_Name", "Name:");
+            if (TxtTypeLabel != null) TxtTypeLabel.Text = loc.GetString("Item_Type", "Type:");
+            if (TxtTargetLabel != null) TxtTargetLabel.Text = loc.GetString("Item_Target", "Target / Link:");
+            if (BrowseTargetButton != null) BrowseTargetButton.Content = loc.GetString("Browse", "Browse...");
+            if (TxtArgsLabel != null) TxtArgsLabel.Text = loc.GetString("Item_Args", "Arguments:");
+            if (TxtCategoryLabel != null) TxtCategoryLabel.Text = loc.GetString("Item_Category", "Category:");
+            if (TxtIconLabel != null) TxtIconLabel.Text = loc.GetString("Item_Icon", "Custom Icon:");
+            if (IconTextBox != null) IconTextBox.ToolTip = loc.GetString("Item_Icon_Tooltip", "Optional custom .ico, .exe, or .png file path");
+            if (BrowseIconButton != null) BrowseIconButton.Content = loc.GetString("Browse_Icon", "Select Icon");
+            if (FavoriteCheckBox != null) FavoriteCheckBox.Content = loc.GetString("Item_Favorite_Edit", "Mark as Favorite (⭐)");
+            if (SaveButton != null) SaveButton.Content = loc.GetString("Save", "Save");
+            if (CancelButton != null) CancelButton.Content = loc.GetString("Cancel", "Cancel");
         }
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -111,7 +133,8 @@ namespace RadialLauncher.UI.Windows
             if (dlg.ShowDialog() == true)
             {
                 TargetTextBox.Text = dlg.GetSerializedSteps();
-                EditMacroBtn.Content = $"⚡ Makro ({dlg.Steps.Count} Adım Tanımlı)";
+                string fmt = LocalizationService.Instance.GetString("Macro_Defined_Steps", "⚡ Macro ({0} Steps Defined)");
+                EditMacroBtn.Content = string.Format(fmt, dlg.Steps.Count);
             }
         }
 
@@ -156,7 +179,8 @@ namespace RadialLauncher.UI.Windows
                 {
                     var steps = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<MacroStep>>(Item.Target);
                     int cnt = steps?.Count ?? 0;
-                    EditMacroBtn.Content = $"⚡ Makro ({cnt} Adım Tanımlı)";
+                    string fmt = LocalizationService.Instance.GetString("Macro_Defined_Steps", "⚡ Macro ({0} Steps Defined)");
+                    EditMacroBtn.Content = string.Format(fmt, cnt);
                 }
                 catch (System.Exception) { }
             }
@@ -166,10 +190,11 @@ namespace RadialLauncher.UI.Windows
 
         private void BrowseTargetButton_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             var dialog = new OpenFileDialog
             {
-                Title = "Hedef Dosya veya Uygulama Seç",
-                Filter = "Tüm Desteklenenler|*.exe;*.bat;*.cmd;*.lnk;*.*|Uygulamalar (*.exe)|*.exe|Tüm Dosyalar (*.*)|*.*"
+                Title = loc.GetString("Browse_App_Title", "Select Application or File"),
+                Filter = "All Supported|*.exe;*.bat;*.cmd;*.lnk;*.*|Applications (*.exe)|*.exe|All Files (*.*)|*.*"
             };
 
             if (dialog.ShowDialog() == true)
@@ -180,10 +205,11 @@ namespace RadialLauncher.UI.Windows
 
         private void BrowseIconButton_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             var dialog = new OpenFileDialog
             {
-                Title = "İkon Dosyası Seç",
-                Filter = "İkonlar ve Resimler (*.ico;*.exe;*.png;*.jpg)|*.ico;*.exe;*.png;*.jpg|Tüm Dosyalar (*.*)|*.*"
+                Title = loc.GetString("Browse_Icon_Title", "Select Icon File"),
+                Filter = "Icons & Images (*.ico;*.exe;*.png;*.jpg)|*.ico;*.exe;*.png;*.jpg|All Files (*.*)|*.*"
             };
 
             if (dialog.ShowDialog() == true)
@@ -194,9 +220,14 @@ namespace RadialLauncher.UI.Windows
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             if (string.IsNullOrWhiteSpace(NameTextBox.Text) || string.IsNullOrWhiteSpace(TargetTextBox.Text))
             {
-                MessageBox.Show("İsim ve Hedef alanları boş bırakılamaz.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    loc.GetString("Validation_No_Empty", "Name and Target fields cannot be empty."),
+                    loc.GetString("Warning", "Warning"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 

@@ -10,6 +10,7 @@ using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Context;
+using RadialLauncher.Services.Localization;
 using RadialLauncher.Services.Plugins;
 using RadialLauncher.Services.Processes;
 using RadialLauncher.Services.Themes;
@@ -122,11 +123,19 @@ namespace RadialLauncher.UI.ViewModels
                 RequestLayoutUpdate?.Invoke();
             };
 
+            LocalizationService.Instance.OnLanguageChanged += () =>
+            {
+                LoadDefaultQuickActions();
+                RefreshPageItems();
+                RequestLayoutUpdate?.Invoke();
+            };
+
             LoadDefaultQuickActions();
         }
 
         public void InitializeForDisplay()
         {
+            var loc = LocalizationService.Instance;
             SearchQuery = string.Empty;
             IsSearchMode = false;
             _navStack.Clear();
@@ -155,22 +164,32 @@ namespace RadialLauncher.UI.ViewModels
             var allDbCats = _categoryRepo.GetAll();
 
             // 1. Most Used / Favorites is first category
-            var mostUsedCat = allDbCats.FirstOrDefault(c => c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase))
-                             ?? new Category { Id = 1, Name = "⭐ En Çok Kullanılanlar", Color = "#f39c12", Position = 0 };
+            var mostUsedCat = allDbCats.FirstOrDefault(c => c.Id <= 1 || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase) || c.Name.Equals("TestCategory", StringComparison.OrdinalIgnoreCase));
+            if (mostUsedCat != null)
+            {
+                if (mostUsedCat.Name.Equals("TestCategory", StringComparison.OrdinalIgnoreCase) || mostUsedCat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || mostUsedCat.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase))
+                {
+                    mostUsedCat.Name = loc.GetString("Cat_MostUsed", "⭐ Most Used");
+                }
+            }
+            else
+            {
+                mostUsedCat = new Category { Id = 1, Name = loc.GetString("Cat_MostUsed", "⭐ Most Used"), Color = "#f39c12", Position = 0 };
+            }
 
             // 2. Open Windows category placed immediately next to Most Used
-            var openWinCat = new Category { Id = -99, Name = "🪟 Açık Pencereler", Color = "#9b59b6", Position = 1 };
+            var openWinCat = new Category { Id = -99, Name = loc.GetString("Cat_OpenWindows", "🪟 Open Windows"), Color = "#9b59b6", Position = 1 };
 
             // 2b. Clipboard History category
-            var clipboardCat = new Category { Id = -98, Name = "📋 Pano Geçmişi", Color = "#e67e22", Position = 2 };
+            var clipboardCat = new Category { Id = -98, Name = loc.GetString("Cat_ClipboardHistory", "📋 Clipboard History"), Color = "#e67e22", Position = 2 };
 
             var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat };
 
             foreach (var c in allDbCats)
             {
-                if (c.Id == mostUsedCat.Id || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)) continue;
-                if (c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase)) continue;
-                if (c.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase)) continue;
+                if (c.Id == mostUsedCat.Id || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase) || c.Name.Equals("TestCategory", StringComparison.OrdinalIgnoreCase)) continue;
+                if (c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Open Windows", StringComparison.OrdinalIgnoreCase)) continue;
+                if (c.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Clipboard History", StringComparison.OrdinalIgnoreCase)) continue;
                 if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
                 {
                     validCats.Add(c);
@@ -202,15 +221,16 @@ namespace RadialLauncher.UI.ViewModels
             RefreshPageItems();
         }
 
-        private void LoadDefaultQuickActions()
+        public void LoadDefaultQuickActions()
         {
+            var loc = LocalizationService.Instance;
             QuickActions = new ObservableCollection<QuickActionItem>
             {
-                new QuickActionItem { Id = "SETTINGS", Name = "Ayarlar", IconSymbol = "⚙️", ActionKey = "SETTINGS", Order = 0 },
-                new QuickActionItem { Id = "SEARCH", Name = "Arama", IconSymbol = "🔍", ActionKey = "SEARCH", Order = 1 },
-                new QuickActionItem { Id = "DESKTOP", Name = "Masaüstü", IconSymbol = "🖥️", ActionKey = "SHOW_DESKTOP", Order = 2 },
-                new QuickActionItem { Id = "SNIP", Name = "Ekran Alıntısı", IconSymbol = "✂️", ActionKey = "SNIP_TOOL", Order = 3 },
-                new QuickActionItem { Id = "MUTE", Name = "Sesi Kapat", IconSymbol = "🔇", ActionKey = "VOLUME_MUTE", Order = 4 }
+                new QuickActionItem { Id = "SETTINGS", Name = loc.GetString("Quick_Settings", "Settings"), IconSymbol = "⚙️", ActionKey = "SETTINGS", Order = 0 },
+                new QuickActionItem { Id = "SEARCH", Name = loc.GetString("Quick_Search", "Search"), IconSymbol = "🔍", ActionKey = "SEARCH", Order = 1 },
+                new QuickActionItem { Id = "DESKTOP", Name = loc.GetString("Quick_Desktop", "Desktop"), IconSymbol = "🖥️", ActionKey = "SHOW_DESKTOP", Order = 2 },
+                new QuickActionItem { Id = "SNIP", Name = loc.GetString("Quick_Snip", "Snipping Tool"), IconSymbol = "✂️", ActionKey = "SNIP_TOOL", Order = 3 },
+                new QuickActionItem { Id = "MUTE", Name = loc.GetString("Quick_Mute", "Mute"), IconSymbol = "🔇", ActionKey = "VOLUME_MUTE", Order = 4 }
             };
         }
 
@@ -365,9 +385,7 @@ namespace RadialLauncher.UI.ViewModels
             if (string.Equals(item.Type, "COMMAND_LOGS", StringComparison.OrdinalIgnoreCase))
             {
                 RequestClose?.Invoke();
-                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string logDir = System.IO.Path.Combine(appData, "RadialLauncher", "logs");
-                if (!System.IO.Directory.Exists(logDir)) System.IO.Directory.CreateDirectory(logDir);
+                string logDir = RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetLogsFolder();
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = logDir, UseShellExecute = true });
                 return;
             }
@@ -578,12 +596,13 @@ namespace RadialLauncher.UI.ViewModels
                 }
             }
 
+            var loc = LocalizationService.Instance;
             if (cmd == "/" || "/restart".StartsWith(cmd) || cmd.StartsWith("/restart") || cmd.StartsWith("/yeniden"))
             {
                 list.Add(new LauncherItem
                 {
                     Id = -550,
-                    Name = "🔄 Yeniden Başlat (/restart)",
+                    Name = loc.GetString("Cmd_Restart", "🔄 Restart App (/restart)"),
                     Type = "COMMAND_RESTART",
                     Target = "RESTART",
                     CategoryId = -1
@@ -595,7 +614,7 @@ namespace RadialLauncher.UI.ViewModels
                 list.Add(new LauncherItem
                 {
                     Id = -551,
-                    Name = "📂 Log Klasörü (/logs)",
+                    Name = loc.GetString("Cmd_Logs", "📂 Open Logs (/logs)"),
                     Type = "COMMAND_LOGS",
                     Target = "LOGS",
                     CategoryId = -1
@@ -607,7 +626,7 @@ namespace RadialLauncher.UI.ViewModels
                 list.Add(new LauncherItem
                 {
                     Id = -552,
-                    Name = "⚙️ Ayarlar (/settings)",
+                    Name = loc.GetString("Cmd_Settings", "⚙️ Open Settings (/settings)"),
                     Type = "COMMAND_SETTINGS",
                     Target = "SETTINGS",
                     CategoryId = -1

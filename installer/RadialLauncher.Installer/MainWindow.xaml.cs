@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -22,7 +22,7 @@ namespace RadialLauncher.Installer
         private void BtnBrowse_Click(object sender, RoutedEventArgs e)
         {
             using var dialog = new FolderBrowserDialog();
-            dialog.Description = "Radial Launcher için kurulum klasörünü seçin:";
+            dialog.Description = "Select installation directory for Radial Launcher:";
             dialog.UseDescriptionForTitle = true;
             dialog.SelectedPath = TxtInstallPath.Text;
 
@@ -43,7 +43,7 @@ namespace RadialLauncher.Installer
             string targetDir = TxtInstallPath.Text.Trim();
             if (string.IsNullOrWhiteSpace(targetDir))
             {
-                MessageBox.Show("Lütfen geçerli bir kurulum dizini belirtin.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Please specify a valid installation directory.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -53,7 +53,7 @@ namespace RadialLauncher.Installer
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Geçersiz dizin yolu: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Invalid directory path: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -84,7 +84,7 @@ namespace RadialLauncher.Installer
                     Dispatcher.Invoke(() =>
                     {
                         ProgressBar.Value = 90;
-                        TxtStatusDetail.Text = "Kısayollar ve sistem ayarları yapılıyor...";
+                        TxtStatusDetail.Text = "Configuring shortcuts and system settings...";
                     });
 
                     InstallerService.CreateShortcuts(targetDir, desktopIcon, startMenu);
@@ -93,8 +93,8 @@ namespace RadialLauncher.Installer
                 });
 
                 ProgressBar.Value = 100;
-                TxtStatus.Text = "🎉 Kurulum Başarıyla Tamamlandı!";
-                TxtStatusDetail.Text = $"Radial Launcher hazır: {targetDir}";
+                TxtStatus.Text = "🎉 Installation Completed Successfully!";
+                TxtStatusDetail.Text = $"Radial Launcher is ready: {targetDir}";
 
                 if (launchAfter)
                 {
@@ -113,17 +113,18 @@ namespace RadialLauncher.Installer
                 _isCompleted = true;
                 BtnCancel.Visibility = Visibility.Collapsed;
                 BtnInstall.IsEnabled = true;
-                BtnInstall.Content = "Kapat";
-                TxtFooterInfo.Text = "Kurulum tamamlandı. Kısayol veya sistem tepsisinden erişebilirsiniz.";
+                BtnInstall.Content = "Close";
+                TxtFooterInfo.Text = "Installation complete. You can access it via shortcut or system tray.";
             }
             catch (Exception ex)
             {
                 ProgressBar.Value = 0;
-                TxtStatus.Text = "❌ Kurulum Sırasında Hata Oluştu";
+                TxtStatus.Text = "❌ Installation Failed";
                 TxtStatusDetail.Text = ex.Message;
                 BtnCancel.IsEnabled = true;
                 BtnInstall.IsEnabled = true;
-                BtnInstall.Content = "Tekrar Dene";
+                BtnInstall.Content = "Retry";
+                MessageBox.Show($"Installation failed:\n{ex.Message}", "Installation Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

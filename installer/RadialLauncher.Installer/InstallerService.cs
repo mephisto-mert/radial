@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -22,7 +22,7 @@ namespace RadialLauncher.Installer
         public static void ExtractPayload(string targetDirectory, Action<int, string>? reportProgress = null)
         {
             Directory.CreateDirectory(targetDirectory);
-            reportProgress?.Invoke(10, "Kurulum dizini hazırlanıyor...");
+            reportProgress?.Invoke(10, "Preparing installation directory...");
 
             var assembly = Assembly.GetExecutingAssembly();
             using var resourceStream = assembly.GetManifestResourceStream("RadialLauncher.Installer.payload.zip");
@@ -53,7 +53,7 @@ namespace RadialLauncher.Installer
                     }
 
                     int pct = 10 + (int)((count / (double)Math.Max(1, totalEntries)) * 70);
-                    reportProgress?.Invoke(pct, $"Dosyalar çıkartılıyor: {entry.Name}");
+                    reportProgress?.Invoke(pct, $"Extracting files: {entry.Name}");
                 }
             }
             else
@@ -88,7 +88,7 @@ namespace RadialLauncher.Installer
                 // Ignore copy errors if running in restricted mode
             }
 
-            reportProgress?.Invoke(85, "Kurulum dosyaları tamamlandı.");
+            reportProgress?.Invoke(85, "Installation files extracted.");
         }
 
         public static void CreateShortcuts(string targetDirectory, bool createDesktop, bool createStartMenu)
@@ -101,7 +101,7 @@ namespace RadialLauncher.Installer
             {
                 string desktopFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string shortcutPath = Path.Combine(desktopFolder, "Radial Launcher.lnk");
-                CreateShortcutFile(shortcutPath, exePath, targetDirectory, iconPath, "Radial Launcher - Ultra Hızlı Dairesel Uygulama Başlatıcısı");
+                CreateShortcutFile(shortcutPath, exePath, targetDirectory, iconPath, "Radial Launcher - Ultra Fast Circular App & Game Launcher");
             }
 
             if (createStartMenu)
@@ -117,8 +117,8 @@ namespace RadialLauncher.Installer
                 string uninstallerExe = Path.Combine(targetDirectory, "Uninstall.exe");
                 if (File.Exists(uninstallerExe))
                 {
-                    string uninstallShortcut = Path.Combine(startMenuFolder, "Radial Launcher Kaldır.lnk");
-                    CreateShortcutFile(uninstallShortcut, uninstallerExe, targetDirectory, uninstallerExe, "Radial Launcher'ı Kaldır");
+                    string uninstallShortcut = Path.Combine(startMenuFolder, "Uninstall Radial Launcher.lnk");
+                    CreateShortcutFile(uninstallShortcut, uninstallerExe, targetDirectory, uninstallerExe, "Uninstall Radial Launcher");
                 }
             }
         }

@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using RadialLauncher.Data;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Localization;
 using RadialLauncher.Services.Scanning;
 using RadialLauncher.Services.Sync;
 using RadialLauncher.Services.Themes;
@@ -131,6 +132,17 @@ namespace RadialLauncher.UI.ViewModels
             RefreshItems();
         }
 
+        public bool RenameCategory(int categoryId, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(newName)) return false;
+            bool ok = _categoryRepo.Rename(categoryId, newName);
+            if (ok)
+            {
+                LoadInitialData();
+            }
+            return ok;
+        }
+
         [RelayCommand]
         public void ToggleFavorite(LauncherItem item)
         {
@@ -145,7 +157,7 @@ namespace RadialLauncher.UI.ViewModels
             if (item == null) return;
             _itemRepo.Delete(item.Id);
             RefreshItems();
-            StatusMessage = $"{item.Name} silindi.";
+            StatusMessage = $"{item.Name} " + LocalizationService.Instance.GetString("MsgItemDeleted", "deleted.");
         }
 
         [RelayCommand]
@@ -154,7 +166,7 @@ namespace RadialLauncher.UI.ViewModels
             if (theme == null) return;
             SelectedTheme = theme;
             _themeService.SetCurrentTheme(theme.Name);
-            StatusMessage = $"Tema '{theme.Name}' uygulandı.";
+            StatusMessage = $"{LocalizationService.Instance.GetString("MsgThemeApplied", "Theme applied:")} {theme.Name}";
         }
 
         [RelayCommand]
@@ -167,12 +179,12 @@ namespace RadialLauncher.UI.ViewModels
         [RelayCommand]
         public async Task ScanPc()
         {
-            StatusMessage = "Bilgisayar taranıyor...";
+            StatusMessage = LocalizationService.Instance.GetString("MsgScanningPc", "Scanning computer...");
             await Task.Run(() =>
             {
                 var scanned = _scannerService.ScanAllApps();
                 var summary = _scannerService.SaveScannedApps(scanned, _db);
-                StatusMessage = $"Tarama tamamlandı: {summary.TotalAdded} yeni uygulama eklendi.";
+                StatusMessage = $"{LocalizationService.Instance.GetString("MsgScanCompleted", "Scan completed:")} {summary.TotalAdded} {LocalizationService.Instance.GetString("MsgAppsAdded", "new apps added.")}";
             });
             RefreshItems();
         }
@@ -181,7 +193,7 @@ namespace RadialLauncher.UI.ViewModels
         public async Task ExportData(string path)
         {
             bool ok = await _syncService.ExportToFileAsync(path);
-            StatusMessage = ok ? "Yedek başarıyla dışa aktarıldı." : "Dışa aktarma başarısız.";
+            StatusMessage = ok ? LocalizationService.Instance.GetString("MsgBackupExportSuccess", "Backup exported successfully.") : LocalizationService.Instance.GetString("MsgBackupExportFail", "Export failed.");
         }
 
         [RelayCommand]
@@ -191,11 +203,11 @@ namespace RadialLauncher.UI.ViewModels
             if (ok)
             {
                 LoadInitialData();
-                StatusMessage = "Yedek başarıyla içe aktarıldı.";
+                StatusMessage = LocalizationService.Instance.GetString("MsgBackupImportSuccess", "Backup imported successfully.");
             }
             else
             {
-                StatusMessage = "İçe aktarma başarısız.";
+                StatusMessage = LocalizationService.Instance.GetString("MsgBackupImportFail", "Import failed.");
             }
         }
     }

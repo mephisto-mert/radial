@@ -37,8 +37,7 @@ namespace RadialLauncher.Services.Context
             }
             else
             {
-                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string folder = Path.Combine(appData, "RadialLauncher");
+                string folder = RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetAppDataFolder();
                 _configPath = Path.Combine(folder, "context_actions.json");
             }
 

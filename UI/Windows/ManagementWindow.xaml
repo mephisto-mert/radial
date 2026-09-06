@@ -202,9 +202,10 @@
                         <DockPanel>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock x:Name="TxtCategoryLabel" Text="Kategori:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
-                                <ComboBox x:Name="CategoryFilterCombo" Width="180" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C26" Foreground="White"/>
-                                <TextBlock x:Name="TxtSearchLabel" Text="Ara:" VerticalAlignment="Center" Margin="16,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
-                                <TextBox x:Name="SearchBox" Width="220" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
+                                <ComboBox x:Name="CategoryFilterCombo" Width="170" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C26" Foreground="White"/>
+                                <Button x:Name="BtnRenameCategory" Content="✏️" ToolTip="Rename Category" Width="30" Height="28" Padding="2" Margin="6,0,0,0" Background="#22222E" Foreground="#588CEC" BorderBrush="#35FFFFFF" Click="BtnRenameCategory_Click"/>
+                                <TextBlock x:Name="TxtSearchLabel" Text="Ara:" VerticalAlignment="Center" Margin="14,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                                <TextBox x:Name="SearchBox" Width="200" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>

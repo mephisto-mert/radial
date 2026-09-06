@@ -193,14 +193,58 @@ namespace RadialLauncher.UI.Windows
 
         private void LoadCategories()
         {
+            var loc = LocalizationService.Instance;
             CategoryFilterCombo.Items.Clear();
-            CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = "Tüm Kategoriler", Tag = 0 });
+            CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = loc.GetString("All_Categories", "All Categories"), Tag = 0 });
 
             foreach (var cat in _viewModel.Categories)
             {
                 CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = cat.Name, Tag = cat.Id });
             }
             CategoryFilterCombo.SelectedIndex = 0;
+        }
+
+        private void BtnRenameCategory_Click(object sender, RoutedEventArgs e)
+        {
+            var loc = LocalizationService.Instance;
+            if (CategoryFilterCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is int catId && catId > 0)
+            {
+                var targetCat = _viewModel.Categories.FirstOrDefault(c => c.Id == catId);
+                if (targetCat == null) return;
+
+                var dlg = new CategoryRenameDialog(targetCat.Name)
+                {
+                    Owner = this
+                };
+
+                if (dlg.ShowDialog() == true)
+                {
+                    string newName = dlg.NewCategoryName;
+                    bool ok = _viewModel.RenameCategory(catId, newName);
+                    if (ok)
+                    {
+                        LoadCategories();
+                        for (int i = 0; i < CategoryFilterCombo.Items.Count; i++)
+                        {
+                            if (CategoryFilterCombo.Items[i] is ComboBoxItem item && item.Tag is int id && id == catId)
+                            {
+                                CategoryFilterCombo.SelectedIndex = i;
+                                break;
+                            }
+                        }
+                        RefreshGrid();
+                        StatusText.Text = string.Format(loc.GetString("Cat_Renamed_Status", "Category renamed: {0}"), newName);
+                    }
+                    else
+                    {
+                        MessageBox.Show(loc.GetString("Cat_Rename_Failed", "Failed to rename category."), loc.GetString("Error", "Error"), MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show(loc.GetString("Cat_Select_To_Rename", "Please select a specific category from the dropdown to rename."), loc.GetString("Warning", "Warning"), MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         private void LoadThemes()
@@ -505,9 +549,7 @@ namespace RadialLauncher.UI.Windows
         private async void RestoreLocalBackup_Click(object sender, RoutedEventArgs e)
         {
             var loc = LocalizationService.Instance;
-            string backupsDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RadialLauncher", "Backups");
+            string backupsDir = RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetBackupsFolder();
 
             var ofd = new OpenFileDialog
             {
@@ -674,11 +716,7 @@ namespace RadialLauncher.UI.Windows
         {
             try
             {
-                string logDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RadialLauncher", "Logs");
-
-                if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
+                string logDir = RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetLogsFolder();
 
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {

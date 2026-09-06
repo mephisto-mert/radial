@@ -116,8 +116,8 @@ namespace RadialLauncher.Services.Plugins
             try
             {
                 string targetDir = pluginsDir ?? Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "RadialLauncher", "Plugins");
+                    RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetAppDataFolder(),
+                    "Plugins");
 
                 if (!Directory.Exists(targetDir))
                 {

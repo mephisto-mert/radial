@@ -102,6 +102,23 @@ namespace RadialLauncher.UI.Windows
                     HideContextActionCard();
                 }
             };
+
+            RadialLauncher.Services.Localization.LocalizationService.Instance.OnLanguageChanged += () =>
+            {
+                Dispatcher.Invoke(ApplyLocalization);
+            };
+            ApplyLocalization();
+        }
+
+        public void ApplyLocalization()
+        {
+            var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
+            if (TxtTutorialHeader != null)
+                TxtTutorialHeader.Text = loc.GetString("TutorialHeader", "🚀 Welcome to Radial Launcher!");
+            if (TxtTutorialBody != null)
+                TxtTutorialBody.Text = loc.GetString("TutorialBody", "• Middle Click: Open / close radial menu\n• Click any icon: Launch application or shortcut\n• Mouse wheel / Drag: Navigate pages and categories\n• Type anytime: Fast search across all apps");
+            if (BtnDismissTutorial != null)
+                BtnDismissTutorial.Content = loc.GetString("TutorialDismiss", "Got it! Start using");
         }
 
         public void ShowAt(int screenX, int screenY, double cursorVelocity = 0.0)

@@ -9,6 +9,8 @@ using RadialLauncher.Data.Repositories;
 using RadialLauncher.Services.Games;
 using Serilog;
 
+using RadialLauncher.Services.Data;
+
 namespace RadialLauncher.Data
 {
     public class DatabaseManager : IDatabaseManager
@@ -27,11 +29,7 @@ namespace RadialLauncher.Data
 
         public DatabaseManager(IGameDetector? gameDetector)
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
-            if (!Directory.Exists(folder))
-                Directory.CreateDirectory(folder);
-                
-            _dbPath = Path.Combine(folder, "launcher.db");
+            _dbPath = UserDataPathProvider.Instance.GetDatabasePath();
             _itemRepo = new ItemRepository(this);
             _categoryRepo = new CategoryRepository(this);
             _gameDetector = gameDetector;
@@ -277,6 +275,7 @@ namespace RadialLauncher.Data
         public void ToggleFavorite(int id) => _itemRepo.ToggleFavorite(id);
         public int InsertCategory(Category category) => _categoryRepo.Insert(category);
         public bool UpdateCategory(Category category) => _categoryRepo.Update(category);
+        public bool RenameCategory(int id, string newName) => _categoryRepo.Rename(id, newName);
         public bool DeleteCategory(int id) => _categoryRepo.Delete(id);
         public void UpdateItemPositions(IEnumerable<LauncherItem> items) => _itemRepo.UpdatePositions(items);
         public void UpdateCategoryPositions(IEnumerable<Category> categories) => _categoryRepo.UpdatePositions(categories);

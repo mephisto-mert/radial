@@ -103,6 +103,25 @@ namespace RadialLauncher.Data.Repositories
             }
         }
 
+        public bool Rename(int id, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(newName)) return false;
+            string trimmed = newName.Trim();
+            if (trimmed.Length > 50) trimmed = trimmed.Substring(0, 50);
+
+            try
+            {
+                using var conn = CreateConnection();
+                conn.Open();
+                return conn.Execute("UPDATE Categories SET Name = @newName WHERE Id = @id", new { id, newName = trimmed }) > 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to rename category ID {Id} to {Name}", id, newName);
+                return false;
+            }
+        }
+
         public bool Delete(int id)
         {
             try

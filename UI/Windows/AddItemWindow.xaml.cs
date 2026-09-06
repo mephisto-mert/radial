@@ -8,6 +8,7 @@ using RadialLauncher.Data;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Localization;
 using Serilog;
 
 namespace RadialLauncher.UI.Windows
@@ -58,6 +59,27 @@ namespace RadialLauncher.UI.Windows
 
             LoadCategories();
             ActionSelectComboBox.ItemsSource = _actionService.GetAvailableActions();
+            ApplyLocalization();
+
+            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+        }
+
+        public void ApplyLocalization()
+        {
+            var loc = LocalizationService.Instance;
+            Title = loc.GetString("AddItem_Title", "Add New Item");
+            if (TxtNameLabel != null) TxtNameLabel.Text = loc.GetString("Item_Name", "Name:");
+            if (TxtTypeLabel != null) TxtTypeLabel.Text = loc.GetString("Item_Type", "Type:");
+            if (TxtTargetLabel != null) TxtTargetLabel.Text = loc.GetString("Item_Target", "Target:");
+            if (TargetTextBox != null) TargetTextBox.ToolTip = loc.GetString("Item_Target_Tooltip", "Executable path, website URL, file or folder path");
+            if (EditMacroBtn != null) EditMacroBtn.Content = loc.GetString("Edit_Macro", "⚡ Edit Macro Steps...");
+            if (BrowseButton != null) BrowseButton.Content = loc.GetString("Browse", "Browse...");
+            if (TxtArgsLabel != null) TxtArgsLabel.Text = loc.GetString("Item_Args", "Arguments:");
+            if (ArgsTextBox != null) ArgsTextBox.ToolTip = loc.GetString("Item_Args_Tooltip", "Optional command line arguments");
+            if (TxtCategoryLabel != null) TxtCategoryLabel.Text = loc.GetString("Item_Category", "Category:");
+            if (FavoriteCheckBox != null) FavoriteCheckBox.Content = loc.GetString("Item_Favorite_Add", "Add to Favorites (Inner Ring ⭐)");
+            if (SaveButton != null) SaveButton.Content = loc.GetString("Save", "Save");
+            if (CancelButton != null) CancelButton.Content = loc.GetString("Cancel", "Cancel");
         }
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -111,7 +133,8 @@ namespace RadialLauncher.UI.Windows
             if (dlg.ShowDialog() == true)
             {
                 TargetTextBox.Text = dlg.GetSerializedSteps();
-                EditMacroBtn.Content = $"⚡ Makro ({dlg.Steps.Count} Adım Tanımlı)";
+                string fmt = LocalizationService.Instance.GetString("Macro_Defined_Steps", "⚡ Macro ({0} Steps Defined)");
+                EditMacroBtn.Content = string.Format(fmt, dlg.Steps.Count);
             }
         }
 
@@ -139,10 +162,11 @@ namespace RadialLauncher.UI.Windows
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             var openFileDialog = new OpenFileDialog
             {
-                Title = "Uygulama veya Dosya Seç",
-                Filter = "Tüm Desteklenenler|*.exe;*.bat;*.cmd;*.lnk;*.*|Uygulamalar (*.exe)|*.exe|Tüm Dosyalar (*.*)|*.*"
+                Title = loc.GetString("Browse_App_Title", "Select Application or File"),
+                Filter = "All Supported|*.exe;*.bat;*.cmd;*.lnk;*.*|Applications (*.exe)|*.exe|All Files (*.*)|*.*"
             };
 
             if (openFileDialog.ShowDialog() == true)
@@ -158,9 +182,14 @@ namespace RadialLauncher.UI.Windows
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             if (string.IsNullOrWhiteSpace(NameTextBox.Text) || string.IsNullOrWhiteSpace(TargetTextBox.Text))
             {
-                MessageBox.Show("Lütfen İsim ve Hedef alanlarını doldurunuz.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    loc.GetString("Validation_Fill_Required", "Please fill in both Name and Target fields."),
+                    loc.GetString("Warning", "Warning"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 

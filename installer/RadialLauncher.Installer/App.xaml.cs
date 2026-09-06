@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 
@@ -17,8 +17,8 @@ namespace RadialLauncher.Installer
                 if (!silent)
                 {
                     var result = MessageBox.Show(
-                        "Radial Launcher'ı bilgisayarınızdan kaldırmak istediğinize emin misiniz?",
-                        "Radial Launcher Kaldırma Sihirbazı",
+                        "Are you sure you want to uninstall Radial Launcher from your computer?",
+                        "Radial Launcher Uninstall Wizard",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
 
@@ -29,8 +29,8 @@ namespace RadialLauncher.Installer
                     }
 
                     var removeDataResult = MessageBox.Show(
-                        "Kullanıcı ayarlarınızı, kısayol veritabanınızı ve yedeklerinizi de silmek istiyor musunuz?\n\n(Daha sonra tekrar kurmayı planlıyorsanız 'Hayır'ı seçin)",
-                        "Kullanıcı Verileri",
+                        "Do you also want to delete your user settings, shortcuts database, and backups?\n\n(Choose 'No' if you plan to reinstall later)",
+                        "User Data",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
 
@@ -39,8 +39,8 @@ namespace RadialLauncher.Installer
                     InstallerService.PerformUninstall(removeData);
 
                     MessageBox.Show(
-                        "Radial Launcher sisteminizden başarıyla kaldırıldı.",
-                        "Kaldırma Tamamlandı",
+                        "Radial Launcher has been successfully removed from your computer.",
+                        "Uninstall Complete",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                 }

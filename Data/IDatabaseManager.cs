@@ -16,6 +16,7 @@ namespace RadialLauncher.Data
         void ToggleFavorite(int id);
         int InsertCategory(Category category);
         bool UpdateCategory(Category category);
+        bool RenameCategory(int id, string newName);
         bool DeleteCategory(int id);
         void UpdateItemPositions(IEnumerable<LauncherItem> items);
         void UpdateCategoryPositions(IEnumerable<Category> categories);

@@ -119,7 +119,7 @@
             </Border.Effect>
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                 <StackPanel x:Name="CategoryDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.Name, FallbackValue='Kategoriler'}" 
+                <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.Name, FallbackValue='Categories'}" 
                            FontSize="10.5" FontWeight="SemiBold" Foreground="#FFFFFF" 
                            HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="140"/>
                 <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,1"/>
@@ -130,9 +130,9 @@
         <Border x:Name="TutorialOverlay" Visibility="{Binding ShowTutorial, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                 Background="#F0101014" CornerRadius="24" Margin="60" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel HorizontalAlignment="Center">
-                <TextBlock Text="🚀 Radial Launcher'a Hoş Geldiniz!" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
-                <TextBlock Text="• Orta Fare Tuşu: Menüyü açar / kapatır&#x0a;• Çemberdeki bir öğeye tıklayın: Başlatır&#x0a;• Fare sürükleme / Tekerlek: Sayfalar arası geçiş yapar&#x0a;• Klavye: Herhangi bir şey yazarak anında arayın" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
-                <Button Content="Anladım, Başla!" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
+                <TextBlock x:Name="TxtTutorialHeader" Text="🚀 Welcome to Radial Launcher!" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="TxtTutorialBody" Text="• Middle Click: Open / close radial menu&#x0a;• Click any icon: Launch application or shortcut&#x0a;• Mouse wheel / Drag: Navigate pages and categories&#x0a;• Type anytime: Fast search across all apps" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
+                <Button x:Name="BtnDismissTutorial" Content="Got it! Start using" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
                         HorizontalAlignment="Center" Cursor="Hand" Command="{Binding DismissTutorialCommand}">
                     <Button.Resources>
                         <Style TargetType="Border">
