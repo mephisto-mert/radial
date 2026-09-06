@@ -39,6 +39,7 @@ namespace RadialLauncher
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 // 1. Initialize Serilog rolling file logger
@@ -199,7 +200,7 @@ namespace RadialLauncher
                     }
                 });
 
-                Log.Information("Radial Launcher startup sequence completed successfully!");
+                Log.Information("Radial Launcher startup sequence completed successfully in {ElapsedMs}ms", startupStopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
