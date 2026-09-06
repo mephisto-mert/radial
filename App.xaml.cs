@@ -6,6 +6,7 @@ using Hardcodet.Wpf.TaskbarNotification;
 using RadialLauncher.Data;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Services.Actions;
+using RadialLauncher.Services.Apps;
 using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Games;
@@ -261,6 +262,7 @@ namespace RadialLauncher
             services.AddSingleton<IProcessRunner, ProcessRunner>();
             services.AddSingleton<IPCScannerService, PCScannerService>();
             services.AddSingleton<IGameDetector, GameDetector>();
+            services.AddSingleton<IAppDetector, AppDetector>();
             services.AddSingleton<IWindowSwitcherService, WindowSwitcherService>();
             services.AddSingleton<IStartupManager, StartupManager>();
             services.AddSingleton<IDataExporter, DataExporter>();

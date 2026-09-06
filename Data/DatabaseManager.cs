@@ -9,6 +9,7 @@ using RadialLauncher.Data.Repositories;
 using RadialLauncher.Services.Games;
 using Serilog;
 
+using RadialLauncher.Services.Apps;
 using RadialLauncher.Services.Data;
 
 namespace RadialLauncher.Data
@@ -19,28 +20,34 @@ namespace RadialLauncher.Data
         private readonly IItemRepository _itemRepo;
         private readonly ICategoryRepository _categoryRepo;
         private readonly IGameDetector? _gameDetector;
+        private readonly IAppDetector? _appDetector;
 
         public DatabaseManager() : this(
             App.ServiceProvider != null 
                 ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IGameDetector>(App.ServiceProvider) 
+                : null,
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAppDetector>(App.ServiceProvider) 
                 : null)
         {
         }
 
-        public DatabaseManager(IGameDetector? gameDetector)
+        public DatabaseManager(IGameDetector? gameDetector, IAppDetector? appDetector = null)
         {
             _dbPath = UserDataPathProvider.Instance.GetDatabasePath();
             _itemRepo = new ItemRepository(this);
             _categoryRepo = new CategoryRepository(this);
             _gameDetector = gameDetector;
+            _appDetector = appDetector;
         }
 
-        public DatabaseManager(string dbPath, IGameDetector? gameDetector = null)
+        public DatabaseManager(string dbPath, IGameDetector? gameDetector = null, IAppDetector? appDetector = null)
         {
             _dbPath = dbPath;
             _itemRepo = new ItemRepository(this);
             _categoryRepo = new CategoryRepository(this);
             _gameDetector = gameDetector;
+            _appDetector = appDetector;
         }
 
         public string GetConnectionString() => $"Data Source={_dbPath}";
@@ -212,6 +219,7 @@ namespace RadialLauncher.Data
                 }
 
                 BackfillGamesAndIcons(connection);
+                BackfillRunningAndCommonApps(connection);
             }
             catch (Exception ex)
             {
@@ -281,6 +289,65 @@ namespace RadialLauncher.Data
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed to backfill games and icons");
+            }
+        }
+
+        private void BackfillRunningAndCommonApps(SqliteConnection connection)
+        {
+            try
+            {
+                var detector = _appDetector ?? AppDetector.Instance;
+                var apps = detector.DetectRunningAndCommonApps();
+                if (apps == null || apps.Count == 0) return;
+
+                var categories = connection.Query<Category>("SELECT * FROM Categories").ToList();
+                var existingItems = connection.Query<LauncherItem>("SELECT * FROM Items").ToList();
+
+                foreach (var app in apps)
+                {
+                    var match = existingItems.FirstOrDefault(i =>
+                        string.Equals(i.Target, app.ExePath, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(i.Name, app.Name, StringComparison.OrdinalIgnoreCase));
+
+                    if (match != null)
+                    {
+                        if (string.IsNullOrEmpty(match.IconPath) && !string.IsNullOrEmpty(app.IconPath) && File.Exists(app.IconPath))
+                        {
+                            connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { app.IconPath, match.Id });
+                        }
+                        continue;
+                    }
+
+                    var cat = categories.FirstOrDefault(c => string.Equals(c.SystemKey, app.CategoryKey, StringComparison.OrdinalIgnoreCase));
+                    int catId;
+                    if (cat != null)
+                    {
+                        catId = cat.Id;
+                    }
+                    else
+                    {
+                        int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES (@Name, @Color, @nextPos, @SystemKey)",
+                            new { Name = app.CategoryName, Color = app.CategoryColor, nextPos, SystemKey = app.CategoryKey });
+                        catId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE SystemKey = @SystemKey LIMIT 1", new { SystemKey = app.CategoryKey });
+                        cat = new Category { Id = catId, Name = app.CategoryName, Color = app.CategoryColor, Position = nextPos, SystemKey = app.CategoryKey };
+                        categories.Add(cat);
+                    }
+
+                    int currentMaxPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) FROM Items WHERE CategoryId = @catId", new { catId });
+                    currentMaxPos++;
+
+                    connection.Execute(@"
+                        INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded)
+                        VALUES (@Name, 'EXE', @ExePath, @Arguments, '', @IconPath, @catId, @currentMaxPos, 0, 0, 0)",
+                        new { app.Name, app.ExePath, app.Arguments, app.IconPath, catId, currentMaxPos });
+
+                    existingItems.Add(new LauncherItem { Name = app.Name, Target = app.ExePath, CategoryId = catId });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to backfill running and common apps");
             }
         }
 
