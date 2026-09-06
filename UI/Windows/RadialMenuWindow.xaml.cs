@@ -53,6 +53,14 @@ namespace RadialLauncher.UI.Windows
             _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
 
             MouseMove += Window_MouseMove;
+            Closed += (s, e) => ClearActiveDwmThumbnails();
+            IsVisibleChanged += (s, e) =>
+            {
+                if (!IsVisible)
+                {
+                    ClearActiveDwmThumbnails();
+                }
+            };
         }
 
         public void ShowAt(int screenX, int screenY, double cursorVelocity = 0.0)

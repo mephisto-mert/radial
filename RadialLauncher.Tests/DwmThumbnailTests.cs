@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using RadialLauncher.UI.Helpers;
@@ -24,6 +24,19 @@ namespace RadialLauncher.Tests
 
             int propSize = Marshal.SizeOf<DwmThumbnailHelper.DWM_THUMBNAIL_PROPERTIES>();
             Assert.True(propSize >= 40); // Native DWM_THUMBNAIL_PROPERTIES struct size
+        }
+
+        [Fact]
+        public void RegisterThumbnail_WithInvalidHandles_ReturnsZeroSafely()
+        {
+            // Registering with zero/invalid HWNDs must return IntPtr.Zero without throwing
+            IntPtr thumb1 = DwmThumbnailHelper.RegisterThumbnail(IntPtr.Zero, IntPtr.Zero, 0, 0, 100, 100);
+            IntPtr thumb2 = DwmThumbnailHelper.RegisterThumbnail(new IntPtr(100), IntPtr.Zero, 0, 0, 100, 100);
+            IntPtr thumb3 = DwmThumbnailHelper.RegisterThumbnail(IntPtr.Zero, new IntPtr(200), 0, 0, 100, 100);
+
+            Assert.Equal(IntPtr.Zero, thumb1);
+            Assert.Equal(IntPtr.Zero, thumb2);
+            Assert.Equal(IntPtr.Zero, thumb3);
         }
 
         [Fact]
