@@ -301,7 +301,7 @@ namespace RadialLauncher.Services.Sync
             var vault = LoadVault();
             if (vault == null || string.IsNullOrWhiteSpace(vault.Pat))
             {
-                return (false, "GitHub Personal Access Token (PAT) ayarlanmamış.", null);
+                return (false, "GitHub Personal Access Token (PAT) is not configured.", null);
             }
 
             try
@@ -360,7 +360,7 @@ namespace RadialLauncher.Services.Sync
                 {
                     string errContent = await response.Content.ReadAsStringAsync();
                     Log.Error("GitHub Gist push failed with HTTP {Status}: {Body}", response.StatusCode, errContent);
-                    return (false, $"GitHub Hatası: {response.StatusCode}", null);
+                    return (false, $"GitHub Error: {response.StatusCode}", null);
                 }
 
                 string respJson = await response.Content.ReadAsStringAsync();
@@ -371,12 +371,12 @@ namespace RadialLauncher.Services.Sync
                 SaveVault(vault);
 
                 Log.Information("Settings successfully pushed to GitHub Gist: {Id}", newGistId);
-                return (true, "Yedek GitHub Gist'e başarıyla yüklendi!", newGistId);
+                return (true, "Backup successfully uploaded to GitHub Gist!", newGistId);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Exception pushing settings to GitHub Gist");
-                return (false, $"Hata: {ex.Message}", null);
+                return (false, $"Error: {ex.Message}", null);
             }
         }
 
@@ -385,7 +385,7 @@ namespace RadialLauncher.Services.Sync
             var vault = LoadVault();
             if (vault == null || string.IsNullOrWhiteSpace(vault.Pat))
             {
-                return (false, "GitHub Personal Access Token (PAT) ayarlanmamış.");
+                return (false, "GitHub Personal Access Token (PAT) is not configured.");
             }
 
             try
@@ -405,7 +405,7 @@ namespace RadialLauncher.Services.Sync
                     var listResp = await client.GetAsync("https://api.github.com/gists");
                     if (!listResp.IsSuccessStatusCode)
                     {
-                        return (false, $"Gist listesi alınamadı: {listResp.StatusCode}");
+                        return (false, $"Could not retrieve Gist list: {listResp.StatusCode}");
                     }
                     string listJson = await listResp.Content.ReadAsStringAsync();
                     using var listDoc = JsonDocument.Parse(listJson);
@@ -421,13 +421,13 @@ namespace RadialLauncher.Services.Sync
 
                 if (string.IsNullOrWhiteSpace(gistId))
                 {
-                    return (false, "Hesabınızda 'radial_backup.json' içeren bir Gist bulunamadı.");
+                    return (false, "No Gist containing 'radial_backup.json' found in your account.");
                 }
 
                 var getResp = await client.GetAsync($"https://api.github.com/gists/{gistId}");
                 if (!getResp.IsSuccessStatusCode)
                 {
-                    return (false, $"Gist indirilemedi: {getResp.StatusCode}");
+                    return (false, $"Could not download Gist: {getResp.StatusCode}");
                 }
 
                 string gistJson = await getResp.Content.ReadAsStringAsync();
@@ -435,7 +435,7 @@ namespace RadialLauncher.Services.Sync
                 var files = doc.RootElement.GetProperty("files");
                 if (!files.TryGetProperty("radial_backup.json", out var fileProp))
                 {
-                    return (false, "Gist içerisinde 'radial_backup.json' dosyası bulunamadı.");
+                    return (false, "'radial_backup.json' file not found in Gist.");
                 }
 
                 string content;
@@ -449,7 +449,7 @@ namespace RadialLauncher.Services.Sync
                 }
                 else
                 {
-                    return (false, "Gist içeriği boş veya okunamadı.");
+                    return (false, "Gist content is empty or unreadable.");
                 }
 
                 bool applied = ApplyPayloadJson(content);
@@ -457,14 +457,14 @@ namespace RadialLauncher.Services.Sync
                 {
                     vault.GistId = gistId;
                     SaveVault(vault);
-                    return (true, "Ayarlar ve öğeler GitHub Gist'ten başarıyla yüklendi!");
+                    return (true, "Settings and items successfully restored from GitHub Gist!");
                 }
-                return (false, "Gist dosya içeriği ayrıştırılamadı.");
+                return (false, "Could not parse Gist file content.");
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Exception pulling settings from GitHub Gist");
-                return (false, $"Hata: {ex.Message}");
+                return (false, $"Error: {ex.Message}");
             }
         }
     }

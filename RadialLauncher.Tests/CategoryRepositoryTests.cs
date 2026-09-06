@@ -79,5 +79,38 @@ namespace RadialLauncher.Tests
             bool success = _categoryRepo.Rename(999999, "Non Existent Category");
             Assert.False(success);
         }
+
+        [Fact]
+        public void RenameCategory_DuplicateName_RejectsAndPreservesOriginal()
+        {
+            var allCats = _categoryRepo.GetAll();
+            Assert.True(allCats.Count >= 2);
+
+            var cat1 = allCats[0];
+            var cat2 = allCats[1];
+            string originalCat2Name = cat2.Name;
+
+            // Attempt to rename cat2 to cat1's name (case-insensitive and trimmed)
+            bool success = _categoryRepo.Rename(cat2.Id, $"  {cat1.Name.ToLowerInvariant()}  ");
+            Assert.False(success);
+
+            var current = _categoryRepo.GetById(cat2.Id);
+            Assert.NotNull(current);
+            Assert.Equal(originalCat2Name, current.Name);
+        }
+
+        [Fact]
+        public void RenameCategory_SameNameWithDifferentCasing_Succeeds()
+        {
+            var target = _categoryRepo.GetAll()[0];
+            string modifiedCasing = target.Name.ToUpperInvariant();
+
+            bool success = _categoryRepo.Rename(target.Id, modifiedCasing);
+            Assert.True(success);
+
+            var current = _categoryRepo.GetById(target.Id);
+            Assert.NotNull(current);
+            Assert.Equal(modifiedCasing, current.Name);
+        }
     }
 }

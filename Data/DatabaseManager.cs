@@ -93,32 +93,32 @@ namespace RadialLauncher.Data
                     EnsureColumnExists(connection, "Items", "ParentId", "INTEGER DEFAULT 0");
                     EnsureColumnExists(connection, "Items", "IsUserAdded", "INTEGER DEFAULT 1");
 
-                    int winCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE '%Açık Pencereler%'");
+                    int winCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE '%Açık Pencereler%' OR Name LIKE '%Open Windows%'");
                     if (winCat == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🪟 Açık Pencereler', '#9b59b6', @nextPos)", new { nextPos });
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('🪟 Open Windows', '#9b59b6', @nextPos)", new { nextPos });
                     }
 
-                    int sysCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE '%Sistem%'");
+                    int sysCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE Name LIKE '%Sistem%' OR Name LIKE '%System%'");
                     if (sysCat == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('⚡ Sistem', '#f1c40f', @nextPos)", new { nextPos });
-                        int newSysCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE Name LIKE '%Sistem%'");
+                        connection.Execute("INSERT INTO Categories (Name, Color, Position) VALUES ('⚡ System', '#f1c40f', @nextPos)", new { nextPos });
+                        int newSysCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE Name LIKE '%Sistem%' OR Name LIKE '%System%'");
 
                         var sysActions = new[]
                         {
-                            new { Name = "Ses Aç", Type = "ACTION", Target = "VOLUME_UP", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 0, IsFavorite = 1, ParentId = 0 },
-                            new { Name = "Ses Kıs", Type = "ACTION", Target = "VOLUME_DOWN", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 1, IsFavorite = 1, ParentId = 0 },
-                            new { Name = "Sesi Kapat", Type = "ACTION", Target = "VOLUME_MUTE", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 2, IsFavorite = 0, ParentId = 0 },
-                            new { Name = "Oynat/Durdur", Type = "ACTION", Target = "MEDIA_PLAY_PAUSE", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 3, IsFavorite = 1, ParentId = 0 },
-                            new { Name = "Sonraki", Type = "ACTION", Target = "MEDIA_NEXT", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 4, IsFavorite = 0, ParentId = 0 },
-                            new { Name = "Önceki", Type = "ACTION", Target = "MEDIA_PREV", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 5, IsFavorite = 0, ParentId = 0 },
-                            new { Name = "Masaüstü", Type = "ACTION", Target = "SHOW_DESKTOP", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 6, IsFavorite = 1, ParentId = 0 },
-                            new { Name = "Ekran Alıntısı", Type = "ACTION", Target = "SNIP_TOOL", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 7, IsFavorite = 1, ParentId = 0 },
-                            new { Name = "Görev Yöneticisi", Type = "ACTION", Target = "TASK_MANAGER", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 8, IsFavorite = 0, ParentId = 0 },
-                            new { Name = "Kilitle", Type = "ACTION", Target = "LOCK_PC", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 9, IsFavorite = 0, ParentId = 0 },
+                            new { Name = "Volume Up", Type = "ACTION", Target = "VOLUME_UP", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 0, IsFavorite = 1, ParentId = 0 },
+                            new { Name = "Volume Down", Type = "ACTION", Target = "VOLUME_DOWN", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 1, IsFavorite = 1, ParentId = 0 },
+                            new { Name = "Mute", Type = "ACTION", Target = "VOLUME_MUTE", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 2, IsFavorite = 0, ParentId = 0 },
+                            new { Name = "Play / Pause", Type = "ACTION", Target = "MEDIA_PLAY_PAUSE", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 3, IsFavorite = 1, ParentId = 0 },
+                            new { Name = "Next Track", Type = "ACTION", Target = "MEDIA_NEXT", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 4, IsFavorite = 0, ParentId = 0 },
+                            new { Name = "Previous Track", Type = "ACTION", Target = "MEDIA_PREV", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 5, IsFavorite = 0, ParentId = 0 },
+                            new { Name = "Desktop", Type = "ACTION", Target = "SHOW_DESKTOP", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 6, IsFavorite = 1, ParentId = 0 },
+                            new { Name = "Snipping Tool", Type = "ACTION", Target = "SNIP_TOOL", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 7, IsFavorite = 1, ParentId = 0 },
+                            new { Name = "Task Manager", Type = "ACTION", Target = "TASK_MANAGER", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 8, IsFavorite = 0, ParentId = 0 },
+                            new { Name = "Lock PC", Type = "ACTION", Target = "LOCK_PC", Arguments = "", WorkingDirectory = "", IconPath = "", CategoryId = newSysCatId, Position = 9, IsFavorite = 0, ParentId = 0 },
                         };
 
                         foreach (var a in sysActions)
@@ -161,11 +161,11 @@ namespace RadialLauncher.Data
                     {
                         var defaults = new[]
                         {
-                            new { Id = "SETTINGS", Name = "Ayarlar", IconSymbol = "⚙️", ActionKey = "SETTINGS", Order = 0 },
-                            new { Id = "SEARCH", Name = "Arama", IconSymbol = "🔍", ActionKey = "SEARCH", Order = 1 },
-                            new { Id = "DESKTOP", Name = "Masaüstü", IconSymbol = "🖥️", ActionKey = "SHOW_DESKTOP", Order = 2 },
-                            new { Id = "SNIP", Name = "Ekran Alıntısı", IconSymbol = "✂️", ActionKey = "SNIP_TOOL", Order = 3 },
-                            new { Id = "MUTE", Name = "Sesi Kapat", IconSymbol = "🔇", ActionKey = "VOLUME_MUTE", Order = 4 }
+                            new { Id = "SETTINGS", Name = "Settings", IconSymbol = "⚙️", ActionKey = "SETTINGS", Order = 0 },
+                            new { Id = "SEARCH", Name = "Search", IconSymbol = "🔍", ActionKey = "SEARCH", Order = 1 },
+                            new { Id = "DESKTOP", Name = "Desktop", IconSymbol = "🖥️", ActionKey = "SHOW_DESKTOP", Order = 2 },
+                            new { Id = "SNIP", Name = "Snipping Tool", IconSymbol = "✂️", ActionKey = "SNIP_TOOL", Order = 3 },
+                            new { Id = "MUTE", Name = "Mute", IconSymbol = "🔇", ActionKey = "VOLUME_MUTE", Order = 4 }
                         };
                         foreach (var q in defaults)
                         {

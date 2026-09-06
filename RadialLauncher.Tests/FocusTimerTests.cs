@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using RadialLauncher.Services.Actions;
 using Xunit;
@@ -47,7 +47,7 @@ namespace RadialLauncher.Tests
 
             var focusAction = actions.Find(a => a.ActionKey == "FOCUS_25");
             Assert.NotNull(focusAction);
-            Assert.Contains("Odaklan", focusAction.DisplayName);
+            Assert.Contains("Focus", focusAction.DisplayName);
             Assert.Equal("🍅", focusAction.IconSymbol);
         }
     }

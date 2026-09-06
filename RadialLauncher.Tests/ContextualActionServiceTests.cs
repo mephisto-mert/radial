@@ -36,7 +36,7 @@ namespace RadialLauncher.Tests
 
             var chromeItems = service.GetContextualItems("chrome.exe");
             Assert.NotEmpty(chromeItems);
-            Assert.Contains(chromeItems, i => i.Name.Contains("Yeni Sekme"));
+            Assert.Contains(chromeItems, i => i.Name.Contains("New Tab"));
 
             var unknown = service.GetContextualItems("non_existent_process.exe");
             Assert.Empty(unknown);

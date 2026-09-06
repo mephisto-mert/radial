@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using RadialLauncher.Services.Localization;
@@ -9,11 +11,17 @@ namespace RadialLauncher.UI.Windows
     {
         public string NewCategoryName { get; private set; } = string.Empty;
         private readonly string _initialName;
+        private readonly System.Collections.Generic.HashSet<string> _existingNames;
 
-        public CategoryRenameDialog(string currentName)
+        public CategoryRenameDialog(string currentName, System.Collections.Generic.IEnumerable<string>? existingNames = null)
         {
             InitializeComponent();
             _initialName = currentName ?? string.Empty;
+            _existingNames = new System.Collections.Generic.HashSet<string>(
+                (existingNames ?? System.Array.Empty<string>())
+                    .Where(n => !string.Equals(n, _initialName, StringComparison.OrdinalIgnoreCase)),
+                StringComparer.OrdinalIgnoreCase);
+
             CategoryNameTextBox.Text = _initialName;
             ApplyLocalization();
 
@@ -71,6 +79,13 @@ namespace RadialLauncher.UI.Windows
             {
                 if (ValidationWarningText != null)
                     ValidationWarningText.Text = loc.GetString("Cat_Err_TooLong", "Category name cannot exceed 50 characters.");
+                return;
+            }
+
+            if (_existingNames != null && _existingNames.Contains(trimmed))
+            {
+                if (ValidationWarningText != null)
+                    ValidationWarningText.Text = loc.GetString("Cat_Err_Duplicate", "A category with this name already exists.");
                 return;
             }
 

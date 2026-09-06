@@ -33,20 +33,20 @@ namespace RadialLauncher.Services.Actions
 
         public static readonly List<SystemActionInfo> AvailableActions = new()
         {
-            new SystemActionInfo { ActionKey = "VOLUME_UP", DisplayName = "Ses Aç (+2%)", IconSymbol = "🔊", Category = "Medya" },
-            new SystemActionInfo { ActionKey = "VOLUME_DOWN", DisplayName = "Ses Kıs (-2%)", IconSymbol = "🔉", Category = "Medya" },
-            new SystemActionInfo { ActionKey = "VOLUME_MUTE", DisplayName = "Sesi Kapat / Aç", IconSymbol = "🔇", Category = "Medya" },
-            new SystemActionInfo { ActionKey = "MEDIA_PLAY_PAUSE", DisplayName = "Oynat / Duraklat", IconSymbol = "⏯️", Category = "Medya" },
-            new SystemActionInfo { ActionKey = "MEDIA_NEXT", DisplayName = "Sonraki Parça", IconSymbol = "⏭️", Category = "Medya" },
-            new SystemActionInfo { ActionKey = "MEDIA_PREV", DisplayName = "Önceki Parça", IconSymbol = "⏮️", Category = "Medya" },
-            new SystemActionInfo { ActionKey = "SHOW_DESKTOP", DisplayName = "Masaüstünü Göster (Win+D)", IconSymbol = "🖥️", Category = "Windows" },
-            new SystemActionInfo { ActionKey = "SNIP_TOOL", DisplayName = "Ekran Alıntısı (Win+Shift+S)", IconSymbol = "✂️", Category = "Windows" },
-            new SystemActionInfo { ActionKey = "TASK_MANAGER", DisplayName = "Görev Yöneticisi", IconSymbol = "⚙️", Category = "Windows" },
-            new SystemActionInfo { ActionKey = "LOCK_PC", DisplayName = "Bilgisayarı Kilitle", IconSymbol = "🔒", Category = "Sistem" },
-            new SystemActionInfo { ActionKey = "EMPTY_RECYCLE_BIN", DisplayName = "Geri Dönüşüm Kutusunu Boşalt", IconSymbol = "🗑️", Category = "Sistem" },
-            new SystemActionInfo { ActionKey = "NEXT_DESKTOP", DisplayName = "Sonraki Masaüstü (Win+Ctrl+→)", IconSymbol = "➡️", Category = "Windows" },
-            new SystemActionInfo { ActionKey = "PREV_DESKTOP", DisplayName = "Önceki Masaüstü (Win+Ctrl+←)", IconSymbol = "⬅️", Category = "Windows" },
-            new SystemActionInfo { ActionKey = "FOCUS_25", DisplayName = "🍅 Odaklan (25dk)", IconSymbol = "🍅", Category = "Sistem" },
+            new SystemActionInfo { ActionKey = "VOLUME_UP", DisplayName = "Volume Up (+2%)", IconSymbol = "🔊", Category = "Media" },
+            new SystemActionInfo { ActionKey = "VOLUME_DOWN", DisplayName = "Volume Down (-2%)", IconSymbol = "🔉", Category = "Media" },
+            new SystemActionInfo { ActionKey = "VOLUME_MUTE", DisplayName = "Mute / Unmute", IconSymbol = "🔇", Category = "Media" },
+            new SystemActionInfo { ActionKey = "MEDIA_PLAY_PAUSE", DisplayName = "Play / Pause", IconSymbol = "⏯️", Category = "Media" },
+            new SystemActionInfo { ActionKey = "MEDIA_NEXT", DisplayName = "Next Track", IconSymbol = "⏭️", Category = "Media" },
+            new SystemActionInfo { ActionKey = "MEDIA_PREV", DisplayName = "Previous Track", IconSymbol = "⏮️", Category = "Media" },
+            new SystemActionInfo { ActionKey = "SHOW_DESKTOP", DisplayName = "Show Desktop (Win+D)", IconSymbol = "🖥️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "SNIP_TOOL", DisplayName = "Snipping Tool (Win+Shift+S)", IconSymbol = "✂️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "TASK_MANAGER", DisplayName = "Task Manager", IconSymbol = "⚙️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "LOCK_PC", DisplayName = "Lock PC", IconSymbol = "🔒", Category = "System" },
+            new SystemActionInfo { ActionKey = "EMPTY_RECYCLE_BIN", DisplayName = "Empty Recycle Bin", IconSymbol = "🗑️", Category = "System" },
+            new SystemActionInfo { ActionKey = "NEXT_DESKTOP", DisplayName = "Next Desktop (Win+Ctrl+→)", IconSymbol = "➡️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "PREV_DESKTOP", DisplayName = "Previous Desktop (Win+Ctrl+←)", IconSymbol = "⬅️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "FOCUS_25", DisplayName = "🍅 Focus Timer (25m)", IconSymbol = "🍅", Category = "System" },
         };
 
         public event Action<TimeSpan>? FocusTimerTick;

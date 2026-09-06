@@ -113,6 +113,18 @@ namespace RadialLauncher.Data.Repositories
             {
                 using var conn = CreateConnection();
                 conn.Open();
+
+                // Check for duplicate category name (case-insensitive) excluding this category
+                int duplicate = conn.ExecuteScalar<int>(
+                    "SELECT COUNT(1) FROM Categories WHERE LOWER(TRIM(Name)) = LOWER(@trimmed) AND Id != @id",
+                    new { trimmed, id });
+
+                if (duplicate > 0)
+                {
+                    Log.Warning("Category rename rejected: Category '{Name}' already exists", trimmed);
+                    return false;
+                }
+
                 return conn.Execute("UPDATE Categories SET Name = @newName WHERE Id = @id", new { id, newName = trimmed }) > 0;
             }
             catch (Exception ex)

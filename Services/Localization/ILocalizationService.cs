@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RadialLauncher.Services.Localization
@@ -12,6 +12,8 @@ namespace RadialLauncher.Services.Localization
         event Action? OnLanguageChanged;
         void SetLanguage(string languageCode);
         string GetString(string key, string? fallback = null);
+        bool HasKeyDirectly(string langCode, string key);
+        IReadOnlyDictionary<string, string>? GetDictionaryForLanguage(string langCode);
         string this[string key] { get; }
     }
 }

@@ -212,7 +212,7 @@ namespace RadialLauncher.UI.Windows
                 var targetCat = _viewModel.Categories.FirstOrDefault(c => c.Id == catId);
                 if (targetCat == null) return;
 
-                var dlg = new CategoryRenameDialog(targetCat.Name)
+                var dlg = new CategoryRenameDialog(targetCat.Name, _viewModel.Categories.Select(c => c.Name))
                 {
                     Owner = this
                 };
@@ -307,7 +307,8 @@ namespace RadialLauncher.UI.Windows
             };
             if (ActiveShortcutLabel != null)
             {
-                ActiveShortcutLabel.Text = $"Aktif Kısayol: {ShortcutAssignWindow.ToFriendlyName(sc)} ({sc})";
+                var loc = LocalizationService.Instance;
+                ActiveShortcutLabel.Text = $"{loc.GetString("Active_Shortcut_Label", "Active Shortcut:")} {ShortcutAssignWindow.ToFriendlyName(sc)} ({sc})";
             }
         }
 
@@ -319,6 +320,7 @@ namespace RadialLauncher.UI.Windows
         private void RefreshGrid()
         {
             if (_viewModel == null || CategoryFilterCombo == null || ItemsGrid == null || StatusText == null) return;
+            var loc = LocalizationService.Instance;
             var catMap = _viewModel.Categories?.GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First().Name) ?? new Dictionary<int, string>();
             var query = SearchBox?.Text?.Trim() ?? "";
             int selectedCatId = 0;
@@ -334,22 +336,22 @@ namespace RadialLauncher.UI.Windows
             else
             {
                 _viewModel.SelectedCategory = _viewModel.Categories?.FirstOrDefault(c => c.Id == selectedCatId)
-                    ?? new Category { Id = selectedCatId, Name = "Kategori" };
+                    ?? new Category { Id = selectedCatId, Name = loc.GetString("Category", "Category") };
             }
 
             _viewModel.FilterQuery = query;
             _viewModel.RefreshItems();
 
-            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "Genel"))).ToList();
+            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "General"))).ToList();
             ItemsGrid.ItemsSource = items;
 
             if (items.Count == 0)
             {
-                StatusText.Text = "Henüz kullanılan veya listelenecek öğe bulunmuyor.";
+                StatusText.Text = loc.GetString("Status_No_Items", "No items to display.");
             }
             else
             {
-                StatusText.Text = $"Toplam {items.Count} öğe listelendi.";
+                StatusText.Text = string.Format(loc.GetString("Status_Total_Items", "Total {0} items listed."), items.Count);
             }
         }
 
@@ -385,7 +387,11 @@ namespace RadialLauncher.UI.Windows
         {
             if (sender is Button btn && btn.DataContext is LauncherItemViewModel lvm)
             {
-                if (MessageBox.Show($"'{lvm.Name}' silinsin mi?", "Silme Onayı", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                var loc = LocalizationService.Instance;
+                string confirmMsg = string.Format(loc.GetString("Delete_Confirm", "Delete '{0}'?"), lvm.Name);
+                string confirmTitle = loc.GetString("Delete_Confirm_Title", "Delete Confirmation");
+
+                if (MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     _viewModel.DeleteItem(lvm.Item);
                     RefreshGrid();
@@ -462,9 +468,9 @@ namespace RadialLauncher.UI.Windows
         {
             if (_viewModel == null || _themeService == null) return;
             var cb = sender as ComboBox ?? DensityCombo;
-            if (cb?.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
+            if (cb != null)
             {
-                string mode = cbi.Content.ToString()!.Contains("Kompakt") ? "Compact" : "Expanded";
+                string mode = cb.SelectedIndex == 1 ? "Compact" : "Expanded";
                 var t = _themeService.GetCurrentTheme();
                 if (t != null)
                 {
@@ -478,21 +484,21 @@ namespace RadialLauncher.UI.Windows
         {
             if (_viewModel == null || _themeService == null) return;
             var cb = sender as ComboBox ?? ShortcutCombo;
-            if (cb?.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
+            if (cb != null && cb.SelectedIndex >= 0)
             {
-                string sc = cbi.Content.ToString() switch
+                string sc = cb.SelectedIndex switch
                 {
-                    "Orta Tuş (Fare Tekerleği)" => "MiddleClick",
-                    "Fare 4 (Geri Tuşu - XButton1)" => "XButton1",
-                    "Fare 5 (İleri Tuşu - XButton2)" => "XButton2",
-                    "Ctrl + Sağ Tık" => "CtrlRightClick",
-                    "Shift + Sağ Tık" => "ShiftRightClick",
-                    "Alt + Sağ Tık" => "AltRightClick",
-                    "Ctrl + Fare 4" => "Ctrl+XButton1",
-                    "Alt + Boşluk (Alt+Space)" => "AltSpace",
-                    "Ctrl + Boşluk (Ctrl+Space)" => "CtrlSpace",
-                    "F4 Tuşu" => "F4",
-                    "~ (Tilde Tuşu)" => "Tilde",
+                    0 => "MiddleClick",
+                    1 => "XButton1",
+                    2 => "XButton2",
+                    3 => "CtrlRightClick",
+                    4 => "ShiftRightClick",
+                    5 => "AltRightClick",
+                    6 => "Ctrl+XButton1",
+                    7 => "AltSpace",
+                    8 => "CtrlSpace",
+                    9 => "F4",
+                    10 => "Tilde",
                     _ => "MiddleClick"
                 };
                 _themeService.SetActivationShortcut(sc);
@@ -502,6 +508,7 @@ namespace RadialLauncher.UI.Windows
 
         private void AssignCustomShortcut_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             string current = _themeService.GetActivationShortcut();
             var win = new ShortcutAssignWindow(current);
             win.Owner = this;
@@ -510,8 +517,8 @@ namespace RadialLauncher.UI.Windows
                 string clean = win.SelectedShortcut.Trim();
                 _themeService.SetActivationShortcut(clean);
                 LoadShortcutState();
-                StatusText.Text = $"Yeni kısayol atandı: {ShortcutAssignWindow.ToFriendlyName(clean)} ({clean})";
-                MessageBox.Show($"Kısayol başarıyla kaydedildi:\n\n{ShortcutAssignWindow.ToFriendlyName(clean)}\n({clean})", "Kısayol Güncellendi", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = string.Format(loc.GetString("Shortcut_Assigned_Status", "New shortcut assigned: {0}"), ShortcutAssignWindow.ToFriendlyName(clean));
+                MessageBox.Show(string.Format(loc.GetString("Shortcut_Saved_Msg", "Shortcut saved successfully:\n\n{0}\n({1})"), ShortcutAssignWindow.ToFriendlyName(clean), clean), loc.GetString("Shortcut_Updated_Title", "Shortcut Updated"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -523,7 +530,8 @@ namespace RadialLauncher.UI.Windows
 
         private async void ScanButton_Click(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Tarama başlatılıyor...";
+            var loc = LocalizationService.Instance;
+            StatusText.Text = loc.GetString("MsgScanningPc", "Scanning computer...");
             await _viewModel.ScanPc();
             RefreshGrid();
             StatusText.Text = _viewModel.StatusMessage;
@@ -531,18 +539,19 @@ namespace RadialLauncher.UI.Windows
 
         private async void CreateLocalBackup_Click(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Yerel yedek oluşturuluyor...";
+            var loc = LocalizationService.Instance;
+            StatusText.Text = loc.GetString("MsgCreatingBackup", "Creating local backup...");
             var result = await _syncService.CreateLocalBackupAsync();
             if (result.success)
             {
                 UpdateBackupStatusLabel();
-                StatusText.Text = "Yerel yedekleme tamamlandı.";
-                MessageBox.Show($"Yedekleme başarıyla tamamlandı:\n{result.filePath}", "Yedek Alındı", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = loc.GetString("MsgBackupDone", "Local backup completed.");
+                MessageBox.Show(string.Format(loc.GetString("MsgBackupDoneDetails", "Backup completed successfully:\n{0}"), result.filePath), loc.GetString("MsgBackupTakenTitle", "Backup Created"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
-                StatusText.Text = "Yedekleme oluşturulamadı.";
-                MessageBox.Show("Yerel yedek oluşturulurken bir hata meydana geldi.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = loc.GetString("MsgBackupFailed", "Failed to create backup.");
+                MessageBox.Show(loc.GetString("MsgBackupFailedDetails", "An error occurred while creating local backup."), loc.GetString("Error", "Error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -553,21 +562,21 @@ namespace RadialLauncher.UI.Windows
 
             var ofd = new OpenFileDialog
             {
-                Title = loc.GetString("Restore_Backup", "Geri Yüklenecek Yedeği Seçin"),
+                Title = loc.GetString("Restore_Backup", "Restore from Backup"),
                 Filter = "JSON (*.json)|*.json",
                 InitialDirectory = Directory.Exists(backupsDir) ? backupsDir : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
             };
 
             if (ofd.ShowDialog() == true)
             {
-                string confirmMsg = string.Format(loc.GetString("Restore_Confirm", "'{0}' yedeği geri yüklenecek.\nMevcut verilerinizin üzerine yazılacaktır. Onaylıyor musunuz?"), Path.GetFileName(ofd.FileName));
-                string confirmTitle = loc.GetString("Restore_Confirm_Title", "Yedekten Geri Yükleme Onayı");
+                string confirmMsg = string.Format(loc.GetString("Restore_Confirm", "Restore backup '{0}'?\nThis will overwrite current items and settings."), Path.GetFileName(ofd.FileName));
+                string confirmTitle = loc.GetString("Restore_Confirm_Title", "Restore Confirmation");
 
                 var confirm = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                 if (confirm == MessageBoxResult.Yes)
                 {
-                    StatusText.Text = loc.GetString("Restoring", "Yedek geri yükleniyor...");
+                    StatusText.Text = loc.GetString("Restoring", "Restoring backup...");
                     bool ok = await _syncService.RestoreFromLocalBackupAsync(ofd.FileName);
                     if (ok)
                     {
@@ -587,14 +596,14 @@ namespace RadialLauncher.UI.Windows
                         {
                             AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
                         }
-                        string successMsg = loc.GetString("Restore_Success", "Yedek başarıyla geri yüklendi ve uygulandı.");
+                        string successMsg = loc.GetString("Restore_Success", "Backup successfully restored and applied.");
                         StatusText.Text = successMsg;
-                        MessageBox.Show(successMsg, loc.GetString("Success", "Başarılı"), MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show(successMsg, loc.GetString("Success", "Success"), MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
-                        StatusText.Text = loc.GetString("Error", "Geri yükleme başarısız.");
-                        MessageBox.Show(loc.GetString("Restore_Error", "Yedek dosyası okunamadı veya biçimi geçersiz."), loc.GetString("Error", "Hata"), MessageBoxButton.OK, MessageBoxImage.Error);
+                        StatusText.Text = loc.GetString("Error", "Restore failed.");
+                        MessageBox.Show(loc.GetString("Restore_Error", "Backup file could not be read or format is invalid."), loc.GetString("Error", "Error"), MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -603,16 +612,17 @@ namespace RadialLauncher.UI.Windows
         private void UpdateBackupStatusLabel()
         {
             if (BackupStatusLabel == null) return;
+            var loc = LocalizationService.Instance;
             var backups = _syncService.GetLocalBackups();
             if (backups.Count > 0)
             {
                 var latest = backups[0];
-                string timeStr = File.Exists(latest) ? File.GetCreationTime(latest).ToString("yyyy-MM-dd HH:mm:ss") : "Mevcut";
-                BackupStatusLabel.Text = $"Toplam {backups.Count} yerel yedek mevcut. En son: {timeStr} ({Path.GetFileName(latest)})";
+                string timeStr = File.Exists(latest) ? File.GetCreationTime(latest).ToString("yyyy-MM-dd HH:mm:ss") : "Ready";
+                BackupStatusLabel.Text = string.Format(loc.GetString("Backup_Status_Count", "Total {0} local backups available. Latest: {1} ({2})"), backups.Count, timeStr, Path.GetFileName(latest));
             }
             else
             {
-                BackupStatusLabel.Text = "Henüz oluşturulmuş yerel yedek bulunmuyor.";
+                BackupStatusLabel.Text = loc.GetString("Backup_Status_None", "No local backups created yet.");
             }
         }
 
@@ -654,37 +664,39 @@ namespace RadialLauncher.UI.Windows
 
         private void AutoCheckUpdatesCheck_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             bool isChecked = AutoCheckUpdatesCheck.IsChecked == true;
             _themeService.SetAutoCheckUpdates(isChecked);
-            StatusText.Text = isChecked ? "Otomatik güncelleme kontrolü etkinleştirildi." : "Otomatik güncelleme kontrolü devre dışı bırakıldı.";
+            StatusText.Text = isChecked ? loc.GetString("AutoCheck_Enabled", "Automatic update check enabled.") : loc.GetString("AutoCheck_Disabled", "Automatic update check disabled.");
         }
 
         private async void CheckUpdatesNowBtn_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             CheckUpdatesNowBtn.IsEnabled = false;
-            UpdateCheckStatusLabel.Text = "GitHub Release kontrol ediliyor...";
-            StatusText.Text = "Güncellemeler kontrol ediliyor...";
+            UpdateCheckStatusLabel.Text = loc.GetString("Checking_Release", "Checking GitHub Releases...");
+            StatusText.Text = loc.GetString("Checking_Updates", "Checking for updates...");
 
             try
             {
                 var updateService = App.ServiceProvider?.GetService(typeof(IUpdateCheckService)) as IUpdateCheckService;
                 if (updateService == null)
                 {
-                    UpdateCheckStatusLabel.Text = "Güncelleme servisi bulunamadı.";
+                    UpdateCheckStatusLabel.Text = loc.GetString("Update_Service_NotFound", "Update service not found.");
                     return;
                 }
 
                 var info = await updateService.CheckForUpdatesAsync();
                 if (info == null)
                 {
-                    UpdateCheckStatusLabel.Text = "Güncelleme sunucusuna ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.";
-                    StatusText.Text = "Güncelleme kontrolü başarısız.";
+                    UpdateCheckStatusLabel.Text = loc.GetString("Update_Server_Unreachable", "Could not reach update server. Please check internet connection.");
+                    StatusText.Text = loc.GetString("Update_Check_Failed", "Update check failed.");
                 }
                 else if (info.IsUpdateAvailable)
                 {
-                    UpdateCheckStatusLabel.Text = $"🎉 Yeni bir sürüm mevcut: v{info.LatestVersion}\n{info.ReleaseUrl}";
-                    StatusText.Text = $"Yeni sürüm v{info.LatestVersion} mevcut!";
-                    var res = MessageBox.Show($"Yeni bir sürüm yayınlandı (v{info.LatestVersion}).\n\nİndirme sayfasına gitmek ister misiniz?", "Güncelleme Mevcut", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    UpdateCheckStatusLabel.Text = string.Format(loc.GetString("Update_Available_Label", "🎉 A new version is available: v{0}\n{1}"), info.LatestVersion, info.ReleaseUrl);
+                    StatusText.Text = string.Format(loc.GetString("Update_Available_Status", "New version v{0} available!"), info.LatestVersion);
+                    var res = MessageBox.Show(string.Format(loc.GetString("Update_Dialog_Body", "A new version has been released (v{0}).\n\nWould you like to open the download page?"), info.LatestVersion), loc.GetString("Update_Dialog_Title", "Update Available"), MessageBoxButton.YesNo, MessageBoxImage.Information);
                     if (res == MessageBoxResult.Yes && !string.IsNullOrWhiteSpace(info.ReleaseUrl))
                     {
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -696,15 +708,15 @@ namespace RadialLauncher.UI.Windows
                 }
                 else
                 {
-                    UpdateCheckStatusLabel.Text = $"✅ En güncel sürümü kullanıyorsunuz (v{info.CurrentVersion}).";
-                    StatusText.Text = "Uygulama güncel.";
+                    UpdateCheckStatusLabel.Text = string.Format(loc.GetString("Update_Latest_Label", "✅ You are using the latest version (v{0})."), info.CurrentVersion);
+                    StatusText.Text = loc.GetString("Update_App_UpToDate", "Application is up to date.");
                 }
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "Error checking for updates from UI");
-                UpdateCheckStatusLabel.Text = "Güncelleme kontrolü sırasında bir sorun oluştu.";
-                StatusText.Text = "Güncelleme hatası.";
+                UpdateCheckStatusLabel.Text = loc.GetString("Update_Error_Label", "An error occurred during update check.");
+                StatusText.Text = loc.GetString("Update_Error_Status", "Update error.");
             }
             finally
             {
@@ -714,6 +726,7 @@ namespace RadialLauncher.UI.Windows
 
         private void OpenLogsFolderBtn_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             try
             {
                 string logDir = RadialLauncher.Services.Data.UserDataPathProvider.Instance.GetLogsFolder();
@@ -727,12 +740,13 @@ namespace RadialLauncher.UI.Windows
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to open logs folder");
-                MessageBox.Show("Log klasörü açılamadı.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(loc.GetString("Logs_Open_Failed", "Failed to open logs folder."), "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         private void CopyDiagnosticsBtn_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             try
             {
                 var diag = new System.Text.StringBuilder();
@@ -752,8 +766,8 @@ namespace RadialLauncher.UI.Windows
                 diag.AppendLine($"Timestamp UTC: {DateTime.UtcNow:O}");
 
                 Clipboard.SetText(diag.ToString());
-                StatusText.Text = "Tanılama bilgileri panoya kopyalandı!";
-                MessageBox.Show("Sistem tanılama bilgileri panoya kopyalandı.", "Tanılama", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = loc.GetString("Diag_Copied_Status", "Diagnostic information copied to clipboard!");
+                MessageBox.Show(loc.GetString("Diag_Copied_Msg", "System diagnostic information copied to clipboard."), loc.GetString("Diag_Title_Short", "Diagnostics"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -764,8 +778,8 @@ namespace RadialLauncher.UI.Windows
         private void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
         {
             var loc = LocalizationService.Instance;
-            string confirmMsg = loc.GetString("Reset_Confirm", "Tüm tema, kısayol ve görsel ayarlarınız varsayılan fabrika değerlerine sıfırlanacaktır.\n(Kullanıcı öğeleri, kısayollar ve kullanım sayaçları KORUNUR)\n\nDevam etmek istiyor musunuz?");
-            string confirmTitle = loc.GetString("Reset_Confirm_Title", "Ayarları Sıfırla");
+            string confirmMsg = loc.GetString("Reset_Confirm", "Reset all theme, shortcut, and appearance settings to defaults?\n(Your items and usage counts will be preserved)");
+            string confirmTitle = loc.GetString("Reset_Confirm_Title", "Reset Settings");
 
             var res = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (res != MessageBoxResult.Yes) return;
@@ -789,13 +803,13 @@ namespace RadialLauncher.UI.Windows
                 {
                     AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
                 }
-                StatusText.Text = "Ayarlar başarıyla varsayılanlara sıfırlandı.";
-                MessageBox.Show("Ayarlar varsayılan değerlere sıfırlandı.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = loc.GetString("Reset_Success_Status", "Settings successfully reset to defaults.");
+                MessageBox.Show(loc.GetString("Reset_Success_Msg", "Settings reset to default values."), "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed resetting settings");
-                MessageBox.Show("Ayarlar sıfırlanırken bir sorun oluştu.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(loc.GetString("Reset_Error_Msg", "An error occurred while resetting settings."), loc.GetString("Error", "Error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -101,7 +101,7 @@ namespace RadialLauncher.Services.VirtualDesktop
                                     {
                                         Index = list.Count,
                                         Id = guid,
-                                        Name = $"Masaüstü {list.Count + 1}",
+                                        Name = $"Desktop {list.Count + 1}",
                                         IsCurrent = (currentGuid != Guid.Empty && guid == currentGuid)
                                     });
                                 }

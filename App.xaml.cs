@@ -384,7 +384,7 @@ namespace RadialLauncher
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to open ManagementWindow");
-                MessageBox.Show("Ayarlar penceresi açılırken bir sorun oluştu. Detaylar için uygulama loglarını kontrol edebilirsiniz.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(LocalizationService.Instance.GetString("Settings_Open_Error", "An error occurred while opening settings. Check application logs for details."), "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

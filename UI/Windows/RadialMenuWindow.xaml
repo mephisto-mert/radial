@@ -7,8 +7,8 @@
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
         KeyDown="Window_KeyDown" TextInput="Window_TextInput" MouseWheel="Window_MouseWheel"
-        automation:AutomationProperties.Name="Radial Launcher Dairesel Menü"
-        automation:AutomationProperties.HelpText="Uygulama ve kısayol başlatıcı">
+        automation:AutomationProperties.Name="Radial Launcher Circular Menu"
+        automation:AutomationProperties.HelpText="Application and shortcut launcher">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>

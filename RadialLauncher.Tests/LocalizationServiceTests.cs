@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using RadialLauncher.Services.Localization;
 using Xunit;
@@ -63,7 +63,7 @@ namespace RadialLauncher.Tests
             Assert.Equal("➕ Yeni Öğe Ekle", service["Add_Item"]);
 
             service.SetLanguage("de");
-            Assert.Equal("🔍 PC Scannen", service.GetString("Scan_PC"));
+            Assert.Equal("🔍 PC durchsuchen", service.GetString("Scan_PC"));
 
             service.SetLanguage("es");
             Assert.Equal("🔍 Escanear PC", service.GetString("Scan_PC"));
