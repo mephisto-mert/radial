@@ -71,7 +71,18 @@ namespace RadialLauncher.Services.VirtualDesktop
                 if (key != null)
                 {
                     byte[]? currentBytes = key.GetValue("CurrentVirtualDesktop") as byte[];
-                    Guid currentGuid = (currentBytes != null && currentBytes.Length == 16) ? new Guid(currentBytes) : Guid.Empty;
+                    Guid currentGuid = Guid.Empty;
+                    if (currentBytes != null && currentBytes.Length == 16)
+                    {
+                        try
+                        {
+                            currentGuid = new Guid(currentBytes);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "Failed to parse CurrentVirtualDesktop GUID");
+                        }
+                    }
 
                     byte[]? idsBytes = key.GetValue("VirtualDesktopIDs") as byte[];
                     if (idsBytes != null && idsBytes.Length >= 16)
@@ -81,14 +92,24 @@ namespace RadialLauncher.Services.VirtualDesktop
                         {
                             byte[] guidBytes = new byte[16];
                             Buffer.BlockCopy(idsBytes, i * 16, guidBytes, 0, 16);
-                            var guid = new Guid(guidBytes);
-                            list.Add(new DesktopInfo
+                            try
                             {
-                                Index = i,
-                                Id = guid,
-                                Name = $"Masaüstü {i + 1}",
-                                IsCurrent = (guid == currentGuid)
-                            });
+                                var guid = new Guid(guidBytes);
+                                if (guid != Guid.Empty)
+                                {
+                                    list.Add(new DesktopInfo
+                                    {
+                                        Index = list.Count,
+                                        Id = guid,
+                                        Name = $"Masaüstü {list.Count + 1}",
+                                        IsCurrent = (currentGuid != Guid.Empty && guid == currentGuid)
+                                    });
+                                }
+                            }
+                            catch (Exception guidEx)
+                            {
+                                Log.Warning(guidEx, "Malformed GUID at virtual desktop index {Index}", i);
+                            }
                         }
                     }
                 }
@@ -98,19 +119,14 @@ namespace RadialLauncher.Services.VirtualDesktop
                 Log.Warning(ex, "Failed to enumerate virtual desktops from registry");
             }
 
-            if (list.Count == 0)
-            {
-                list.Add(new DesktopInfo { Index = 0, Id = Guid.NewGuid(), Name = "Masaüstü 1", IsCurrent = true });
-                list.Add(new DesktopInfo { Index = 1, Id = Guid.NewGuid(), Name = "Masaüstü 2", IsCurrent = false });
-            }
-
             return list;
         }
 
         public bool MoveWindowToDesktop(IntPtr hWnd, int desktopIndex)
         {
+            if (hWnd == IntPtr.Zero || desktopIndex < 0) return false;
             var desktops = GetDesktops();
-            if (desktopIndex >= 0 && desktopIndex < desktops.Count)
+            if (desktopIndex < desktops.Count)
             {
                 return MoveWindowToDesktop(hWnd, desktops[desktopIndex].Id);
             }
@@ -139,16 +155,23 @@ namespace RadialLauncher.Services.VirtualDesktop
 
         public void SwitchToDesktop(int targetIndex)
         {
+            if (targetIndex < 0) return;
             var desktops = GetDesktops();
+            if (desktops.Count == 0 || targetIndex >= desktops.Count) return;
+
             int currentIndex = 0;
+            bool foundCurrent = false;
             for (int i = 0; i < desktops.Count; i++)
             {
                 if (desktops[i].IsCurrent)
                 {
                     currentIndex = i;
+                    foundCurrent = true;
                     break;
                 }
             }
+
+            if (!foundCurrent) return;
 
             int diff = targetIndex - currentIndex;
             if (diff > 0)

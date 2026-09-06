@@ -228,20 +228,27 @@ namespace RadialLauncher.UI.Windows
                         e.Handled = true;
                         var cm = new ContextMenu();
                         var desktops = _viewModel.DesktopService.GetDesktops();
-                        int desktopCount = Math.Max(2, desktops.Count);
-                        for (int d = 0; d < desktopCount; d++)
+                        if (desktops == null || desktops.Count == 0)
                         {
-                            int targetDesktop = d;
-                            string dName = (d < desktops.Count && !string.IsNullOrEmpty(desktops[d].Name)) 
-                                ? desktops[d].Name 
-                                : $"Masaüstü {d + 1}";
-                            var mi = new MenuItem { Header = $"🪟 {dName}'e Taşı" };
-                            mi.Click += (ms, me) =>
+                            var disabledItem = new MenuItem { Header = "⚠️ Sanal Masaüstü Kullanılamıyor", IsEnabled = false };
+                            cm.Items.Add(disabledItem);
+                        }
+                        else
+                        {
+                            for (int d = 0; d < desktops.Count; d++)
                             {
-                                _viewModel.DesktopService.MoveWindowToDesktop((IntPtr)hWndVal, targetDesktop);
-                                _viewModel.RefreshPageItems();
-                            };
-                            cm.Items.Add(mi);
+                                int targetDesktop = d;
+                                string dName = !string.IsNullOrEmpty(desktops[d].Name) 
+                                    ? desktops[d].Name 
+                                    : $"Masaüstü {d + 1}";
+                                var mi = new MenuItem { Header = $"🪟 {dName}'e Taşı" };
+                                mi.Click += (ms, me) =>
+                                {
+                                    _viewModel.DesktopService.MoveWindowToDesktop((IntPtr)hWndVal, targetDesktop);
+                                    _viewModel.RefreshPageItems();
+                                };
+                                cm.Items.Add(mi);
+                            }
                         }
                         cm.PlacementTarget = btn;
                         cm.IsOpen = true;
