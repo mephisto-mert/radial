@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System;
 using RadialLauncher.Services.Actions;
 using Xunit;
 
@@ -7,33 +7,44 @@ namespace RadialLauncher.Tests
     public class SystemActionServiceTests
     {
         [Fact]
-        public void GetAvailableActions_ReturnsComprehensiveList()
+        public void AvailableActions_ContainsExpectedCoreActions()
         {
-            var service = SystemActionService.Instance;
+            var service = new SystemActionService();
             var actions = service.GetAvailableActions();
 
-            Assert.NotNull(actions);
-            Assert.True(actions.Count >= 10);
-
-            var keys = actions.Select(a => a.ActionKey).ToList();
-            Assert.Contains("VOLUME_UP", keys);
-            Assert.Contains("VOLUME_DOWN", keys);
-            Assert.Contains("LOCK_PC", keys);
-            Assert.Contains("TASK_MANAGER", keys);
-            Assert.Contains("EMPTY_RECYCLE_BIN", keys);
-            Assert.Contains("SHOW_DESKTOP", keys);
-            Assert.Contains("SNIP_TOOL", keys);
+            Assert.NotEmpty(actions);
+            Assert.Contains(actions, a => a.ActionKey == "VOLUME_UP");
+            Assert.Contains(actions, a => a.ActionKey == "VOLUME_DOWN");
+            Assert.Contains(actions, a => a.ActionKey == "VOLUME_MUTE");
+            Assert.Contains(actions, a => a.ActionKey == "MEDIA_PLAY_PAUSE");
+            Assert.Contains(actions, a => a.ActionKey == "SHOW_DESKTOP");
+            Assert.Contains(actions, a => a.ActionKey == "TASK_MANAGER");
+            Assert.Contains(actions, a => a.ActionKey == "FOCUS_25");
         }
 
-        [Theory]
-        [InlineData("VOLUME_UP", "Ses")]
-        [InlineData("LOCK_PC", "Kilitle")]
-        public void GetAvailableActions_ContainsExpectedDisplayNames(string key, string expectedSubstring)
+        [Fact]
+        public void ExecuteAction_InvalidOrUnknownKey_DoesNotThrow()
         {
-            var service = SystemActionService.Instance;
-            var action = service.GetAvailableActions().FirstOrDefault(a => a.ActionKey == key);
-            Assert.NotNull(action);
-            Assert.Contains(expectedSubstring, action!.DisplayName);
+            var service = new SystemActionService();
+
+            var ex1 = Record.Exception(() => service.ExecuteAction(null!));
+            var ex2 = Record.Exception(() => service.ExecuteAction(""));
+            var ex3 = Record.Exception(() => service.ExecuteAction("UNKNOWN_ACTION_KEY_XYZ"));
+
+            Assert.Null(ex1);
+            Assert.Null(ex2);
+            Assert.Null(ex3);
+        }
+
+        [Fact]
+        public void GetIconForAction_ReturnsExpectedSymbols_AndFallback()
+        {
+            var service = new SystemActionService();
+
+            Assert.Equal("🔊", service.GetIconForAction("VOLUME_UP"));
+            Assert.Equal("🔇", service.GetIconForAction("VOLUME_MUTE"));
+            Assert.Equal("🍅", service.GetIconForAction("FOCUS_25"));
+            Assert.Equal("⚡", service.GetIconForAction("NON_EXISTENT_KEY"));
         }
     }
 }
