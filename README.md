@@ -1,4 +1,4 @@
-# ⚡ Radial Launcher
+﻿# ⚡ Radial Launcher
 
 <p align="center">
   <img src="docs/images/radial_overlay_main.png" alt="Radial Launcher Hero Screenshot" width="720"/>
@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Ultra-Fast, Futuristic Circular Application & Game Launcher for Windows 10 & 11</strong><br>
-  <em>Summon your entire workspace, running applications, Steam/Epic games, and web tools in a fraction of a second with smooth radial gestures.</em>
+  <em>Summon your entire workspace, running applications, Steam/Epic games, and web links in a fraction of a second with smooth radial gestures.</em>
 </p>
 
 <p align="center">
@@ -28,42 +28,44 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features in v1.0.0
 
 ### 🚀 High-Speed Radial Menu HUD
 - **60 FPS Hardware-Accelerated Animations**: Smooth spring easing and cinematic clockwise bloom effect.
 - **Adaptive Ring Density**: Choose between **Expanded** (15 items per page) and **Compact** (18 items per page).
 - **Customizable Opacity & Effects**: Adjust background transparency from 20% to 100% with optional background blur backdrop and motion reduction.
-- **Smart Auto-Dismissal**: Menu smoothly closes when the cursor moves beyond the radial boundary.
+- **Smart Auto-Dismissal**: Menu smoothly closes when the cursor moves beyond the radial boundary or when an item is triggered.
 
 ### 🔍 Deep PC & Task Manager Auto-Discovery
-- **Process & Running App Scanner**: Detects running applications and active windows directly from Windows Task Manager.
-- **Steam & Epic Games Detection**: Automatically indexes installed game libraries with custom protocol launch support (`steam://rungameid/{id}`).
-- **Smart Categorization**: Automatically organizes items into **Applications (📱)**, **Web & Internet (🌐)**, **Games (🎮)**, and **System Tools (⚡)**.
-- **Full Icon Extraction**: Extracts high-resolution icons from `.exe`, `.lnk`, Steam manifests, URL favicons, and system actions.
+- **Running Process & Task Manager Scanner**: Automatically discovers active running applications and open windows.
+- **Steam & Epic Games Detection**: Automatically parses `steamapps/libraryfolders.vdf`, ACF manifests, and Epic manifests for instant game discovery.
+- **Desktop & Start Menu Shortcuts**: Automatically discovers `.lnk` and `.url` shortcuts from Desktop and Start Menu.
+- **Smart URL & Website Shortcut Support**: Type any website URL (`google.com`, `youtube.com`, `github.com`) to launch directly in your default browser.
+- **Built-in System Tools**: Volume Up/Down, Mute, Media Controls (Play/Pause/Next/Prev), Show Desktop, Snipping Tool, Task Manager, and Lock PC.
 
-### 🌐 Pure Dual-Language Architecture (English 🇬🇧 & Türkçe 🇹🇷)
-- 100% symmetrically localized across all UI windows, radial overlays, dialogs, context menus, tooltips, and status messages.
+### 🌐 Pure Dual-Language System (English 🇬🇧 & Türkçe 🇹🇷)
+- Streamlined strictly to **English** and **Türkçe**.
+- 100% symmetrically localized across all UI windows, radial overlays, dialogs, context menus, tooltips, toasts, and status messages.
 - Instant, live language switching without requiring an application restart.
 
-### 🎨 Dynamic High-Contrast Theme Engine
-- **8 Curated Presets**: Dark, Light, White, Red, Blue, Purple, Forest, and AMOLED Black.
-- **Perceived Luminance & Contrast Calculation**: Automatically ensures sharp text contrast across all dropdowns, buttons, and popups.
-- **Live Preview HUD**: Preview your theme and colors in real time from the Settings window.
+### 🎨 High-Contrast Adaptive Theme Engine
+- **8 Curated Themes**: Dark, Light, Midnight Blue, Cyberpunk, Forest, Crimson, Obsidian, and AMOLED Black.
+- **Luminance & Contrast Calculation**: Automatically ensures high-contrast readability on all ComboBoxes, dropdowns, buttons, and popups.
+- **Live Preview HUD**: Real-time visual feedback in the Theme Management tab.
 
 ### 🎯 Contextual Quick Actions Micro-HUD
-- Hovering any game, app, or tool reveals an instant center action HUD:
+- Hovering over any item reveals an instant center action HUD:
   - ▶ **Launch / Play**
   - ⚡ **Run as Administrator**
   - 📁 **Open File Location**
-  - 🛒 **Steam Store / Community** (for games)
+  - 🛒 **Steam Store / Community** (for Steam games)
   - ⭐ **Toggle Favorite**
 
-### 💾 Local Data Security & Portability
-- **100% Offline & Private**: All data is stored locally in SQLite (`launcher.db`). Zero telemetry, zero external tracking.
-- **Automated Rolling Backups**: Automatically maintains up to 10 rolling backups of your configuration and shortcuts.
-- **JSON Import / Export**: Easily export and migrate your shortcuts and settings across machines.
-- **Portable Mode**: Place a `data` directory next to `RadialLauncher.exe` to run in isolated portable mode (e.g., USB drive).
+### 💾 Self-Contained Local Data Security & Portability
+- **100% Offline & Private**: All data is stored locally in SQLite WAL mode (`launcher.db`). Zero telemetry, zero cloud tracking.
+- **Isolated Portable Mode**: Each installation uses an isolated `./data/` folder (via `portable.mode`), ensuring zero data conflicts across installations.
+- **Automated Rolling Backups**: Automatically maintains up to 10 rolling backups of your database.
+- **JSON Import / Export**: Backup, restore, and transfer your configuration easily.
 
 ---
 
@@ -82,7 +84,7 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 </p>
 
 ### 3. Application & Shortcut Management (Tab 1)
-> Search, filter by category, sort by usage or position, and trigger automated PC scanning.
+> Search, filter by category, sort by usage or position, add URLs/executables, and run PC scanning.
 <p align="center">
   <img src="docs/images/settings_tab1_applications.png" alt="Applications & Shortcuts Tab" width="680"/>
 </p>
@@ -116,14 +118,14 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 ## 🚀 Download & Installation
 
 ### Option 1: Standalone Windows Installer (Recommended)
-1. Download **`RadialLauncher-Setup-v1.0.0.exe`** from [GitHub Releases](https://github.com/mephisto-mert/radial/releases/latest).
-2. Run the installer, choose your language (English / Türkçe), and click **Install**.
-3. Radial Launcher will automatically create Desktop and Start Menu shortcuts and start in the system tray.
+1. Download **[`RadialLauncher-Setup-v1.0.0.exe`](https://github.com/mephisto-mert/radial/releases/latest)** from GitHub Releases.
+2. Run the installer, select your language (**🇬🇧 English** or **🇹🇷 Türkçe**), choose installation options, and click **Install Now**.
+3. Radial Launcher will configure Desktop and Start Menu shortcuts and start automatically in the system tray.
 
-### Option 2: Portable ZIP
-1. Download **`RadialLauncher-1.0.0-win-x64.zip`** from [GitHub Releases](https://github.com/mephisto-mert/radial/releases/latest).
-2. Extract the archive to any folder on your computer or USB drive.
-3. Launch `RadialLauncher.exe`.
+### Option 2: Portable ZIP Package
+1. Download **[`RadialLauncher-1.0.0-win-x64.zip`](https://github.com/mephisto-mert/radial/releases/latest)** from GitHub Releases.
+2. Extract the archive to any directory on your PC or USB flash drive.
+3. Run `RadialLauncher.exe` (all data is stored in the local `./data/` folder).
 
 ---
 
@@ -135,7 +137,7 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 | **Launch Item** | `Left Click` on Item | Launches the selected application, game, file, or website. |
 | **Context Actions** | Hover over Item | Reveals centered quick actions (Play, Run as Admin, Open Folder). |
 | **Switch Category / Page** | `Scroll Wheel` or `Category Tabs` | Cycles through categories or circular pages. |
-| **Open Management Settings** | Right-Click Tray Icon ➔ `Settings` | Opens the comprehensive 5-tab configuration center. |
+| **Open Management Settings** | Right-Click Tray Icon ➔ `Settings` | Opens the comprehensive 5-tab configuration dashboard. |
 | **Exit Radial Launcher** | Right-Click Tray Icon ➔ `Exit` | Closes the application completely. |
 
 ---
@@ -144,7 +146,7 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 
 ### Prerequisites
 - Windows 10 (Build 19041+) or Windows 11 x64
-- [.NET 7.0 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) or higher
+- [.NET 7.0 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) (x64)
 - Visual Studio 2022 (v17.4+) with *.NET Desktop Development* workload (or VS Code / CLI)
 
 ### Build Commands
@@ -157,13 +159,13 @@ cd radial
 # 2. Restore dependencies
 dotnet restore
 
-# 3. Run all unit & integration tests
+# 3. Run all unit & integration tests (171 tests)
 dotnet test -c Release
 
 # 4. Build and run locally
 dotnet run --project RadialLauncher.csproj -c Release
 
-# 5. Build full release package and standalone installer
+# 5. Build release package & standalone setup installer
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 ```
 
@@ -171,13 +173,12 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 
 ## 🛡️ Privacy & Security
 
-- **Zero Cloud Dependency**: Radial Launcher operates 100% offline. No telemetry, tracking, or remote data collection.
-- **Local Storage**: User data is stored locally in `%LOCALAPPDATA%\RadialLauncher\` (or `./data/` in portable mode).
-- **Secure Process Execution**: Applications and games are executed through standard Windows Win32 APIs without elevated escalation unless explicitly requested via "Run as Administrator".
+- **Zero Cloud Dependency**: Radial Launcher operates 100% offline. No telemetry, tracking, or remote network calls.
+- **Local Storage**: All user shortcuts and settings are saved locally in SQLite (`data/launcher.db`).
+- **Secure Process Execution**: Applications, games, and URLs are launched using standard Windows Win32 APIs without elevated escalation unless explicitly requested via "Run as Administrator".
 
 ---
 
 ## 📄 License
 
 Radial Launcher is open-source software licensed under the **[MIT License](LICENSE)**.
-Feel free to use, modify, and distribute it in accordance with the license terms.
