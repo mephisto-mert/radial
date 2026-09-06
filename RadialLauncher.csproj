@@ -7,6 +7,18 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+    
+    <!-- Versioning & Metadata -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0-rc1</InformationalVersion>
+    <Product>Radial Launcher</Product>
+    <Title>Radial Launcher</Title>
+    <Company>Radial Launcher Team</Company>
+    <Authors>mephisto-mert</Authors>
+    <Description>High-performance WPF Radial Launcher for Windows</Description>
+    <Copyright>Copyright © 2026</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
