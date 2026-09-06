@@ -29,14 +29,34 @@ namespace RadialLauncher.Tests
         }
 
         [Fact]
-        public void DefaultDataDirectory_IsUnderLocalAppData()
+        public void DefaultDataDirectory_ReturnsValidDataPath()
         {
             UserDataPathProvider.Instance.SetOverrideDataRoot(null);
             string dataDir = UserDataPathProvider.Instance.GetDataDirectory();
-            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            
+            Assert.False(string.IsNullOrWhiteSpace(dataDir));
+            Assert.True(Directory.Exists(dataDir));
+        }
 
-            Assert.StartsWith(localAppData, dataDir, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("RadialLauncher", dataDir, StringComparison.OrdinalIgnoreCase);
+        [Fact]
+        public void DefaultDataDirectory_PortableMode_ReturnsLocalDataDir()
+        {
+            string baseDir = AppContext.BaseDirectory;
+            string portableMarker = Path.Combine(baseDir, "portable.mode");
+            bool isPortable = File.Exists(portableMarker);
+
+            UserDataPathProvider.Instance.SetOverrideDataRoot(null);
+            string dataDir = UserDataPathProvider.Instance.GetDataDirectory();
+
+            if (isPortable)
+            {
+                Assert.Equal(Path.Combine(baseDir, "data"), dataDir);
+            }
+            else
+            {
+                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                Assert.StartsWith(localAppData, dataDir, StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         [Fact]

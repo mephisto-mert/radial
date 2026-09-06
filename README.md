@@ -1,12 +1,12 @@
 ﻿# ⚡ Radial Launcher
 
 <p align="center">
-  <img src="docs/images/radial_overlay_main.png" alt="Radial Launcher Hero Screenshot" width="720"/>
+  <img src="docs/images/01_radial_hud_main.png" alt="Radial Launcher Hero Screenshot" width="640"/>
 </p>
 
 <p align="center">
   <strong>Ultra-Fast, Futuristic Circular Application & Game Launcher for Windows 10 & 11</strong><br>
-  <em>Summon your entire workspace, running applications, Steam/Epic games, and web links in a fraction of a second with smooth radial gestures.</em>
+  <em>Summon your workspace, running task manager applications, Steam/Epic games, and web tools in milliseconds with smooth radial gestures.</em>
 </p>
 
 <p align="center">
@@ -22,95 +22,117 @@
 
 ## 🌟 Overview
 
-**Radial Launcher** is a modern, high-performance, keyboard-and-mouse driven circular application launcher built with WPF and .NET 7. Designed for power users, gamers, streamers, and developers, it replaces cluttered desktop shortcuts, crowded taskbars, and slow start menus with an intuitive, aesthetic circular ring HUD.
+**Radial Launcher** is a modern, high-performance, keyboard-and-mouse driven circular launcher designed for Windows 10 and 11. Built with WPF and .NET 7, it eliminates desktop clutter, crowded taskbars, and slow start menus by providing an instantaneous, aesthetic circular ring HUD at your mouse cursor.
 
-Summon it instantly anywhere on your screen using your **Mouse Middle Click**, **Mouse 4/5 (Side Buttons)**, or a custom hotkey like `Alt + Space`.
-
----
-
-## ✨ Key Features in v1.0.0
-
-### 🚀 High-Speed Radial Menu HUD
-- **60 FPS Hardware-Accelerated Animations**: Smooth spring easing and cinematic clockwise bloom effect.
-- **Adaptive Ring Density**: Choose between **Expanded** (15 items per page) and **Compact** (18 items per page).
-- **Customizable Opacity & Effects**: Adjust background transparency from 20% to 100% with optional background blur backdrop and motion reduction.
-- **Smart Auto-Dismissal**: Menu smoothly closes when the cursor moves beyond the radial boundary or when an item is triggered.
-
-### 🔍 Deep PC & Task Manager Auto-Discovery
-- **Running Process & Task Manager Scanner**: Automatically discovers active running applications and open windows.
-- **Steam & Epic Games Detection**: Automatically parses `steamapps/libraryfolders.vdf`, ACF manifests, and Epic manifests for instant game discovery.
-- **Desktop & Start Menu Shortcuts**: Automatically discovers `.lnk` and `.url` shortcuts from Desktop and Start Menu.
-- **Smart URL & Website Shortcut Support**: Type any website URL (`google.com`, `youtube.com`, `github.com`) to launch directly in your default browser.
-- **Built-in System Tools**: Volume Up/Down, Mute, Media Controls (Play/Pause/Next/Prev), Show Desktop, Snipping Tool, Task Manager, and Lock PC.
-
-### 🌐 Pure Dual-Language System (English 🇬🇧 & Türkçe 🇹🇷)
-- Streamlined strictly to **English** and **Türkçe**.
-- 100% symmetrically localized across all UI windows, radial overlays, dialogs, context menus, tooltips, toasts, and status messages.
-- Instant, live language switching without requiring an application restart.
-
-### 🎨 High-Contrast Adaptive Theme Engine
-- **8 Curated Themes**: Dark, Light, Midnight Blue, Cyberpunk, Forest, Crimson, Obsidian, and AMOLED Black.
-- **Luminance & Contrast Calculation**: Automatically ensures high-contrast readability on all ComboBoxes, dropdowns, buttons, and popups.
-- **Live Preview HUD**: Real-time visual feedback in the Theme Management tab.
-
-### 🎯 Contextual Quick Actions Micro-HUD
-- Hovering over any item reveals an instant center action HUD:
-  - ▶ **Launch / Play**
-  - ⚡ **Run as Administrator**
-  - 📁 **Open File Location**
-  - 🛒 **Steam Store / Community** (for Steam games)
-  - ⭐ **Toggle Favorite**
-
-### 💾 Self-Contained Local Data Security & Portability
-- **100% Offline & Private**: All data is stored locally in SQLite WAL mode (`launcher.db`). Zero telemetry, zero cloud tracking.
-- **Isolated Portable Mode**: Each installation uses an isolated `./data/` folder (via `portable.mode`), ensuring zero data conflicts across installations.
-- **Automated Rolling Backups**: Automatically maintains up to 10 rolling backups of your database.
-- **JSON Import / Export**: Backup, restore, and transfer your configuration easily.
+Summon it anywhere on your screen using your **Mouse Middle Click**, **Side Mouse Buttons (XButton 1/2)**, or a custom hotkey like **`Alt + Space`**.
 
 ---
 
-## 📸 Screenshots & Visual Walkthrough
+## 📖 Visual Walkthrough & User Guide
 
-### 1. Circular Ring Overlay & Radial Navigation
-> Smooth circular ring layout with active item labels and rapid page switching.
+### 1. Instant Radial HUD & Smooth Circular Gestures
+> *Summon your entire application ring around your cursor with smooth 60 FPS spring animations.*
+
 <p align="center">
-  <img src="docs/images/radial_overlay_main.png" alt="Radial Launcher Circular Overlay" width="680"/>
+  <img src="docs/images/01_radial_hud_main.png" alt="Radial Menu HUD" width="600"/>
 </p>
 
-### 2. Centered Contextual Quick Actions Micro HUD
-> Hover over any Steam game, executable, or tool to reveal instant actions.
+- **How to Summon**: Click your **Mouse Middle Button**, **Side Mouse Buttons**, or press **`Alt + Space`**.
+- **How to Launch**: Simply left-click on any slice icon to launch the application, Steam game, or website.
+- **Fast Page & Category Switching**: Scroll your mouse wheel up/down anywhere over the HUD or click the category tabs along the top to cycle rings effortlessly.
+- **Auto-Dismissal**: The launcher closes automatically when clicking outside or moving past the radial boundary.
+
+---
+
+### 2. Centered Contextual Quick Actions Micro-HUD
+> *Hover over any item to inspect its path and access instant context commands right in the center.*
+
 <p align="center">
-  <img src="docs/images/radial_overlay_hud.png" alt="Contextual Quick Actions Micro HUD" width="680"/>
+  <img src="docs/images/02_radial_hud_actions.png" alt="Contextual Quick Actions Micro HUD" width="600"/>
 </p>
 
-### 3. Application & Shortcut Management (Tab 1)
-> Search, filter by category, sort by usage or position, add URLs/executables, and run PC scanning.
+- **Instant Actions on Hover**:
+  - ▶ **Launch / Play**: Launch the application or game normally.
+  - ⚡ **Run as Administrator**: Elevate permissions on demand for developer tools and installers.
+  - 📁 **Open File Location**: Instantly open the directory containing the target executable.
+  - 🛒 **Steam Store / Community**: Quick shortcuts for Steam games to visit store and community hubs.
+  - ⭐ **Toggle Favorite**: Pin items to your favorite shortcuts ring.
+
+---
+
+### 3. Application Management, Task Manager Scanner & URL Links
+> *Discover installed Steam games, Epic Games, Desktop shortcuts, and active Task Manager apps with one click.*
+
 <p align="center">
-  <img src="docs/images/settings_tab1_applications.png" alt="Applications & Shortcuts Tab" width="680"/>
+  <img src="docs/images/03_settings_apps_scanner.png" alt="Application Management & Scanner Tab" width="760"/>
 </p>
 
-### 4. Curated Themes & Appearance (Tab 2)
-> 8 curated color themes with real-time contrast checking and ring density controls.
 <p align="center">
-  <img src="docs/images/settings_tab2_themes.png" alt="Themes & Appearance Tab" width="680"/>
+  <img src="docs/images/08_add_item_dialog.png" alt="Add Item & Website Dialog" width="480"/>
 </p>
 
-### 5. Activation Hotkeys & Windows Startup (Tab 3)
-> Interactive shortcut picker for mouse and keyboard triggers with Windows tray auto-startup.
+- **Deep Automated PC Scanner**: Automatically indexes Steam game manifests (`steamapps/libraryfolders.vdf`), Epic Games, desktop `.lnk` files, and actively running Windows Task Manager processes.
+- **Smart URL & Website Links**: Add any web tool (e.g. `google.com`, `youtube.com`, `github.com`). Radial Launcher automatically detects protocols, fetches icons, and opens in your default browser.
+- **Built-in System Tools**: Control Volume Up/Down, Mute, Media Play/Pause, Snipping Tool, Task Manager, and Lock PC directly from your radial ring.
+
+---
+
+### 4. Curated High-Contrast Themes & Real-Time Appearance
+> *Choose from 8 curated themes with dynamic perceived luminance and contrast calculation.*
+
 <p align="center">
-  <img src="docs/images/settings_tab3_shortcuts.png" alt="Shortcuts & Startup Tab" width="680"/>
+  <img src="docs/images/04_settings_themes_contrast.png" alt="Themes and Contrast Settings Tab" width="760"/>
 </p>
 
-### 6. Local Backups & Data Portability (Tab 4)
-> Automated rolling backups and JSON Import/Export for seamless data safety.
+- **8 Curated Themes**: **Dark**, **Light**, **Midnight Blue**, **Cyberpunk**, **Forest**, **Crimson**, **Obsidian**, and **AMOLED Black**.
+- **Dynamic Contrast Engine**: Guarantees ultra-sharp text readability across light and dark modes with automated luminance calculations on all ComboBoxes and dropdowns.
+- **Ring Density & Customization**: Switch between **Expanded** (15 items/page) and **Compact** (18 items/page), and fine-tune background opacity and blur effects.
+
+---
+
+### 5. Customizable Hotkeys, Mouse Triggers & Windows Startup
+> *Configure activation shortcuts and background system tray behavior.*
+
 <p align="center">
-  <img src="docs/images/settings_tab4_backups.png" alt="Backups & Data Tab" width="680"/>
+  <img src="docs/images/05_settings_hotkeys_startup.png" alt="Hotkeys and Startup Tab" width="760"/>
 </p>
 
-### 7. Multi-Language Support & Diagnostics (Tab 5)
-> Native English and Turkish language selection with system diagnostics and log viewers.
+- **Interactive Shortcut Picker**: Set any combination of modifiers and keys (`Alt + Space`, `Ctrl + Shift + Q`, `F1-F12`).
+- **Mouse Button Triggers**: Trigger via Mouse Middle Click, XButton1 (Back), or XButton2 (Forward).
+- **Windows Tray & Startup**: Start automatically in the background on Windows boot without blocking system startup.
+
+---
+
+### 6. Local Rolling Backups & Self-Contained Portability
+> *100% offline data security with automated rolling backups and JSON portability.*
+
 <p align="center">
-  <img src="docs/images/settings_tab5_diagnostics.png" alt="Multi-Language & Diagnostics Tab" width="680"/>
+  <img src="docs/images/06_settings_backups_portable.png" alt="Backups and Portability Tab" width="760"/>
+</p>
+
+- **Automated Rolling Backups**: Automatically creates and maintains up to 10 rotating database snapshots.
+- **JSON Import / Export**: Transfer and sync your entire configuration across machines effortlessly.
+- **Self-Contained Isolated Mode**: Every installation uses its own isolated `./data/` folder (via `portable.mode`), guaranteeing zero data pollution across different folders or USB drives.
+
+---
+
+### 7. Pure Dual-Language System & Diagnostics
+> *Complete symmetric localization in English 🇬🇧 and Turkish 🇹🇷 with live log inspection.*
+
+<p align="center">
+  <img src="docs/images/07_settings_language_diagnostics.png" alt="Language and Diagnostics Tab" width="760"/>
+</p>
+
+- **Instant Language Switcher**: Switch between **🇬🇧 English** and **🇹🇷 Türkçe** instantly across 100% of all UI views without restarting.
+- **Diagnostics & Health**: View real-time application logs, active SQLite database path, and system statistics.
+
+---
+
+### 8. Standalone Setup Wizard & Zero-Install Portable
+> *Clean installation wizard with customizable paths and Clean Install toggle.*
+
+<p align="center">
+  <img src="docs/images/09_setup_wizard.png" alt="Setup Wizard" width="560"/>
 </p>
 
 ---
@@ -119,26 +141,26 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 
 ### Option 1: Standalone Windows Installer (Recommended)
 1. Download **[`RadialLauncher-Setup-v1.0.0.exe`](https://github.com/mephisto-mert/radial/releases/latest)** from GitHub Releases.
-2. Run the installer, select your language (**🇬🇧 English** or **🇹🇷 Türkçe**), choose installation options, and click **Install Now**.
-3. Radial Launcher will configure Desktop and Start Menu shortcuts and start automatically in the system tray.
+2. Run the installer, select your preferred language (**🇬🇧 English** or **🇹🇷 Türkçe**), choose installation options, and click **Install Now**.
+3. Radial Launcher will configure Desktop and Start Menu shortcuts and start running in your system tray.
 
-### Option 2: Portable ZIP Package
+### Option 2: Portable Zero-Install ZIP
 1. Download **[`RadialLauncher-1.0.0-win-x64.zip`](https://github.com/mephisto-mert/radial/releases/latest)** from GitHub Releases.
-2. Extract the archive to any directory on your PC or USB flash drive.
-3. Run `RadialLauncher.exe` (all data is stored in the local `./data/` folder).
+2. Extract the archive anywhere on your PC or USB flash drive.
+3. Launch `RadialLauncher.exe` directly (all configuration and shortcuts remain self-contained in the local `./data/` folder).
 
 ---
 
-## 🎮 Default Controls & Shortcuts
+## 🎮 Default Controls & Shortcuts Summary
 
 | Action | Default Shortcut | Description |
 | :--- | :--- | :--- |
-| **Summon / Dismiss Menu** | `Middle Click` / `XButton1` / `Alt + Space` | Opens the radial menu at the current cursor position. |
+| **Summon / Dismiss HUD** | `Middle Click` / `XButton1` / `Alt + Space` | Opens the radial ring at the current mouse position. |
 | **Launch Item** | `Left Click` on Item | Launches the selected application, game, file, or website. |
-| **Context Actions** | Hover over Item | Reveals centered quick actions (Play, Run as Admin, Open Folder). |
-| **Switch Category / Page** | `Scroll Wheel` or `Category Tabs` | Cycles through categories or circular pages. |
-| **Open Management Settings** | Right-Click Tray Icon ➔ `Settings` | Opens the comprehensive 5-tab configuration dashboard. |
-| **Exit Radial Launcher** | Right-Click Tray Icon ➔ `Exit` | Closes the application completely. |
+| **Context Actions Micro-HUD** | `Hover` over Item | Reveals centered quick actions (Play, Run as Admin, Open Folder). |
+| **Cycle Categories / Pages** | `Scroll Wheel` or `Tabs` | Rapidly rotates through categories and page rings. |
+| **Open Management Dashboard** | Right-Click Tray Icon ➔ `Settings` | Opens the comprehensive 5-tab configuration center. |
+| **Exit Application** | Right-Click Tray Icon ➔ `Exit` | Closes Radial Launcher completely. |
 
 ---
 
@@ -147,7 +169,7 @@ Summon it instantly anywhere on your screen using your **Mouse Middle Click**, *
 ### Prerequisites
 - Windows 10 (Build 19041+) or Windows 11 x64
 - [.NET 7.0 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) (x64)
-- Visual Studio 2022 (v17.4+) with *.NET Desktop Development* workload (or VS Code / CLI)
+- Visual Studio 2022 (v17.4+) with *.NET Desktop Development* workload (or VS Code / .NET CLI)
 
 ### Build Commands
 
@@ -165,7 +187,7 @@ dotnet test -c Release
 # 4. Build and run locally
 dotnet run --project RadialLauncher.csproj -c Release
 
-# 5. Build release package & standalone setup installer
+# 5. Build full release package & standalone setup installer
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 ```
 
@@ -173,9 +195,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 
 ## 🛡️ Privacy & Security
 
-- **Zero Cloud Dependency**: Radial Launcher operates 100% offline. No telemetry, tracking, or remote network calls.
-- **Local Storage**: All user shortcuts and settings are saved locally in SQLite (`data/launcher.db`).
-- **Secure Process Execution**: Applications, games, and URLs are launched using standard Windows Win32 APIs without elevated escalation unless explicitly requested via "Run as Administrator".
+- **Zero Telemetry**: Radial Launcher does not collect, log, or transmit any user data or usage metrics.
+- **Local SQLite Database**: All shortcuts, categories, and settings are stored locally on your own storage.
+- **Safe Process Execution**: Executables, games, and web links are invoked through standard Windows Win32 APIs without elevated escalation unless explicitly requested via "Run as Administrator".
 
 ---
 

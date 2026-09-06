@@ -14,6 +14,7 @@ using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Localization;
 using RadialLauncher.Services.Plugins;
 using RadialLauncher.Services.Processes;
 using RadialLauncher.Services.Scanning;
@@ -30,7 +31,7 @@ namespace RadialLauncher.Tests
 {
     public class VisualRenderTests : IDisposable
     {
-        private readonly string _outputDir = @"C:\Users\pc\.gemini\antigravity\brain\ec9198f0-b139-40e5-9f59-4bd46bf8bf13\scratch";
+        private readonly string _docsImagesDir = @"C:\Users\pc\Desktop\RadialLauncher\docs\images";
         private readonly string _tempDir;
 
         public VisualRenderTests()
@@ -38,6 +39,7 @@ namespace RadialLauncher.Tests
             _tempDir = Path.Combine(Path.GetTempPath(), $"visual_test_root_{Guid.NewGuid():N}");
             Directory.CreateDirectory(_tempDir);
             RadialLauncher.Services.Data.UserDataPathProvider.Instance.SetOverrideDataRoot(_tempDir);
+            Directory.CreateDirectory(_docsImagesDir);
         }
 
         public void Dispose()
@@ -67,6 +69,9 @@ namespace RadialLauncher.Tests
                         Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
                     }
 
+                    // Enforce pure English localization for screenshots
+                    LocalizationService.Instance.SetLanguage("en");
+
                     // Setup Mocks and Services
                     var itemRepoMock = new Mock<IItemRepository>();
                     var catRepoMock = new Mock<ICategoryRepository>();
@@ -86,10 +91,10 @@ namespace RadialLauncher.Tests
 
                     var testCategories = new List<Category>
                     {
-                        new Category { Id = 1, Name = "Genel", Position = 0 },
-                        new Category { Id = 2, Name = "Geliştirme", Position = 1 },
-                        new Category { Id = 3, Name = "Oyunlar", Position = 2 },
-                        new Category { Id = 4, Name = "Sistem", Position = 3 }
+                        new Category { Id = 1, Name = "General", Position = 0 },
+                        new Category { Id = 2, Name = "Development", Position = 1 },
+                        new Category { Id = 3, Name = "Games", Position = 2 },
+                        new Category { Id = 4, Name = "System Tools", Position = 3 }
                     };
 
                     var testItems = new List<LauncherItem>
@@ -109,10 +114,13 @@ namespace RadialLauncher.Tests
                     catRepoMock.Setup(c => c.GetAll()).Returns(testCategories);
                     itemRepoMock.Setup(i => i.GetAll()).Returns(testItems);
                     itemRepoMock.Setup(i => i.GetByCategoryId(It.IsAny<int>())).Returns(testItems);
+                    dbMock.Setup(d => d.GetAllCategories()).Returns(testCategories);
+                    dbMock.Setup(d => d.GetAllItems()).Returns(testItems);
                     winMock.Setup(s => s.GetOpenWindows()).Returns(new List<WindowInfo>());
                     clipMock.Setup(c => c.GetRecentHistory(It.IsAny<int>())).Returns(new List<ClipboardItem>());
                     syncMock.Setup(s => s.GetLocalBackups()).Returns(new List<string>
                     {
+                        @"C:\Users\pc\AppData\Local\RadialLauncher\Backups\backup_20260907.json",
                         @"C:\Users\pc\AppData\Local\RadialLauncher\Backups\backup_20260906.json"
                     });
 
@@ -121,39 +129,75 @@ namespace RadialLauncher.Tests
 
                     managementWin.Width = 1050;
                     managementWin.Height = 720;
-                    managementWin.Measure(new Size(1050, 720));
-                    managementWin.Arrange(new Rect(0, 0, 1050, 720));
-                    managementWin.UpdateLayout();
+                    managementWin.Left = -2000; // Position off-screen
+                    managementWin.Top = -2000;
+                    managementWin.Show();
 
                     var mainTabs = managementWin.FindName("MainTabs") as TabControl;
                     Assert.NotNull(mainTabs);
 
-                    // Tab 1: Apps
+                    void FlushDispatcher()
+                    {
+                        System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(new Action(() => { }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+
+                    // Tab 1: Apps & Scanner
                     mainTabs.SelectedIndex = 0;
                     managementWin.UpdateLayout();
-                    SaveWindowToPng(managementWin, Path.Combine(_outputDir, "visual_tab1_apps.png"), 1050, 720);
+                    FlushDispatcher();
+                    SaveWindowToPng(managementWin, Path.Combine(_docsImagesDir, "03_settings_apps_scanner.png"), 1050, 720);
 
-                    // Tab 2: Themes
+                    // Tab 2: Themes & Contrast
                     mainTabs.SelectedIndex = 1;
                     managementWin.UpdateLayout();
-                    SaveWindowToPng(managementWin, Path.Combine(_outputDir, "visual_tab2_themes.png"), 1050, 720);
+                    FlushDispatcher();
+                    SaveWindowToPng(managementWin, Path.Combine(_docsImagesDir, "04_settings_themes_contrast.png"), 1050, 720);
 
-                    // Tab 3: Shortcuts
+                    // Tab 3: Shortcuts & Startup
                     mainTabs.SelectedIndex = 2;
                     managementWin.UpdateLayout();
-                    SaveWindowToPng(managementWin, Path.Combine(_outputDir, "visual_tab3_shortcuts.png"), 1050, 720);
+                    FlushDispatcher();
+                    SaveWindowToPng(managementWin, Path.Combine(_docsImagesDir, "05_settings_hotkeys_startup.png"), 1050, 720);
 
-                    // Tab 4: Backups
+                    // Tab 4: Backups & Portability
                     mainTabs.SelectedIndex = 3;
                     managementWin.UpdateLayout();
-                    SaveWindowToPng(managementWin, Path.Combine(_outputDir, "visual_tab4_backups.png"), 1050, 720);
+                    FlushDispatcher();
+                    SaveWindowToPng(managementWin, Path.Combine(_docsImagesDir, "06_settings_backups_portable.png"), 1050, 720);
 
-                    // Tab 5: Diagnostics
+                    // Tab 5: Language & Diagnostics
                     mainTabs.SelectedIndex = 4;
                     managementWin.UpdateLayout();
-                    SaveWindowToPng(managementWin, Path.Combine(_outputDir, "visual_tab5_diagnostics.png"), 1050, 720);
+                    FlushDispatcher();
+                    SaveWindowToPng(managementWin, Path.Combine(_docsImagesDir, "07_settings_language_diagnostics.png"), 1050, 720);
 
-                    // Now Render RadialMenuWindow
+                    managementWin.Close();
+
+                    // Render Add Item Dialog
+                    var addItemWin = new AddItemWindow(dbMock.Object, iconExtractorMock.Object, actionMock.Object);
+                    addItemWin.Width = 520;
+                    addItemWin.Height = 440;
+                    addItemWin.Left = -2000;
+                    addItemWin.Top = -2000;
+                    addItemWin.Show();
+                    addItemWin.UpdateLayout();
+                    FlushDispatcher();
+                    SaveWindowToPng(addItemWin, Path.Combine(_docsImagesDir, "08_add_item_dialog.png"), 520, 440);
+                    addItemWin.Close();
+
+                    // Render Setup Wizard
+                    var setupWin = new RadialLauncher.Installer.MainWindow();
+                    setupWin.Width = 640;
+                    setupWin.Height = 470;
+                    setupWin.Left = -2000;
+                    setupWin.Top = -2000;
+                    setupWin.Show();
+                    setupWin.UpdateLayout();
+                    FlushDispatcher();
+                    SaveWindowToPng(setupWin, Path.Combine(_docsImagesDir, "09_setup_wizard.png"), 640, 470);
+                    setupWin.Close();
+
+                    // Render RadialMenuWindow HUD
                     var radialVm = new RadialMenuViewModel(
                         itemRepoMock.Object,
                         catRepoMock.Object,
@@ -187,12 +231,12 @@ namespace RadialLauncher.Tests
                     radialWin.RenderLayout();
                     radialWin.UpdateLayout();
 
-                    SaveWindowToPng(radialWin, Path.Combine(_outputDir, "visual_radial_default.png"), 600, 600);
+                    SaveWindowToPng(radialWin, Path.Combine(_docsImagesDir, "01_radial_hud_main.png"), 600, 600);
 
-                    // Simulate hover on item 3 (Cyberpunk / Steam item)
+                    // Simulate hover on item 3 (Cyberpunk / Steam game with Quick Actions Micro HUD)
                     radialWin.ShowContextActions(testItems[2]);
                     radialWin.UpdateLayout();
-                    SaveWindowToPng(radialWin, Path.Combine(_outputDir, "visual_radial_hovered.png"), 600, 600);
+                    SaveWindowToPng(radialWin, Path.Combine(_docsImagesDir, "02_radial_hud_actions.png"), 600, 600);
                 }
                 catch (Exception ex)
                 {
@@ -227,8 +271,8 @@ namespace RadialLauncher.Tests
             var drawingVisual = new DrawingVisual();
             using (var dc = drawingVisual.RenderOpen())
             {
-                // Draw subtle dark background so transparent overlay elements pop cleanly
-                dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(15, 17, 23)), null, new Rect(0, 0, width, height));
+                // Draw sleek dark backdrop matching Radial Launcher aesthetic
+                dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 14, 23)), null, new Rect(0, 0, width, height));
                 var brush = new VisualBrush(visualToRender);
                 dc.DrawRectangle(brush, null, new Rect(0, 0, width, height));
             }
