@@ -159,6 +159,9 @@ namespace RadialLauncher.UI.Windows
             var bgBrush = new SolidColorBrush(theme.BackgroundColor);
             var panelBrush = new SolidColorBrush(theme.IconBackgroundColor);
 
+            var itemTextBrush = ThemeContrastHelper.GetContrastTextBrush(theme.IconBackgroundColor);
+            var itemBorderBrush = ThemeContrastHelper.GetContrastBorderBrush(theme.IconBackgroundColor, 40, 50);
+
             this.Background = bgBrush;
             this.Foreground = textBrush;
 
@@ -166,6 +169,7 @@ namespace RadialLauncher.UI.Windows
             {
                 MainTabs.Background = panelBrush;
                 MainTabs.BorderBrush = borderBrush;
+                MainTabs.Foreground = textBrush;
             }
 
             if (ItemsGrid != null)
@@ -184,29 +188,38 @@ namespace RadialLauncher.UI.Windows
             if (CategoryFilterCombo != null)
             {
                 CategoryFilterCombo.Background = panelBrush;
-                CategoryFilterCombo.Foreground = textBrush;
+                CategoryFilterCombo.Foreground = itemTextBrush;
+                CategoryFilterCombo.BorderBrush = itemBorderBrush;
             }
             if (SearchBox != null)
             {
                 SearchBox.Background = panelBrush;
-                SearchBox.Foreground = textBrush;
-                SearchBox.BorderBrush = borderBrush;
+                SearchBox.Foreground = itemTextBrush;
+                SearchBox.BorderBrush = itemBorderBrush;
             }
             if (ThemesListBox != null)
             {
                 ThemesListBox.Background = panelBrush;
-                ThemesListBox.Foreground = textBrush;
-                ThemesListBox.BorderBrush = borderBrush;
+                ThemesListBox.Foreground = itemTextBrush;
+                ThemesListBox.BorderBrush = itemBorderBrush;
             }
             if (DensityCombo != null)
             {
                 DensityCombo.Background = panelBrush;
-                DensityCombo.Foreground = textBrush;
+                DensityCombo.Foreground = itemTextBrush;
+                DensityCombo.BorderBrush = itemBorderBrush;
             }
             if (ShortcutCombo != null)
             {
                 ShortcutCombo.Background = panelBrush;
-                ShortcutCombo.Foreground = textBrush;
+                ShortcutCombo.Foreground = itemTextBrush;
+                ShortcutCombo.BorderBrush = itemBorderBrush;
+            }
+            if (LanguageCombo != null)
+            {
+                LanguageCombo.Background = panelBrush;
+                LanguageCombo.Foreground = itemTextBrush;
+                LanguageCombo.BorderBrush = itemBorderBrush;
             }
         }
 

@@ -5,13 +5,6 @@
         Title="{loc:Loc Macro_Title}" Height="560" Width="600"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="#1E1E24" Foreground="#E6E6E6">
-    <Window.Resources>
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="Background" Value="#2A2A32"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="4"/>
-        </Style>
-    </Window.Resources>
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

@@ -139,15 +139,6 @@
             </Setter>
         </Style>
 
-        <!-- Modern ComboBox Style -->
-        <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#14141E"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,5"/>
-        </Style>
-
         <!-- Modern CheckBox Style -->
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="#ECECF1"/>
@@ -195,7 +186,7 @@
                         <DockPanel>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock x:Name="TxtCategoryLabel" Text="Category:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
-                                <ComboBox x:Name="CategoryFilterCombo" Width="170" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C26" Foreground="White"/>
+                                <ComboBox x:Name="CategoryFilterCombo" Width="170" SelectionChanged="CategoryFilterCombo_SelectionChanged"/>
                                 <Button x:Name="BtnRenameCategory" Content="✏️" ToolTip="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=RenameCategoryToolTip}" Width="30" Height="28" Padding="2" Margin="6,0,0,0" Background="#22222E" Foreground="#588CEC" BorderBrush="#35FFFFFF" Click="BtnRenameCategory_Click"/>
                                 <TextBlock x:Name="TxtSearchLabel" Text="Search:" VerticalAlignment="Center" Margin="14,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
                                 <TextBox x:Name="SearchBox" Width="200" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
@@ -293,7 +284,7 @@
                                     <StackPanel>
                                         <TextBlock x:Name="TxtDensityTitle" Text="Ring Density Mode" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,4"/>
                                         <TextBlock x:Name="TxtDensitySub" Text="Number of items displayed per circular ring page." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
-                                        <ComboBox x:Name="DensityCombo" Width="260" HorizontalAlignment="Left" Background="#1C1C26" Foreground="White" SelectionChanged="DensityCombo_SelectionChanged">
+                                        <ComboBox x:Name="DensityCombo" Width="260" HorizontalAlignment="Left" SelectionChanged="DensityCombo_SelectionChanged">
                                             <ComboBoxItem x:Name="DensityItemExpanded" Content="Expanded (15 Items)"/>
                                             <ComboBoxItem x:Name="DensityItemCompact" Content="Compact (18 Items)"/>
                                         </ComboBox>
@@ -361,7 +352,7 @@
                                 <TextBlock x:Name="TxtShortcutCardSub" Text="Select a mouse button or keyboard hotkey to summon Radial Launcher." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
                                 
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <ComboBox x:Name="ShortcutCombo" Width="300" Background="#1C1C26" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged" />
+                                    <ComboBox x:Name="ShortcutCombo" Width="300" SelectionChanged="ShortcutCombo_SelectionChanged" />
                                     <Button x:Name="BtnAssignShortcut" Content="🎯 Assign Custom Shortcut" Margin="10,0,0,0" Padding="14,6" Background="#282835" Foreground="White" BorderBrush="#35FFFFFF" Click="AssignCustomShortcut_Click"/>
                                 </StackPanel>
                                 <TextBlock x:Name="ActiveShortcutLabel" Text="Active Shortcut: MiddleClick" FontSize="12" Foreground="#588CEC" FontWeight="SemiBold"/>
@@ -436,7 +427,7 @@
                             <StackPanel>
                                 <TextBlock x:Name="TxtLanguageTitle" Text="🌐 Display Language" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
                                 <TextBlock x:Name="TxtLanguageSub" Text="Select language for application UI and radial menu (Default: English). Sorted alphabetically." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
-                                <ComboBox x:Name="LanguageCombo" Width="320" HorizontalAlignment="Left" Background="#1C1C26" Foreground="White" SelectionChanged="LanguageCombo_SelectionChanged"/>
+                                <ComboBox x:Name="LanguageCombo" Width="320" HorizontalAlignment="Left" SelectionChanged="LanguageCombo_SelectionChanged"/>
                             </StackPanel>
                         </Border>
 
