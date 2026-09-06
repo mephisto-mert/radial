@@ -46,6 +46,7 @@ namespace RadialLauncher.Installer
             ChkStartMenuShortcut.Content = isTr ? "Başlat Menüsü Kısayolu Oluştur" : "Create Start Menu Shortcut";
             ChkAutoStartup.Content = isTr ? "Windows başlangıcında otomatik çalıştır (Sistem Tepsisi)" : "Run automatically on Windows startup (Tray Mode)";
             ChkLaunchAfter.Content = isTr ? "Kurulum bittiğinde Radial Launcher'ı başlat" : "Launch Radial Launcher when setup completes";
+            ChkCleanInstall.Content = isTr ? "Sıfırdan Temiz Kurulum (Mevcut ayarları ve kısayolları sıfırla)" : "Clean Install (Reset existing user data & shortcuts)";
             TxtCleanGuarantee.Text = isTr 
                 ? "Temiz Kurulum: Ayarlarınız ve kısayollarınız %LOCALAPPDATA%\\RadialLauncher içinde güvenle saklanır"
                 : "Clean Standalone Installation: Your settings and shortcuts will be safely stored in %LOCALAPPDATA%\\RadialLauncher";
@@ -142,11 +143,21 @@ namespace RadialLauncher.Installer
             bool desktop = ChkDesktopShortcut.IsChecked == true;
             bool startMenu = ChkStartMenuShortcut.IsChecked == true;
             bool runStartup = ChkAutoStartup.IsChecked == true;
+            bool cleanInstall = ChkCleanInstall.IsChecked == true;
 
             try
             {
                 await Task.Run(() =>
                 {
+                    if (cleanInstall)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            TxtStatusDetail.Text = _currentLang == "tr" ? "Eski kullanıcı verileri temizleniyor..." : "Resetting user data...";
+                        });
+                        InstallerService.ResetUserData();
+                    }
+
                     InstallerService.ExtractPayload(targetDir, (pct, detail) =>
                     {
                         Dispatcher.Invoke(() =>

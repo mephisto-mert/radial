@@ -25,8 +25,9 @@
 - 8 Curated themes: **Dark**, **Light**, **Midnight Blue**, **Cyberpunk**, **Forest**, **Crimson**, **Obsidian**, and **Wallpaper Adaptive**.
 - Fixed ComboBox and dropdown contrast across all light and dark themes to guarantee perfect text readability.
 
-### 📦 Standalone Installer & Portable Mode (Kurulum Sihirbazı & Taşınabilir Mod)
+### 📦 Standalone Installer & Clean Install Toggle (Kurulum Sihirbazı & Temiz Kurulum Seçeneği)
 - **Standalone Setup Wizard (`RadialLauncher-Setup-v1.0.0.exe`)**: Single-file dark installer with custom install directory, desktop shortcut, startup toggle, and progress bar.
+- **Clean Install Toggle (`[ ] Sıfırdan Temiz Kurulum`)**: Optional checkbox in installer to easily reset local settings and start 100% fresh.
 - **Zero-Dependency Portable Mode**: Place `portable.mode` in the application directory to store all databases and settings locally without touching `%LOCALAPPDATA%`.
 
 ### ⚡ Performance & Core Architecture (Performans ve Güvenlik)
@@ -50,8 +51,8 @@
 ## 🔒 Verification & SHA-256 Checksums
 
 ```
-5F3008C893C650E2BA414C8BC235C6D335AABC8C6504F9F5465BBAEAEE7FBEB1  RadialLauncher-1.0.0-win-x64.zip
-3ADF753B24F788D99CF38AC0E0BB5B22BD374620B264E34D46FFD4F23E7EAA6B  RadialLauncher-Setup-v1.0.0.exe
+914A432379926D42C29A8489DDC52401A4D2ACE9FA360C40617B98DDA81CE95F  RadialLauncher-1.0.0-win-x64.zip
+85E4B4E52D3D12BFFC993DC13880C2DD40A3E6298FFB2EC16B0842DBEE4DA37D  RadialLauncher-Setup-v1.0.0.exe
 ```
 
 Verify in PowerShell:

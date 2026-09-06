@@ -26,6 +26,38 @@ namespace RadialLauncher.Installer
             return Path.Combine(localAppData, "RadialLauncher");
         }
 
+        public static void ResetUserData()
+        {
+            try
+            {
+                string userData = GetUserDataPath();
+                if (Directory.Exists(userData))
+                {
+                    string dbPath = Path.Combine(userData, "launcher.db");
+                    if (File.Exists(dbPath))
+                    {
+                        try { File.Delete(dbPath); } catch { }
+                    }
+                    string dbWal = Path.Combine(userData, "launcher.db-wal");
+                    if (File.Exists(dbWal))
+                    {
+                        try { File.Delete(dbWal); } catch { }
+                    }
+                    string dbShm = Path.Combine(userData, "launcher.db-shm");
+                    if (File.Exists(dbShm))
+                    {
+                        try { File.Delete(dbShm); } catch { }
+                    }
+                    string settingsPath = Path.Combine(userData, "settings.json");
+                    if (File.Exists(settingsPath))
+                    {
+                        try { File.Delete(settingsPath); } catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+
         public static void ExtractPayload(string targetDirectory, Action<int, string>? reportProgress = null)
         {
             Directory.CreateDirectory(targetDirectory);

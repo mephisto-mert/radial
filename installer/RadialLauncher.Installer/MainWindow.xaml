@@ -67,6 +67,7 @@
                         <CheckBox x:Name="ChkStartMenuShortcut" Content="Create Start Menu Shortcut" IsChecked="True"/>
                         <CheckBox x:Name="ChkAutoStartup" Content="Run automatically on Windows startup (Tray Mode)" IsChecked="True"/>
                         <CheckBox x:Name="ChkLaunchAfter" Content="Launch Radial Launcher when setup completes" IsChecked="True"/>
+                        <CheckBox x:Name="ChkCleanInstall" Content="Clean Install (Reset existing user data &amp; shortcuts)" IsChecked="False" Margin="0,6,0,0"/>
                     </StackPanel>
                 </Border>
 
