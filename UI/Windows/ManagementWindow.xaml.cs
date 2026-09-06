@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Localization;
 using RadialLauncher.Services.Scanning;
 using RadialLauncher.Services.Sync;
 using RadialLauncher.Services.Themes;
@@ -118,6 +119,7 @@ namespace RadialLauncher.UI.Windows
             LoadStartupState();
             LoadShortcutState();
             LoadDensityState();
+            LoadLanguageState();
             UpdateBackupStatusLabel();
             if (AutoCheckUpdatesCheck != null)
             {
@@ -720,6 +722,52 @@ namespace RadialLauncher.UI.Windows
             {
                 Log.Error(ex, "Failed resetting settings");
                 MessageBox.Show("Ayarlar sıfırlanırken bir sorun oluştu.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void LoadLanguageState()
+        {
+            try
+            {
+                if (LanguageCombo == null) return;
+                LanguageCombo.SelectionChanged -= LanguageCombo_SelectionChanged;
+                LanguageCombo.Items.Clear();
+
+                var languages = LocalizationService.Instance.SupportedLanguages;
+                int selectedIndex = 0;
+                string currentLang = LocalizationService.Instance.CurrentLanguage;
+
+                for (int i = 0; i < languages.Count; i++)
+                {
+                    var lang = languages[i];
+                    var item = new ComboBoxItem
+                    {
+                        Content = $"{lang.Flag}  {lang.DisplayName}",
+                        Tag = lang.Code
+                    };
+                    LanguageCombo.Items.Add(item);
+
+                    if (lang.Code.Equals(currentLang, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectedIndex = i;
+                    }
+                }
+
+                LanguageCombo.SelectedIndex = selectedIndex;
+                LanguageCombo.SelectionChanged += LanguageCombo_SelectionChanged;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed loading language state");
+            }
+        }
+
+        private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LanguageCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string langCode)
+            {
+                LocalizationService.Instance.SetLanguage(langCode);
+                StatusText.Text = $"Dil değiştirildi: {selectedItem.Content}";
             }
         }
     }

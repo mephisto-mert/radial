@@ -1,100 +1,135 @@
-# 🚀 Radial Launcher
+﻿# ⚡ Radial Launcher
 
-<div align="center">
-  <img src="Resources/app.ico" width="128" height="128" alt="Radial Launcher Logo" />
-  <br />
-  <h3>High-Performance Hardware-Accelerated Radial Menu &amp; Windows Command Center</h3>
-  <p>Ultra-fast circular application launcher, live window switcher, game library aggregator, macro automation, and system control dashboard for Windows 10 &amp; 11.</p>
-</div>
+<p align="center">
+  <img src="docs/images/radial_overlay_main.png" alt="Radial Launcher Hero Screenshot" width="720"/>
+</p>
 
----
+<p align="center">
+  <strong>Ultra-Fast, Futuristic Circular Application & Game Launcher for Windows 10 & 11</strong><br>
+  <em>Summon your entire workspace, favorite games, system controls, and websites in a fraction of a second with smooth radial gestures.</em>
+</p>
 
-## 🌟 Key Features
-
-* **🪟 Live Window Switcher & DWM Previews:** Instant enumeration of all top-level desktop windows with real-time thumbnail previews and virtual desktop migration.
-* **⚡ System & Media Actions:** Hardware-level volume control, media keys, Windows screenshot (`Win+Shift+S`), Pomodoro focus timer (25 min), lock screen, and system actions.
-* **📂 Hierarchical Submenus & Layers:** Infinite-depth nested submenus with keyboard shortcut navigation (`Esc` / `Backspace`).
-* **🎮 Steam & Epic Games Detection:** Automated background scanning of Steam libraries and Epic Games manifests with official game art extraction.
-* **📋 Clipboard History Manager:** Low-latency thread-safe clipboard listener with 20-item rolling history, Unicode support, and 500KB text truncation memory guard.
-* **🎨 8 Curated Visual Themes:** 8 meticulously tuned contrast-safe themes (`Dark`, `White`, `Red`, `Blue`, `Purple`, `Forest`, `AMOLED Black`, `High Contrast`) with WCAG-compliant automatic luminance contrast calculations.
-* **🪞 Radial Transparency / Opacity Slider:** Real-time adjustable radial overlay background opacity (20% – 100%) while preserving 100% crisp foreground text and icon clarity.
-* **🔄 Seamless Page & Category Navigation:** Drag middle-mouse horizontally (threshold ~35px) or scroll mouse wheel to smoothly cycle through pages and categories.
-* **⚡ Contextual Quick Actions:** Hover over any item to reveal immediate context actions (Steam play/store, Epic launch, web URL open/copy, EXE run-as-admin/open directory, system actions).
-* **⭐ Most Used (En Çok Kullanılanlar) Synchronization:** Smart recency and frequency-weighted ranking algorithm synchronized between the live radial menu and management settings.
-* **💾 Local AppData Backup & Rotation:** Safe, atomic local JSON backups stored in `%LOCALAPPDATA%\RadialLauncher\Backups\` with automated 10-backup rotation and one-click restore.
-* **🎯 Advanced Mouse & Keyboard Shortcuts:** Support for single keys, combinations (`Ctrl`, `Shift`, `Alt`, `Win`), and all mouse buttons (`MiddleClick`, `Mouse 4`/`XButton1`, `Mouse 5`/`XButton2`, `Ctrl+Mouse 4`, `Alt+RightClick`, etc.) with interactive assignment.
-* **🧩 Modular Plugin Architecture:** Dynamic assembly plugin loading with isolated runtime exception boundaries.
-* **🔍 Instant Search-as-you-type:** Type any character while the radial menu is open to dynamically filter items with fuzzy matching.
+<p align="center">
+  <a href="https://github.com/mephisto-mert/radial/releases/latest"><img src="https://img.shields.io/github/v/release/mephisto-mert/radial?style=for-the-badge&color=6366F1&label=Release" alt="Release Version"></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20x64-0078D6?style=for-the-badge&logo=windows" alt="Platform">
+  <img src="https://img.shields.io/badge/.NET-7.0%20%7C%20WPF-512BD4?style=for-the-badge&logo=dotnet" alt=".NET 7">
+  <img src="https://img.shields.io/badge/Languages-10%2B%20Supported-10B981?style=for-the-badge" alt="Languages">
+  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20%26%20Local-8B5CF6?style=for-the-badge" alt="Privacy">
+  <img src="https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge" alt="License">
+</p>
 
 ---
 
-## 🎮 Controls & Shortcuts
+## 🌟 Overview
 
-| Action | Input / Shortcut |
+**Radial Launcher** is a high-performance, keyboard-and-mouse driven radial launcher built with WPF and .NET 7. Designed for power users, gamers, and developers, it replaces cluttered desktop shortcuts and cumbersome taskbars with an intuitive, aesthetic circular ring HUD.
+
+Summon it instantly anywhere on your screen using your **Mouse Middle Click**, **Side Buttons (XButton1/2)**, or a custom hotkey like `Alt + Space`.
+
+---
+
+## 📸 Screenshots & Visual Walkthrough
+
+### 1. Circular Ring Overlay & Cinematic Clockwise Bloom
+> Smooth sequential clockwise cascade animation when switching categories or pages.
+<p align="center">
+  <img src="docs/images/radial_overlay_main.png" alt="Radial Launcher Circular Overlay" width="680"/>
+</p>
+
+### 2. Centered Contextual Quick Actions Micro HUD
+> Hover over any Steam game, executable, or tool to reveal instant actions (▶ Play, 🛒 Store, 👥 Community, 📁 Location, ⚡ Run as Admin) without overlapping radial bubbles.
+<p align="center">
+  <img src="docs/images/radial_overlay_hud.png" alt="Contextual Quick Actions Micro HUD" width="680"/>
+</p>
+
+### 3. Application & Shortcut Management (Tab 1)
+> Search, filter by category, sort by usage or position, and trigger automated full-PC scanning.
+<p align="center">
+  <img src="docs/images/settings_tab1_applications.png" alt="Applications & Shortcuts Tab" width="680"/>
+</p>
+
+### 4. Curated Themes & Appearance (Tab 2)
+> 8+ built-in color themes (Dark, Midnight Blue, Cyberpunk, Forest, Crimson, Dracula, Obsidian, Solarized) with real-time contrast checking and ring density controls.
+<p align="center">
+  <img src="docs/images/settings_tab2_themes.png" alt="Themes & Appearance Tab" width="680"/>
+</p>
+
+### 5. Activation Hotkeys & Windows Startup (Tab 3)
+> Interactive shortcut picker for mouse and keyboard triggers with auto-closing perimeter boundaries.
+<p align="center">
+  <img src="docs/images/settings_tab3_shortcuts.png" alt="Shortcuts & Startup Tab" width="680"/>
+</p>
+
+### 6. Local Backups & Data Portability (Tab 4)
+> Automated rolling backups (keeps last 10 backups) and JSON Import/Export for seamless multi-device migration.
+<p align="center">
+  <img src="docs/images/settings_tab4_backups.png" alt="Backups & Data Tab" width="680"/>
+</p>
+
+### 7. Multi-Language Support & Diagnostics (Tab 5)
+> 10+ natively translated languages sorted alphabetically with one-click GitHub update checks.
+<p align="center">
+  <img src="docs/images/settings_tab5_diagnostics.png" alt="Multi-Language & Diagnostics Tab" width="680"/>
+</p>
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
 | :--- | :--- |
-| **Open Menu** | Middle Mouse Button (Wheel Click) / Mouse 4 / Mouse 5 / Ctrl+Space / Alt+Space / Custom |
-| **Close Menu** | Move mouse outside radial area (>330px) / Escape / Click outside |
-| **Launch Item** | Left Click / Enter |
-| **Quick Actions** | Hover mouse on any item to view contextual action card |
-| **Page / Category Navigation (Drag)** | Hold & Drag Middle Mouse Left / Right (>35px) |
-| **Page / Category Navigation (Wheel)** | Scroll Mouse Wheel Up / Down |
-| **Direct Page Select** | Click on Page Dot indicators under Category Pill |
-| **Close Window Item** | Middle Click on Window item |
-| **Move Window to Virtual Desktop** | Right Click on Window item |
-| **Open Submenu** | Left Click on Submenu item |
-| **Back to Parent Menu** | Escape / Backspace |
-| **Change Category** | Click Category Pill / Number Keys (1-9) |
-| **Instant Search** | Type directly on keyboard while overlay is visible |
-| **Open Management & Settings** | Tray Icon Menu (or Ctrl+,) |
+| 🏎️ **Ultra-Fast Radial HUD** | 60 FPS hardware-accelerated animations with spring easing and 3x cinematic clockwise bloom. |
+| 🎮 **Auto Game Detection** | Automatically detects Steam & Epic Games libraries with custom protocol execution. |
+| 🔍 **Deep PC Scanner** | Automatically discovers installed software, desktop shortcuts, and Windows Store apps. |
+| ⚡ **Contextual Actions** | Quick action micro HUD for games and apps (Run as Administrator, Open File Location, Steam Store). |
+| 🌐 **10+ Languages** | Deutsch, English (Primary), Español, Français, Italiano, Japanese, Korean, Polish, Portuguese (BR), Russian, Turkish. |
+| 🎨 **Theme Engine** | 8+ dark/light palettes, wallpaper accent color extraction, and dynamic ring opacity slider. |
+| 🛡️ **Zero Telemetry & 100% Local** | All database and configuration files are stored safely in `%LOCALAPPDATA%\RadialLauncher`. No cloud tracking. |
+| 📦 **Clean Standalone Installer** | Includes both a modern dark GUI setup wizard (`RadialLauncher-Setup-v1.0.0.exe`) and portable zip. |
 
 ---
 
-## 💾 Data & Backup Architecture
+## 🚀 Download & Installation
 
-All user data, settings, and backups are stored in Windows Local AppData:
-```text
-%LOCALAPPDATA%\RadialLauncher\
-├── launcher.db          # SQLite database containing items, categories, statistics
-├── settings.json        # Active user configuration (theme, opacity, shortcuts)
-├── settings.json.bak    # Atomic recovery mirror for fault-tolerant crash safety
-├── Backups\             # Automated & manual local backups (up to 10 rotated copies)
-│   ├── backup-20260906-045012.json
-│   └── ...
-├── Logs\                # Diagnostics and application event logs
-└── Plugins\             # Extensibility plugins
-```
+### Option 1: Standalone Windows Installer (Recommended)
+1. Download **`RadialLauncher-Setup-v1.0.0.exe`** from [GitHub Releases](https://github.com/mephisto-mert/radial/releases/latest).
+2. Run the installer, select your installation folder (Default: `%LOCALAPPDATA%\Programs\RadialLauncher`), and click **Install**.
+3. Radial Launcher will automatically create desktop & start menu shortcuts and launch in the system tray.
+
+### Option 2: Portable ZIP
+1. Download **`RadialLauncher-1.0.0-win-x64.zip`**.
+2. Extract to any directory and run `RadialLauncher.exe`.
 
 ---
 
-## 📦 Installation & Packaging
+## 🎮 Default Controls & Navigation
 
-### Portable Release
-1. Download `RadialLauncher-1.0.0-win-x64.zip` from [Releases](https://github.com/mephisto-mert/radial/releases).
-2. Extract to any folder (e.g. `C:\Program Files\RadialLauncher` or Desktop).
-3. Run `RadialLauncher.exe`.
+- **Summon / Dismiss Overlay**: `Mouse Middle Click` or `Alt + Space`
+- **Switch Categories / Pages**: Middle Click & Drag Left/Right or use `Mouse Scroll Wheel`
+- **Select / Launch Item**: `Left Click` on any radial icon
+- **Contextual Quick Actions**: Hover mouse over any item to reveal centered quick actions
+- **Auto-Dismiss**: Moving the mouse 330px away from the menu automatically hides the radial overlay
+- **Open Settings**: Click the center gear icon or right-click the system tray icon
 
 ---
 
-## 🛠️ Building from Source
+## 🛠️ Technology Stack & Architecture
 
-### Prerequisites
-* Windows 10 (1809+) or Windows 11
-* [.NET 7.0 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) (or [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0))
+- **Framework**: .NET 7.0 (Windows WPF x64)
+- **Database**: SQLite with Dapper ORM & WAL Mode (`Microsoft.Data.Sqlite`, `Dapper`)
+- **MVVM Pattern**: CommunityToolkit.Mvvm
+- **Tray & Notifications**: Hardcodet.NotifyIcon.Wpf
+- **Logging**: Serilog file sink with rolling audit logs
+- **Packaging**: Standalone WPF Setup Wizard + Inno Setup Script
 
-### Build & Run
-```bash
-# Clone repository
-git clone https://github.com/mephisto-mert/radial.git
-cd radial
+---
 
-# Run tests
-dotnet test RadialLauncher.Tests/RadialLauncher.Tests.csproj -c Release
+## 🏷️ Keywords & Tags
 
-# Publish standalone package
-dotnet publish -c Release -r win-x64 --no-self-contained -o publish/RadialLauncher-1.0.0-win-x64
-```
+`radial-launcher` `app-launcher` `game-launcher` `radial-menu` `pie-menu` `windows11` `windows10` `wpf` `csharp` `dotnet` `productivity` `hotkey-launcher` `fluent-design` `quick-access` `open-source` `steam-launcher`
 
 ---
 
 ## 📄 License
-Copyright © 2026 mephisto-mert. Licensed under the MIT License.
+
+This project is licensed under the [MIT License](LICENSE).

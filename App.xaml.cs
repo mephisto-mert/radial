@@ -10,6 +10,7 @@ using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Games;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Localization;
 using RadialLauncher.Services.Logging;
 using RadialLauncher.Services.Plugins;
 using RadialLauncher.Services.Processes;
@@ -261,6 +262,7 @@ namespace RadialLauncher
             services.AddSingleton<ISyncService, SyncService>();
             services.AddSingleton<IContextualActionService, ContextualActionService>();
             services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
+            services.AddSingleton<ILocalizationService>(sp => LocalizationService.Instance);
 
             // ViewModels
             services.AddSingleton<RadialMenuViewModel>();
