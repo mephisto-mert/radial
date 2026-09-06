@@ -375,7 +375,7 @@ namespace RadialLauncher
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to open ManagementWindow");
-                MessageBox.Show($"Ayarlar penceresi açılamadı: [{ex.GetType().Name}] {ex.Message}\n\n{ex.StackTrace}", "Radial Launcher Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Ayarlar penceresi açılırken bir sorun oluştu. Detaylar için uygulama loglarını kontrol edebilirsiniz.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

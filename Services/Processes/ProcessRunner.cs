@@ -120,7 +120,7 @@ namespace RadialLauncher.Services.Processes
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to launch item: {Name}", item.Name);
-                MessageBox.Show($"Başlatılamadı: {item.Name}\n{ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"'{item.Name}' öğesi başlatılamadı. Lütfen hedef dosya yolunu kontrol edin.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
