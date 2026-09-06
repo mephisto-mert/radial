@@ -98,20 +98,16 @@ namespace RadialLauncher.Installer
                 reportProgress?.Invoke(pct, $"Extracting: {entry.Name}");
             }
 
-            // Copy self as Uninstall.exe
+            // Ensure self-contained / portable mode marker so installation is clean and isolated
             try
             {
-                string currentExe = Environment.ProcessPath ?? System.AppContext.BaseDirectory;
-                string uninstallerPath = Path.Combine(targetDirectory, "Uninstall.exe");
-                if (File.Exists(currentExe))
+                string portableMarker = Path.Combine(targetDirectory, "portable.mode");
+                if (!File.Exists(portableMarker))
                 {
-                    File.Copy(currentExe, uninstallerPath, overwrite: true);
+                    File.WriteAllText(portableMarker, "Radial Launcher Self-Contained Isolated Mode");
                 }
             }
-            catch
-            {
-                // Ignore copy errors in restricted environments
-            }
+            catch { }
 
             reportProgress?.Invoke(85, "Files extracted successfully.");
         }

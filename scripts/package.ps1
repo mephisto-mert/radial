@@ -36,6 +36,8 @@ if (Test-Path "$rootDir\README.md") {
 if (Test-Path "$rootDir\app.ico") {
     Copy-Item "$rootDir\app.ico" "$publishDir\app.ico" -Force
 }
+# Ensure self-contained / portable mode marker so all installs use clean isolated data
+New-Item -Path "$publishDir\portable.mode" -ItemType File -Value "Radial Launcher Isolated Mode" -Force | Out-Null
 
 # 3. Create Payload Zip for Installer & Standalone Portable Zip
 Write-Host "`n[2/5] Creating clean distribution ZIP packages..." -ForegroundColor Yellow
