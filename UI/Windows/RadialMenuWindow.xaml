@@ -1,14 +1,15 @@
 <Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:RadialLauncher.UI.Localization"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
-        Title="Radial Launcher" Height="600" Width="600"
+        Title="{loc:Loc App_Name, Fallback='Radial Launcher'}" Height="600" Width="600"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
         KeyDown="Window_KeyDown" TextInput="Window_TextInput" MouseWheel="Window_MouseWheel"
-        automation:AutomationProperties.Name="Radial Launcher Circular Menu"
-        automation:AutomationProperties.HelpText="Application and shortcut launcher">
+        automation:AutomationProperties.Name="{loc:Loc App_Name, Fallback='Radial Launcher Circular Menu'}"
+        automation:AutomationProperties.HelpText="{loc:Loc App_Sub, Fallback='Application and shortcut launcher'}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
@@ -130,9 +131,9 @@
         <Border x:Name="TutorialOverlay" Visibility="{Binding ShowTutorial, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                 Background="#F0101014" CornerRadius="24" Margin="60" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel HorizontalAlignment="Center">
-                <TextBlock x:Name="TxtTutorialHeader" Text="🚀 Welcome to Radial Launcher!" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
-                <TextBlock x:Name="TxtTutorialBody" Text="• Middle Click: Open / close radial menu&#x0a;• Click any icon: Launch application or shortcut&#x0a;• Mouse wheel / Drag: Navigate pages and categories&#x0a;• Type anytime: Fast search across all apps" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
-                <Button x:Name="BtnDismissTutorial" Content="Got it! Start using" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
+                <TextBlock x:Name="TxtTutorialHeader" Text="{loc:Loc TutorialHeader, Fallback='🚀 Welcome to Radial Launcher!'}" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="TxtTutorialBody" Text="{loc:Loc TutorialBody, Fallback='• Middle Click: Open / close radial menu&#x0a;• Click any icon: Launch application or shortcut&#x0a;• Mouse wheel / Drag: Navigate pages and categories&#x0a;• Type anytime: Fast search across all apps'}" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
+                <Button x:Name="BtnDismissTutorial" Content="{loc:Loc TutorialDismiss, Fallback='Got it! Start using'}" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
                         HorizontalAlignment="Center" Cursor="Hand" Command="{Binding DismissTutorialCommand}">
                     <Button.Resources>
                         <Style TargetType="Border">

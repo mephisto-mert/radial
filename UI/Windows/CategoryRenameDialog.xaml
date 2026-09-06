@@ -1,7 +1,8 @@
 <Window x:Class="RadialLauncher.UI.Windows.CategoryRenameDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Rename Category — Radial Launcher" Height="280" Width="440"
+        xmlns:loc="clr-namespace:RadialLauncher.UI.Localization"
+        Title="{loc:Loc Cat_Rename_Dialog_Title}" Height="280" Width="440"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="#14141C" Foreground="#ECECF1" WindowStyle="SingleBorderWindow">
     <Grid Margin="24">
@@ -15,13 +16,13 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock x:Name="TxtHeaderTitle" Text="🏷️ Rename Category" FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
-            <TextBlock x:Name="TxtHeaderSub" Text="Enter a new display name for the selected category." FontSize="12" Foreground="#94A3B8"/>
+            <TextBlock x:Name="TxtHeaderTitle" Text="{loc:Loc Cat_Rename_Header}" FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
+            <TextBlock x:Name="TxtHeaderSub" Text="{loc:Loc Cat_Rename_Sub}" FontSize="12" Foreground="#94A3B8"/>
         </StackPanel>
 
         <!-- Input Box -->
         <StackPanel Grid.Row="1" Margin="0,0,0,8">
-            <TextBlock x:Name="TxtCategoryNameLabel" Text="Category Name:" FontSize="12" FontWeight="SemiBold" Foreground="#AAA" Margin="0,0,0,6"/>
+            <TextBlock x:Name="TxtCategoryNameLabel" Text="{loc:Loc Cat_Name_Label}" FontSize="12" FontWeight="SemiBold" Foreground="#AAA" Margin="0,0,0,6"/>
             <TextBox x:Name="CategoryNameTextBox" Height="34" MaxLength="50" Padding="8,6" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" FontSize="13" TextChanged="CategoryNameTextBox_TextChanged" KeyDown="CategoryNameTextBox_KeyDown"/>
         </StackPanel>
 
@@ -31,8 +32,8 @@
         <!-- Action Buttons -->
         <DockPanel Grid.Row="4" Margin="0,10,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="BtnCancel" Content="Cancel" Width="85" Height="34" Margin="0,0,10,0" Background="#22222E" Foreground="#AAA" BorderThickness="1" BorderBrush="#35FFFFFF" Click="BtnCancel_Click"/>
-                <Button x:Name="BtnSave" Content="Save" Width="95" Height="34" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="BtnSave_Click"/>
+                <Button x:Name="BtnCancel" Content="{loc:Loc Cancel}" Width="85" Height="34" Margin="0,0,10,0" Background="#22222E" Foreground="#AAA" BorderThickness="1" BorderBrush="#35FFFFFF" Click="BtnCancel_Click"/>
+                <Button x:Name="BtnSave" Content="{loc:Loc Save}" Width="95" Height="34" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="BtnSave_Click"/>
             </StackPanel>
         </DockPanel>
     </Grid>
