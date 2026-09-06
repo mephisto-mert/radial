@@ -38,6 +38,8 @@ namespace RadialLauncher.UI.ViewModels
 
         public IVirtualDesktopService DesktopService => _desktopService;
         public IContextualActionService ContextualActionService => _contextualActionService;
+        public IItemRepository ItemRepository => _itemRepo;
+        public void ReloadCategoriesAndItems() => InitializeForDisplay();
 
         private readonly Stack<(int parentId, string title)> _navStack = new();
         private List<LauncherItem> _allItems = new();

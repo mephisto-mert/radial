@@ -18,6 +18,7 @@ namespace RadialLauncher.Services.Clipboard
         void RecordCurrentClipboard();
         void StartListening(IntPtr hwnd);
         void StopListening(IntPtr hwnd);
+        void RemoveAt(int index);
         void ClearHistory();
     }
 }

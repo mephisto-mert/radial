@@ -467,6 +467,15 @@ namespace RadialLauncher.Services.Themes
             }
         }
 
+        public string GetSteamGridDbKey() => LoadSettings().SteamGridDbApiKey ?? string.Empty;
+
+        public void SetSteamGridDbKey(string key)
+        {
+            var settings = LoadSettings();
+            settings.SteamGridDbApiKey = key;
+            SaveSettings(settings);
+        }
+
         public AppSettings GetSettings() => LoadSettings();
 
         public void UpdateSettings(AppSettings settings)
@@ -507,6 +516,7 @@ namespace RadialLauncher.Services.Themes
             public bool HasSeenTutorial { get; set; } = false;
             public bool AutoCheckUpdates { get; set; } = true;
             public string Language { get; set; } = "en";
+            public string? SteamGridDbApiKey { get; set; } = string.Empty;
         }
     }
 }

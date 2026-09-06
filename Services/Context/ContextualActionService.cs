@@ -195,6 +195,14 @@ namespace RadialLauncher.Services.Context
                         Payload = $"https://steamcommunity.com/app/{appId}"
                     });
                 }
+                actions.Add(new ItemContextAction
+                {
+                    Id = "GAME_COVER",
+                    Title = loc.GetString("Cover_Art", "Cover Art"),
+                    Icon = "🎨",
+                    ActionType = "DOWNLOAD_COVER",
+                    Payload = item.Name ?? string.Empty
+                });
                 return actions;
             }
 
@@ -246,6 +254,14 @@ namespace RadialLauncher.Services.Context
                     Icon = "🛒",
                     ActionType = "URI",
                     Payload = "https://store.epicgames.com"
+                });
+                actions.Add(new ItemContextAction
+                {
+                    Id = "GAME_COVER",
+                    Title = loc.GetString("Cover_Art", "Cover Art"),
+                    Icon = "🎨",
+                    ActionType = "DOWNLOAD_COVER",
+                    Payload = item.Name ?? string.Empty
                 });
                 return actions;
             }
@@ -443,6 +459,24 @@ namespace RadialLauncher.Services.Context
                             FileName = "cmd.exe",
                             WorkingDirectory = Directory.Exists(termDir) ? termDir : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                             UseShellExecute = true
+                        });
+                        return true;
+
+                    case "DOWNLOAD_COVER":
+                        System.Threading.Tasks.Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var coverService = App.ServiceProvider?.GetService(typeof(RadialLauncher.Services.Games.ICoverArtService)) as RadialLauncher.Services.Games.ICoverArtService;
+                                if (coverService != null)
+                                {
+                                    await coverService.DownloadCoverAsync(item.Id, item.Name);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Debug(ex, "Failed downloading cover for {Name}", item.Name);
+                            }
                         });
                         return true;
                 }

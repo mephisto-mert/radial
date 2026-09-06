@@ -4,7 +4,8 @@
         xmlns:controls="clr-namespace:RadialLauncher.UI.Controls"
         Title="Radial Launcher — Settings &amp; Management" Height="720" Width="1050"
         WindowStartupLocation="CenterScreen" Background="#0C0C12" Foreground="#ECECF1"
-        WindowStyle="SingleBorderWindow">
+        WindowStyle="SingleBorderWindow"
+        AllowDrop="True" PreviewDragOver="ManagementWindow_DragOver" Drop="ManagementWindow_Drop">
     <Window.Resources>
         <!-- Modern Sidebar TabControl Style -->
         <Style TargetType="{x:Type TabControl}">
@@ -189,7 +190,7 @@
                                 <ComboBox x:Name="CategoryFilterCombo" Width="170" SelectionChanged="CategoryFilterCombo_SelectionChanged"/>
                                 <Button x:Name="BtnRenameCategory" Content="✏️" ToolTip="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=RenameCategoryToolTip}" Width="30" Height="28" Padding="2" Margin="6,0,0,0" Background="#22222E" Foreground="#588CEC" BorderBrush="#35FFFFFF" Click="BtnRenameCategory_Click"/>
                                 <TextBlock x:Name="TxtSearchLabel" Text="Search:" VerticalAlignment="Center" Margin="14,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
-                                <TextBox x:Name="SearchBox" Width="200" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
+                                <TextBox x:Name="SearchBox" Width="200" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
@@ -428,6 +429,19 @@
                                 <TextBlock x:Name="TxtLanguageTitle" Text="🌐 Display Language" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
                                 <TextBlock x:Name="TxtLanguageSub" Text="Select language for application UI and radial menu (Default: English). Sorted alphabetically." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
                                 <ComboBox x:Name="LanguageCombo" Width="320" HorizontalAlignment="Left" SelectionChanged="LanguageCombo_SelectionChanged"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- SteamGridDB Game Covers Card -->
+                        <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock x:Name="TxtSteamGridTitle" Text="🎮 SteamGridDB Game Covers" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtSteamGridSub" Text="Enter your SteamGridDB API key to automatically fetch 600x900 vertical poster cover art for Steam and Epic games." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <Button x:Name="BtnSaveSteamGridKey" Content="💾 Save Key" DockPanel.Dock="Right" Padding="14,6" Margin="10,0,0,0" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="SaveSteamGridKey_Click"/>
+                                    <TextBox x:Name="SteamGridKeyBox" Height="32" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" VerticalContentAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock x:Name="SteamGridKeyStatus" Text="" FontSize="11" Foreground="#10B981"/>
                             </StackPanel>
                         </Border>
 

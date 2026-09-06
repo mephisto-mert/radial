@@ -8,6 +8,7 @@
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
         KeyDown="Window_KeyDown" TextInput="Window_TextInput" MouseWheel="Window_MouseWheel"
+        AllowDrop="True" PreviewDragOver="Window_DragOver" Drop="Window_Drop"
         automation:AutomationProperties.Name="{loc:Loc App_Name, Fallback='Radial Launcher Circular Menu'}"
         automation:AutomationProperties.HelpText="{loc:Loc App_Sub, Fallback='Application and shortcut launcher'}">
     <Window.Resources>

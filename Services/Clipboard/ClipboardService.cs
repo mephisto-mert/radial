@@ -168,6 +168,17 @@ namespace RadialLauncher.Services.Clipboard
             }
         }
 
+        public void RemoveAt(int index)
+        {
+            lock (_lock)
+            {
+                if (index >= 0 && index < _history.Count)
+                {
+                    _history.RemoveAt(index);
+                }
+            }
+        }
+
         public void ClearHistory()
         {
             lock (_lock)

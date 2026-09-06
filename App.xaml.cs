@@ -8,6 +8,7 @@ using RadialLauncher.Data.Repositories;
 using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Apps;
 using RadialLauncher.Services.Clipboard;
+using RadialLauncher.Services.Commands;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Games;
 using RadialLauncher.Services.Icons;
@@ -273,6 +274,8 @@ namespace RadialLauncher
             services.AddSingleton<IContextualActionService, ContextualActionService>();
             services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
             services.AddSingleton<ILocalizationService>(sp => LocalizationService.Instance);
+            services.AddSingleton<ICoverArtService, CoverArtService>();
+            services.AddSingleton<ICommandPaletteService, CommandPaletteService>();
 
             // ViewModels
             services.AddSingleton<RadialMenuViewModel>();
@@ -281,6 +284,7 @@ namespace RadialLauncher
             // Windows
             services.AddSingleton<RadialMenuWindow>();
             services.AddTransient<ManagementWindow>();
+            services.AddTransient<ClipboardWindow>();
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -407,6 +411,20 @@ namespace RadialLauncher
             }
         }
 
+        private void OpenClipboardHistory()
+        {
+            try
+            {
+                var clipWin = ServiceProvider.GetRequiredService<ClipboardWindow>();
+                clipWin.Show();
+                clipWin.Activate();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed opening ClipboardWindow");
+            }
+        }
+
         private void BuildTrayContextMenu()
         {
             if (notifyIcon == null) return;
@@ -414,6 +432,9 @@ namespace RadialLauncher
             
             var openItem = new System.Windows.Controls.MenuItem { Header = LocalizationService.Instance.GetString("TrayOpenMenu", "Open Menu") };
             openItem.Click += (s, args) => OpenLauncher();
+
+            var clipboardItem = new System.Windows.Controls.MenuItem { Header = LocalizationService.Instance.GetString("TrayClipboard", "Clipboard History") };
+            clipboardItem.Click += (s, args) => Current.Dispatcher.Invoke(OpenClipboardHistory);
             
             var settingsItem = new System.Windows.Controls.MenuItem { Header = LocalizationService.Instance.GetString("TraySettings", "Settings & Management") };
             settingsItem.Click += (s, args) => Current.Dispatcher.Invoke(OpenSettings);
@@ -422,6 +443,7 @@ namespace RadialLauncher
             exitItem.Click += (s, args) => ExitApplication();
 
             menu.Items.Add(openItem);
+            menu.Items.Add(clipboardItem);
             menu.Items.Add(settingsItem);
             menu.Items.Add(new System.Windows.Controls.Separator());
             menu.Items.Add(exitItem);

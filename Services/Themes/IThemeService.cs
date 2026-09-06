@@ -23,6 +23,8 @@ namespace RadialLauncher.Services.Themes
         bool GetAutoCheckUpdates();
         void SetAutoCheckUpdates(bool autoCheck);
         void ResetSettingsToDefault();
+        string GetSteamGridDbKey();
+        void SetSteamGridDbKey(string key);
         ThemeService.AppSettings GetSettings();
         void UpdateSettings(ThemeService.AppSettings settings);
 

@@ -866,6 +866,49 @@ namespace RadialLauncher.UI.Windows
             this.Hide();
         }
 
+        private void Window_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[]? files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && files.Length > 0)
+                {
+                    int added = 0;
+                    foreach (var f in files)
+                    {
+                        var (ok, _, item) = RadialLauncher.Services.Import.LauncherDropParser.BuildItem(f);
+                        if (ok && item != null)
+                        {
+                            if (_viewModel.CurrentCategory != null && _viewModel.CurrentCategory.Id > 0)
+                            {
+                                item.CategoryId = _viewModel.CurrentCategory.Id;
+                            }
+                            _viewModel.ItemRepository.Insert(item);
+                            added++;
+                        }
+                    }
+                    if (added > 0)
+                    {
+                        _viewModel.ReloadCategoriesAndItems();
+                        RenderLayout();
+                    }
+                }
+            }
+        }
+
         private void ClearActiveDwmThumbnails()
         {
             try

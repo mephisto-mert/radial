@@ -4,11 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Commands;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Import;
 using RadialLauncher.Services.Localization;
 using RadialLauncher.Services.Scanning;
 using RadialLauncher.Services.Sync;
@@ -78,6 +81,7 @@ namespace RadialLauncher.UI.Windows
         private readonly IStartupManager _startupManager;
         private readonly IThemeService _themeService;
         private readonly ISyncService _syncService;
+        private readonly ICommandPaletteService? _commandPaletteService;
         private bool _isUpdatingShortcutCombo = false;
 
         public string ActionFavoriteToolTip => LocalizationService.Instance.GetString("Action_Favorite", "Favorite");
@@ -97,19 +101,23 @@ namespace RadialLauncher.UI.Windows
                 : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
             App.ServiceProvider != null 
                 ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ISyncService>(App.ServiceProvider) 
-                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ICommandPaletteService>(App.ServiceProvider)
+                : null)
         {
         }
 
         private readonly Action<Theme> _onThemeChangedHandler;
         private readonly Action _onLanguageChangedHandler;
 
-        public ManagementWindow(ManagementViewModel viewModel, IStartupManager startupManager, IThemeService themeService, ISyncService syncService)
+        public ManagementWindow(ManagementViewModel viewModel, IStartupManager startupManager, IThemeService themeService, ISyncService syncService, ICommandPaletteService? commandPaletteService = null)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _startupManager = startupManager ?? throw new ArgumentNullException(nameof(startupManager));
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
             _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+            _commandPaletteService = commandPaletteService ?? (App.ServiceProvider?.GetService(typeof(ICommandPaletteService)) as ICommandPaletteService);
 
             InitializeComponent();
 
@@ -141,6 +149,7 @@ namespace RadialLauncher.UI.Windows
             LoadShortcutState();
             LoadDensityState();
             LoadLanguageState();
+            LoadSteamGridState();
             UpdateBackupStatusLabel();
             if (AutoCheckUpdatesCheck != null)
             {
@@ -440,7 +449,83 @@ namespace RadialLauncher.UI.Windows
         }
 
         private void CategoryFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshGrid();
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshGrid();
+
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string q = SearchBox?.Text?.Trim() ?? "";
+            if (_commandPaletteService != null && q.Length > 1 && q.StartsWith("=", StringComparison.Ordinal))
+            {
+                if (_commandPaletteService.TryHandle(q, out string msg))
+                {
+                    StatusText.Text = msg;
+                    return;
+                }
+            }
+            RefreshGrid();
+        }
+
+        private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && _commandPaletteService != null && !string.IsNullOrWhiteSpace(SearchBox?.Text))
+            {
+                string q = SearchBox.Text.Trim();
+                if (q.StartsWith("=", StringComparison.Ordinal) ||
+                    q.StartsWith(">", StringComparison.Ordinal) ||
+                    q.StartsWith("!", StringComparison.Ordinal) ||
+                    q.StartsWith("?", StringComparison.Ordinal))
+                {
+                    if (_commandPaletteService.TryHandle(q, out string msg))
+                    {
+                        StatusText.Text = msg;
+                        e.Handled = true;
+                    }
+                }
+            }
+        }
+
+        private void ManagementWindow_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void ManagementWindow_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[]? files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && files.Length > 0)
+                {
+                    int addedCount = 0;
+                    foreach (var file in files)
+                    {
+                        var (ok, _, item) = LauncherDropParser.BuildItem(file);
+                        if (ok && item != null)
+                        {
+                            if (_viewModel.SelectedCategory != null && _viewModel.SelectedCategory.Id > 0)
+                            {
+                                item.CategoryId = _viewModel.SelectedCategory.Id;
+                            }
+                            _viewModel.AddItem(item);
+                            addedCount++;
+                        }
+                    }
+                    if (addedCount > 0)
+                    {
+                        RefreshGrid();
+                        var loc = LocalizationService.Instance;
+                        StatusText.Text = string.Format(loc.GetString("Status_Items_Dropped", "Added {0} dropped item(s)."), addedCount);
+                    }
+                }
+            }
+        }
 
         private void AddItemButton_Click(object sender, RoutedEventArgs e)
         {
@@ -1041,6 +1126,9 @@ namespace RadialLauncher.UI.Windows
             if (TxtTab5Sub != null) TxtTab5Sub.Text = loc.GetString("Tab5_Sub", "System diagnostic logs, error logs, and application updates.");
             if (TxtLanguageTitle != null) TxtLanguageTitle.Text = loc.GetString("Language", "🌐 Display Language");
             if (TxtLanguageSub != null) TxtLanguageSub.Text = loc.GetString("Language_Desc", "Select language for application UI and radial menu (Default: English). Sorted alphabetically.");
+            if (TxtSteamGridTitle != null) TxtSteamGridTitle.Text = loc.GetString("SteamGrid_Title", "🎮 SteamGridDB Game Covers");
+            if (TxtSteamGridSub != null) TxtSteamGridSub.Text = loc.GetString("SteamGrid_Sub", "Enter your SteamGridDB API key to automatically fetch 600x900 vertical poster cover art for Steam and Epic games.");
+            if (BtnSaveSteamGridKey != null) BtnSaveSteamGridKey.Content = loc.GetString("SteamGrid_Save", "💾 Save Key");
             if (TxtUpdatesTitle != null) TxtUpdatesTitle.Text = loc.GetString("Updates_Title", "🚀 Application Updates");
             if (CurrentVersionText != null) CurrentVersionText.Text = loc.GetString("Installed_Version", "Installed Version: v1.0.0 (Final Release)");
             if (AutoCheckUpdatesCheck != null) AutoCheckUpdatesCheck.Content = loc.GetString("AutoCheck_Updates", "Automatically check for updates on startup");
@@ -1067,7 +1155,25 @@ namespace RadialLauncher.UI.Windows
             LoadCategories();
             LoadThemes();
             LoadShortcutState();
+            LoadSteamGridState();
             RefreshGrid();
+        }
+
+        private void LoadSteamGridState()
+        {
+            if (SteamGridKeyBox != null)
+            {
+                SteamGridKeyBox.Text = _themeService.GetSteamGridDbKey();
+            }
+        }
+
+        private void SaveSteamGridKey_Click(object sender, RoutedEventArgs e)
+        {
+            if (SteamGridKeyBox == null || SteamGridKeyStatus == null) return;
+            string key = SteamGridKeyBox.Text.Trim();
+            _themeService.SetSteamGridDbKey(key);
+            var loc = LocalizationService.Instance;
+            SteamGridKeyStatus.Text = loc.GetString("SteamGrid_Saved", "API key saved successfully.");
         }
     }
 }
