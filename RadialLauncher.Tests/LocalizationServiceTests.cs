@@ -16,7 +16,7 @@ namespace RadialLauncher.Tests
             Assert.True(languages.Count >= 10, $"Expected at least 10 languages, found {languages.Count}");
 
             // Verify sorted alphabetically by DisplayName
-            var sorted = languages.OrderBy(l => l.DisplayName).Select(l => l.Code).ToList();
+            var sorted = languages.OrderBy(l => l.DisplayName, StringComparer.OrdinalIgnoreCase).Select(l => l.Code).ToList();
             var actual = languages.Select(l => l.Code).ToList();
             Assert.Equal(sorted, actual);
 

@@ -78,6 +78,12 @@ namespace RadialLauncher.UI.Windows
         private readonly IStartupManager _startupManager;
         private readonly IThemeService _themeService;
         private readonly ISyncService _syncService;
+        private bool _isUpdatingShortcutCombo = false;
+
+        public string ActionFavoriteToolTip => LocalizationService.Instance.GetString("Action_Favorite", "Favorite");
+        public string ActionEditToolTip => LocalizationService.Instance.GetString("Action_Edit", "Edit");
+        public string ActionDeleteToolTip => LocalizationService.Instance.GetString("Action_Delete", "Delete");
+        public string RenameCategoryToolTip => LocalizationService.Instance.GetString("Rename_Category", "Rename Category");
 
         public ManagementWindow() : this(
             App.ServiceProvider != null 
@@ -289,26 +295,50 @@ namespace RadialLauncher.UI.Windows
 
         private void LoadShortcutState()
         {
-            string sc = _themeService.GetActivationShortcut();
-            ShortcutCombo.SelectedIndex = sc switch
-            {
-                "MiddleClick" => 0,
-                "XButton1" => 1,
-                "XButton2" => 2,
-                "CtrlRightClick" => 3,
-                "ShiftRightClick" => 4,
-                "AltRightClick" => 5,
-                "Ctrl+XButton1" => 6,
-                "AltSpace" => 7,
-                "CtrlSpace" => 8,
-                "F4" => 9,
-                "Tilde" => 10,
-                _ => -1
-            };
-            if (ActiveShortcutLabel != null)
+            if (ShortcutCombo == null) return;
+            _isUpdatingShortcutCombo = true;
+            try
             {
                 var loc = LocalizationService.Instance;
-                ActiveShortcutLabel.Text = $"{loc.GetString("Active_Shortcut_Label", "Active Shortcut:")} {ShortcutAssignWindow.ToFriendlyName(sc)} ({sc})";
+                int currentSelection = ShortcutCombo.SelectedIndex;
+                ShortcutCombo.Items.Clear();
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_Middle", "Middle Click (Mouse Wheel)"));
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_XButton1", "Mouse 4 (Back Button - XButton1)"));
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_XButton2", "Mouse 5 (Forward Button - XButton2)"));
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_Ctrl_Right", "Ctrl + Right Click"));
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_Shift_Right", "Shift + Right Click"));
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_Alt_Right", "Alt + Right Click"));
+                ShortcutCombo.Items.Add(loc.GetString("Mouse_Ctrl_XButton1", "Ctrl + Mouse 4"));
+                ShortcutCombo.Items.Add(loc.GetString("Shortcut_AltSpace", "Alt + Space"));
+                ShortcutCombo.Items.Add(loc.GetString("Shortcut_CtrlSpace", "Ctrl + Space"));
+                ShortcutCombo.Items.Add(loc.GetString("Shortcut_F4", "F4 Key"));
+                ShortcutCombo.Items.Add(loc.GetString("Shortcut_Tilde", "~ (Tilde Key)"));
+
+                string sc = _themeService.GetActivationShortcut();
+                ShortcutCombo.SelectedIndex = sc switch
+                {
+                    "MiddleClick" => 0,
+                    "XButton1" => 1,
+                    "XButton2" => 2,
+                    "CtrlRightClick" => 3,
+                    "ShiftRightClick" => 4,
+                    "AltRightClick" => 5,
+                    "Ctrl+XButton1" => 6,
+                    "AltSpace" => 7,
+                    "CtrlSpace" => 8,
+                    "F4" => 9,
+                    "Tilde" => 10,
+                    _ => -1
+                };
+
+                if (ActiveShortcutLabel != null)
+                {
+                    ActiveShortcutLabel.Text = $"{loc.GetString("Active_Shortcut_Label", "Active Shortcut:")} {ShortcutAssignWindow.ToFriendlyName(sc)} ({sc})";
+                }
+            }
+            finally
+            {
+                _isUpdatingShortcutCombo = false;
             }
         }
 
@@ -483,6 +513,7 @@ namespace RadialLauncher.UI.Windows
 
         private void ShortcutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isUpdatingShortcutCombo) return;
             if (_viewModel == null || _themeService == null) return;
             var cb = sender as ComboBox ?? ShortcutCombo;
             if (cb != null && cb.SelectedIndex >= 0)
@@ -958,6 +989,13 @@ namespace RadialLauncher.UI.Windows
             {
                 firstItem.Content = loc.GetString("All_Categories", "All Categories");
             }
+
+            if (BtnRenameCategory != null)
+            {
+                BtnRenameCategory.ToolTip = loc.GetString("Rename_Category", "Rename Category");
+            }
+
+            LoadShortcutState();
         }
     }
 }

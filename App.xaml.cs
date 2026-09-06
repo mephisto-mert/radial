@@ -88,9 +88,19 @@ namespace RadialLauncher
 
                 // 4. Setup Tray Icon
                 notifyIcon = new TaskbarIcon();
-                notifyIcon.ToolTipText = "Radial Launcher (Pro v2.0)";
+                notifyIcon.ToolTipText = LocalizationService.Instance.GetString("App_Name", "Radial Launcher");
 
                 var systemActions = ServiceProvider.GetRequiredService<ISystemActionService>();
+                LocalizationService.Instance.OnLanguageChanged += () =>
+                {
+                    Current.Dispatcher.BeginInvoke(() =>
+                    {
+                        if (notifyIcon != null && !systemActions.IsFocusTimerRunning)
+                        {
+                            notifyIcon.ToolTipText = LocalizationService.Instance.GetString("App_Name", "Radial Launcher");
+                        }
+                    });
+                };
                 systemActions.FocusTimerTick += (remaining) =>
                 {
                     Current.Dispatcher.BeginInvoke(() =>
@@ -107,7 +117,7 @@ namespace RadialLauncher
                     {
                         if (notifyIcon != null)
                         {
-                            notifyIcon.ToolTipText = "Radial Launcher (Pro v2.0)";
+                            notifyIcon.ToolTipText = LocalizationService.Instance.GetString("App_Name", "Radial Launcher");
                             notifyIcon.ShowBalloonTip(
                                 LocalizationService.Instance.GetString("TrayFocusCompletedTitle", "🍅 Focus Session Complete!"),
                                 LocalizationService.Instance.GetString("TrayFocusCompletedBody", "Your 25-minute focus session ended successfully. Great job!"),

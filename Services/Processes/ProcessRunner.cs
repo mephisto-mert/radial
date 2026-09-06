@@ -10,6 +10,7 @@ using System.Windows;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
+using RadialLauncher.Services.Localization;
 using Serilog;
 
 namespace RadialLauncher.Services.Processes
@@ -120,7 +121,9 @@ namespace RadialLauncher.Services.Processes
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to launch item: {Name}", item.Name);
-                MessageBox.Show($"Could not launch '{item.Name}'. Please check the target path.", "Radial Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+                var title = LocalizationService.Instance.GetString("App_Name", "Radial Launcher");
+                var msgFormat = LocalizationService.Instance.GetString("Err_Launch_Failed", "Could not launch '{0}'. Please check the target path.");
+                MessageBox.Show(string.Format(msgFormat, item.Name), title, MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using RadialLauncher.Models;
 using RadialLauncher.Services.Localization;
 using Xunit;
 
@@ -100,6 +102,94 @@ namespace RadialLauncher.Tests
             service.SetLanguage("en");
             Assert.Equal("en", service.CurrentLanguage);
             Assert.Equal("🔍 Scan PC", service.GetString("Scan_PC"));
+        }
+
+        [Fact]
+        public void Translations_ZeroMixedLanguageFragments_AcrossAll11Locales()
+        {
+            var service = new LocalizationService();
+            var forbiddenEnglishTerms = new[] { "Density", "Reduce Motion", "Final Release" };
+
+            foreach (var lang in service.SupportedLanguages)
+            {
+                if (lang.Code == "en") continue;
+                var dict = service.GetDictionaryForLanguage(lang.Code);
+                Assert.NotNull(dict);
+
+                foreach (var kvp in dict)
+                {
+                    foreach (var term in forbiddenEnglishTerms)
+                    {
+                        Assert.False(kvp.Value.Contains($"({term})", StringComparison.OrdinalIgnoreCase),
+                            $"Language '{lang.Code}' key '{kvp.Key}' contains mixed English fragment '({term})': '{kvp.Value}'");
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void UserCreatedCategory_WithoutSystemKey_IsNeverAutoTranslated()
+        {
+            var loc = LocalizationService.Instance;
+
+            // User-created categories with names matching system concepts without SystemKey
+            var userGames = new Category { Id = 991, Name = "Games", SystemKey = null };
+            var userSystem = new Category { Id = 992, Name = "System", SystemKey = null };
+            var userWindows = new Category { Id = 993, Name = "Open Windows", SystemKey = null };
+            var userCustom = new Category { Id = 994, Name = "My Custom Category", SystemKey = null };
+
+            foreach (var lang in loc.SupportedLanguages)
+            {
+                loc.SetLanguage(lang.Code);
+                Assert.Equal("Games", userGames.DisplayName);
+                Assert.Equal("System", userSystem.DisplayName);
+                Assert.Equal("Open Windows", userWindows.DisplayName);
+                Assert.Equal("My Custom Category", userCustom.DisplayName);
+            }
+
+            loc.SetLanguage("en");
+        }
+
+        [Fact]
+        public void HardcodedUiStrings_StaticAudit_PassesClean()
+        {
+            // Verify that critical files do not contain unlocalized UI strings
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            // Walk up to find repo root
+            string repoRoot = baseDir;
+            while (!string.IsNullOrEmpty(repoRoot) && !File.Exists(Path.Combine(repoRoot, "RadialLauncher.sln")))
+            {
+                var parent = Directory.GetParent(repoRoot);
+                if (parent == null) break;
+                repoRoot = parent.FullName;
+            }
+
+            if (!File.Exists(Path.Combine(repoRoot, "RadialLauncher.sln"))) return;
+
+            // 1. ProcessRunner.cs should not have hardcoded MessageBox string
+            string prPath = Path.Combine(repoRoot, "Services", "Processes", "ProcessRunner.cs");
+            if (File.Exists(prPath))
+            {
+                string prContent = File.ReadAllText(prPath);
+                Assert.DoesNotContain("MessageBox.Show($\"Could not launch", prContent);
+            }
+
+            // 2. RadialMenuWindow.xaml.cs should not have hardcoded Turkish Sayfa string
+            string rmPath = Path.Combine(repoRoot, "UI", "Windows", "RadialMenuWindow.xaml.cs");
+            if (File.Exists(rmPath))
+            {
+                string rmContent = File.ReadAllText(rmPath);
+                Assert.DoesNotContain("ToolTip = $\"Sayfa ", rmContent);
+            }
+
+            // 3. ManagementWindow.xaml should not have hardcoded static ComboBoxItems in ShortcutCombo
+            string mwXamlPath = Path.Combine(repoRoot, "UI", "Windows", "ManagementWindow.xaml");
+            if (File.Exists(mwXamlPath))
+            {
+                string mwContent = File.ReadAllText(mwXamlPath);
+                Assert.DoesNotContain("<ComboBoxItem Content=\"Middle Click", mwContent);
+                Assert.DoesNotContain("ToolTip=\"Rename Category\"", mwContent);
+            }
         }
     }
 }

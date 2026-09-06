@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Localization;
 using RadialLauncher.UI.Animations;
 using RadialLauncher.UI.Helpers;
 using RadialLauncher.UI.ViewModels;
@@ -536,10 +537,10 @@ namespace RadialLauncher.UI.Windows
                     Fill = isActive 
                         ? theme.AccentBrush 
                         : new SolidColorBrush(Color.FromArgb(90, theme.TextR, theme.TextG, theme.TextB)),
-                    ToolTip = $"Sayfa {i + 1} / {_viewModel.TotalPages}",
+                    ToolTip = string.Format(LocalizationService.Instance.GetString("Page_Format", "Page {0} / {1}"), i + 1, _viewModel.TotalPages),
                     Cursor = Cursors.Hand
                 };
-                System.Windows.Automation.AutomationProperties.SetName(dot, $"Sayfa {i + 1}");
+                System.Windows.Automation.AutomationProperties.SetName(dot, string.Format(LocalizationService.Instance.GetString("Page_Name", "Page {0}"), i + 1));
                 dot.MouseLeftButtonUp += (s, e) =>
                 {
                     e.Handled = true;

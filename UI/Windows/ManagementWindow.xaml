@@ -196,7 +196,7 @@
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock x:Name="TxtCategoryLabel" Text="Category:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
                                 <ComboBox x:Name="CategoryFilterCombo" Width="170" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C26" Foreground="White"/>
-                                <Button x:Name="BtnRenameCategory" Content="✏️" ToolTip="Rename Category" Width="30" Height="28" Padding="2" Margin="6,0,0,0" Background="#22222E" Foreground="#588CEC" BorderBrush="#35FFFFFF" Click="BtnRenameCategory_Click"/>
+                                <Button x:Name="BtnRenameCategory" Content="✏️" ToolTip="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=RenameCategoryToolTip}" Width="30" Height="28" Padding="2" Margin="6,0,0,0" Background="#22222E" Foreground="#588CEC" BorderBrush="#35FFFFFF" Click="BtnRenameCategory_Click"/>
                                 <TextBlock x:Name="TxtSearchLabel" Text="Search:" VerticalAlignment="Center" Margin="14,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
                                 <TextBox x:Name="SearchBox" Width="200" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
                             </StackPanel>
@@ -227,9 +227,9 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <Button Content="⭐" Padding="4,1" Margin="1,0" Background="#282835" Foreground="Gold" ToolTip="Favorite" Click="ToggleFavorite_Click"/>
-                                            <Button Content="✏️" Padding="4,1" Margin="1,0" Background="#282835" Foreground="White" ToolTip="Edit" Click="EditItem_Click"/>
-                                            <Button Content="🗑️" Padding="4,1" Margin="1,0" Background="#3D1A1A" Foreground="#FF6B6B" ToolTip="Delete" Click="DeleteItem_Click"/>
+                                            <Button Content="⭐" Padding="4,1" Margin="1,0" Background="#282835" Foreground="Gold" ToolTip="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ActionFavoriteToolTip}" Click="ToggleFavorite_Click"/>
+                                            <Button Content="✏️" Padding="4,1" Margin="1,0" Background="#282835" Foreground="White" ToolTip="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ActionEditToolTip}" Click="EditItem_Click"/>
+                                            <Button Content="🗑️" Padding="4,1" Margin="1,0" Background="#3D1A1A" Foreground="#FF6B6B" ToolTip="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ActionDeleteToolTip}" Click="DeleteItem_Click"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -361,19 +361,7 @@
                                 <TextBlock x:Name="TxtShortcutCardSub" Text="Select a mouse button or keyboard hotkey to summon Radial Launcher." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
                                 
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <ComboBox x:Name="ShortcutCombo" Width="300" Background="#1C1C26" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
-                                        <ComboBoxItem Content="Middle Click (Mouse Wheel)"/>
-                                        <ComboBoxItem Content="Mouse 4 (Back Button - XButton1)"/>
-                                        <ComboBoxItem Content="Mouse 5 (Forward Button - XButton2)"/>
-                                        <ComboBoxItem Content="Ctrl + Right Click"/>
-                                        <ComboBoxItem Content="Shift + Right Click"/>
-                                        <ComboBoxItem Content="Alt + Right Click"/>
-                                        <ComboBoxItem Content="Ctrl + Mouse 4"/>
-                                        <ComboBoxItem Content="Alt + Space"/>
-                                        <ComboBoxItem Content="Ctrl + Space"/>
-                                        <ComboBoxItem Content="F4 Key"/>
-                                        <ComboBoxItem Content="~ (Tilde Key)"/>
-                                    </ComboBox>
+                                    <ComboBox x:Name="ShortcutCombo" Width="300" Background="#1C1C26" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged" />
                                     <Button x:Name="BtnAssignShortcut" Content="🎯 Assign Custom Shortcut" Margin="10,0,0,0" Padding="14,6" Background="#282835" Foreground="White" BorderBrush="#35FFFFFF" Click="AssignCustomShortcut_Click"/>
                                 </StackPanel>
                                 <TextBlock x:Name="ActiveShortcutLabel" Text="Active Shortcut: MiddleClick" FontSize="12" Foreground="#588CEC" FontWeight="SemiBold"/>
