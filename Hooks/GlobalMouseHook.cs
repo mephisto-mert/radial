@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Serilog;
 
 namespace RadialLauncher.Hooks
 {
@@ -21,8 +22,9 @@ namespace RadialLauncher.Hooks
 
         public event EventHandler<Point>? OnMiddleMouseDown;
 
-        private LowLevelMouseProc _proc;
+        private readonly LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
+        private readonly object _hookLock = new();
 
         private POINT _lastMousePt;
         private long _lastMouseMoveTime = 0;
@@ -30,6 +32,7 @@ namespace RadialLauncher.Hooks
 
         public bool IsPassThroughEnabled { get; set; } = false;
         public string TriggerMode { get; set; } = "MiddleClick";
+        public bool IsInstalled => _hookID != IntPtr.Zero;
 
         public GlobalMouseHook()
         {
@@ -38,19 +41,58 @@ namespace RadialLauncher.Hooks
 
         public void Start()
         {
-            _hookID = SetHook(_proc);
+            lock (_hookLock)
+            {
+                if (_hookID != IntPtr.Zero) return; // Already installed
+
+                _hookID = SetHook(_proc);
+                if (_hookID == IntPtr.Zero)
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    Log.Warning("SetWindowsHookEx failed with Win32 error {ErrorCode}", err);
+                }
+                else
+                {
+                    Log.Information("Global mouse hook successfully installed with handle {HookId}", _hookID);
+                }
+            }
         }
 
         public void Stop()
         {
-            UnhookWindowsHookEx(_hookID);
-            _hookID = IntPtr.Zero;
+            lock (_hookLock)
+            {
+                if (_hookID != IntPtr.Zero)
+                {
+                    try
+                    {
+                        UnhookWindowsHookEx(_hookID);
+                        Log.Information("Global mouse hook unhooked");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Exception during UnhookWindowsHookEx");
+                    }
+                    finally
+                    {
+                        _hookID = IntPtr.Zero;
+                    }
+                }
+            }
         }
 
         private IntPtr SetHook(LowLevelMouseProc proc)
         {
-            IntPtr handle = GetModuleHandle(null!);
-            return SetWindowsHookEx(WH_MOUSE_LL, proc, handle, 0);
+            try
+            {
+                IntPtr handle = GetModuleHandle(null!);
+                return SetWindowsHookEx(WH_MOUSE_LL, proc, handle, 0);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to call SetWindowsHookEx");
+                return IntPtr.Zero;
+            }
         }
 
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
@@ -59,68 +101,78 @@ namespace RadialLauncher.Hooks
         {
             if (nCode >= 0)
             {
-                int msg = (int)wParam;
-                MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
-
-                if (msg == WM_MOUSEMOVE)
+                try
                 {
-                    long now = Environment.TickCount64;
-                    long dt = now - _lastMouseMoveTime;
-                    if (dt > 0 && dt <= 150)
+                    int msg = (int)wParam;
+                    MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+
+                    if (msg == WM_MOUSEMOVE)
                     {
-                        double dx = hookStruct.pt.x - _lastMousePt.x;
-                        double dy = hookStruct.pt.y - _lastMousePt.y;
-                        double dist = Math.Sqrt(dx * dx + dy * dy);
-                        double instantVelocity = dist / dt; // pixels per ms
-                        LastCursorVelocity = (LastCursorVelocity * 0.3) + (instantVelocity * 0.7);
+                        long now = Environment.TickCount64;
+                        long dt = now - _lastMouseMoveTime;
+                        if (dt > 0 && dt <= 150)
+                        {
+                            double dx = hookStruct.pt.x - _lastMousePt.x;
+                            double dy = hookStruct.pt.y - _lastMousePt.y;
+                            double dist = Math.Sqrt(dx * dx + dy * dy);
+                            double instantVelocity = dist / dt; // pixels per ms
+                            LastCursorVelocity = (LastCursorVelocity * 0.3) + (instantVelocity * 0.7);
+                        }
+                        else if (dt > 150)
+                        {
+                            LastCursorVelocity = 0.0;
+                        }
+                        _lastMousePt = hookStruct.pt;
+                        _lastMouseMoveTime = now;
                     }
-                    else if (dt > 150)
+
+                    bool triggered = false;
+
+                    if (TriggerMode == "MiddleClick" && msg == WM_MBUTTONDOWN)
                     {
-                        LastCursorVelocity = 0.0;
+                        triggered = true;
                     }
-                    _lastMousePt = hookStruct.pt;
-                    _lastMouseMoveTime = now;
-                }
-
-                bool triggered = false;
-
-                if (TriggerMode == "MiddleClick" && msg == WM_MBUTTONDOWN)
-                {
-                    triggered = true;
-                }
-                else if (TriggerMode == "AltRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0)
-                {
-                    triggered = true;
-                }
-                else if (TriggerMode == "ShiftRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0)
-                {
-                    triggered = true;
-                }
-                else if (TriggerMode == "CtrlRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
-                {
-                    triggered = true;
-                }
-                else if (TriggerMode == "XButton1" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 1)
-                {
-                    triggered = true;
-                }
-                else if (TriggerMode == "XButton2" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 2)
-                {
-                    triggered = true;
-                }
-
-                if (triggered)
-                {
-                    OnMiddleMouseDown?.Invoke(this, new Point(hookStruct.pt.x, hookStruct.pt.y));
-
-                    if (!IsPassThroughEnabled)
+                    else if (TriggerMode == "AltRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0)
                     {
-                        return (IntPtr)1;
+                        triggered = true;
+                    }
+                    else if (TriggerMode == "ShiftRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0)
+                    {
+                        triggered = true;
+                    }
+                    else if (TriggerMode == "CtrlRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
+                    {
+                        triggered = true;
+                    }
+                    else if (TriggerMode == "XButton1" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 1)
+                    {
+                        triggered = true;
+                    }
+                    else if (TriggerMode == "XButton2" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 2)
+                    {
+                        triggered = true;
+                    }
+
+                    if (triggered)
+                    {
+                        try
+                        {
+                            OnMiddleMouseDown?.Invoke(this, new Point(hookStruct.pt.x, hookStruct.pt.y));
+                        }
+                        catch (Exception listenerEx)
+                        {
+                            Log.Error(listenerEx, "Exception inside OnMiddleMouseDown event handler");
+                        }
+
+                        if (!IsPassThroughEnabled)
+                        {
+                            return (IntPtr)1;
+                        }
                     }
                 }
-                else if (!IsPassThroughEnabled && (msg == WM_MBUTTONUP || msg == WM_RBUTTONUP || msg == WM_XBUTTONUP))
+                catch (Exception ex)
                 {
-                    // If triggered previously, pass through normally
+                    Log.Debug(ex, "Unexpected error in GlobalMouseHook callback");
                 }
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
