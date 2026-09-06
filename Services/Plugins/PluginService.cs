@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using RadialLauncher.Models;
 using Serilog;
 
 namespace RadialLauncher.Services.Plugins
@@ -62,6 +63,53 @@ namespace RadialLauncher.Services.Plugins
         }
 
         public IReadOnlyList<IRadialItemProvider> GetProviders() => _providers;
+
+        public IReadOnlyList<LauncherItem> GetSafeItems(int providerIndex)
+        {
+            if (providerIndex < 0 || providerIndex >= _providers.Count)
+            {
+                return Array.Empty<LauncherItem>();
+            }
+            return GetSafeItems(_providers[providerIndex]);
+        }
+
+        public IReadOnlyList<LauncherItem> GetSafeItems(IRadialItemProvider provider)
+        {
+            if (provider == null) return Array.Empty<LauncherItem>();
+
+            try
+            {
+                var rawItems = provider.GetItems();
+                if (rawItems == null) return Array.Empty<LauncherItem>();
+
+                var safeList = new List<LauncherItem>();
+                int pos = 0;
+                foreach (var item in rawItems)
+                {
+                    if (item == null) continue;
+                    if (string.IsNullOrWhiteSpace(item.Name) && string.IsNullOrWhiteSpace(item.Target)) continue;
+
+                    // Ensure safe non-null properties and assigned position
+                    safeList.Add(new LauncherItem
+                    {
+                        Id = item.Id != 0 ? item.Id : (-900 - pos),
+                        Name = string.IsNullOrWhiteSpace(item.Name) ? (item.Target ?? "Plugin Item") : item.Name,
+                        Type = string.IsNullOrWhiteSpace(item.Type) ? "EXE" : item.Type,
+                        Target = item.Target ?? string.Empty,
+                        Arguments = item.Arguments ?? string.Empty,
+                        IconPath = item.IconPath ?? string.Empty,
+                        CategoryId = item.CategoryId,
+                        Position = pos++
+                    });
+                }
+                return safeList;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Plugin provider '{ProviderName}' failed during GetItems() execution", provider.ProviderName);
+                return Array.Empty<LauncherItem>();
+            }
+        }
 
         public void LoadPlugins(string? pluginsDir = null)
         {

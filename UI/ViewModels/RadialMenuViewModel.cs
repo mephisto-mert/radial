@@ -280,15 +280,7 @@ namespace RadialLauncher.UI.ViewModels
                 else if (cat.Id <= -200)
                 {
                     int providerIndex = (-cat.Id) - 200;
-                    var providers = _pluginService.GetProviders();
-                    if (providerIndex >= 0 && providerIndex < providers.Count)
-                    {
-                        filtered = providers[providerIndex].GetItems()?.ToList() ?? new List<LauncherItem>();
-                    }
-                    else
-                    {
-                        filtered = new List<LauncherItem>();
-                    }
+                    filtered = _pluginService?.GetSafeItems(providerIndex)?.ToList() ?? new List<LauncherItem>();
                 }
                 else if (cat.Id <= 1 || cat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Hepsi", StringComparison.OrdinalIgnoreCase))
                 {
