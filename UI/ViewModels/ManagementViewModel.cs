@@ -48,37 +48,7 @@ namespace RadialLauncher.UI.ViewModels
         private Theme? _selectedTheme;
 
         [ObservableProperty]
-        private string _customThemeName = "Yeni Tema";
-
-        [ObservableProperty]
-        private Color _customBgColor = Color.FromRgb(18, 18, 22);
-
-        [ObservableProperty]
-        private Color _customAccentColor = Color.FromRgb(88, 140, 236);
-
-        [ObservableProperty]
-        private Color _customAccent2Color = Color.FromRgb(140, 90, 245);
-
-        [ObservableProperty]
-        private Color _customTextColor = Color.FromRgb(240, 240, 245);
-
-        [ObservableProperty]
-        private Color _customCardColor = Color.FromRgb(38, 38, 42);
-
-        [ObservableProperty]
-        private double _customOpacity = 0.88;
-
-        [ObservableProperty]
-        private bool _followWindowsTheme;
-
-        [ObservableProperty]
-        private bool _extractAccentFromWallpaper;
-
-        [ObservableProperty]
-        private string _densityMode = "Expanded";
-
-        [ObservableProperty]
-        private bool _reduceMotion = false;
+        private double _radialOpacity = 0.90;
 
         [ObservableProperty]
         private string _activationShortcut = "MiddleClick";
@@ -112,8 +82,7 @@ namespace RadialLauncher.UI.ViewModels
             Themes = new ObservableCollection<Theme>(_themeService.GetAllThemes());
             SelectedTheme = _themeService.GetCurrentTheme();
 
-            FollowWindowsTheme = _themeService.GetFollowWindowsTheme();
-            ExtractAccentFromWallpaper = _themeService.GetExtractAccentFromWallpaper();
+            RadialOpacity = _themeService.GetRadialOpacity();
             ActivationShortcut = _themeService.GetActivationShortcut();
 
             RefreshItems();
@@ -122,9 +91,28 @@ namespace RadialLauncher.UI.ViewModels
         public void RefreshItems()
         {
             var all = _itemRepo.GetAll();
-            if (SelectedCategory != null && SelectedCategory.Id > 1)
+            if (SelectedCategory != null && (SelectedCategory.Id <= 1 || SelectedCategory.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)))
             {
-                all = all.Where(i => i.CategoryId == SelectedCategory.Id).ToList();
+                // Exact same recency/frequency weighted calculation as RadialMenuViewModel
+                DateTime now = DateTime.UtcNow;
+                all = all.Where(i => i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite || i.UseCount > 0 || i.LaunchCount > 0)
+                         .Where(i => i.ParentId == 0)
+                         .OrderByDescending(i => RadialMenuViewModel.CalculateUsageScore(i, now))
+                         .ThenBy(i => i.Position)
+                         .ToList();
+            }
+            else if (SelectedCategory != null && SelectedCategory.Id > 1)
+            {
+                all = all.Where(i => i.CategoryId == SelectedCategory.Id && i.ParentId == 0)
+                         .OrderBy(i => i.Position)
+                         .ToList();
+            }
+            else
+            {
+                all = all.Where(i => i.ParentId == 0)
+                         .OrderBy(i => i.CategoryId)
+                         .ThenBy(i => i.Position)
+                         .ToList();
             }
 
             if (!string.IsNullOrWhiteSpace(FilterQuery))
@@ -133,7 +121,7 @@ namespace RadialLauncher.UI.ViewModels
                 all = all.Where(i => i.Name.ToLowerInvariant().Contains(q) || i.Target.ToLowerInvariant().Contains(q)).ToList();
             }
 
-            Items = new ObservableCollection<LauncherItem>(all.OrderBy(i => i.Position));
+            Items = new ObservableCollection<LauncherItem>(all);
         }
 
         [RelayCommand]
@@ -170,46 +158,10 @@ namespace RadialLauncher.UI.ViewModels
         }
 
         [RelayCommand]
-        public void SaveCustomTheme()
+        public void UpdateRadialOpacity(double opacity)
         {
-            var theme = new Theme
-            {
-                Name = CustomThemeName,
-                IsCustom = true,
-                BgR = CustomBgColor.R,
-                BgG = CustomBgColor.G,
-                BgB = CustomBgColor.B,
-                BackgroundOpacity = CustomOpacity,
-                AccentR = CustomAccentColor.R,
-                AccentG = CustomAccentColor.G,
-                AccentB = CustomAccentColor.B,
-                Accent2R = CustomAccent2Color.R,
-                Accent2G = CustomAccent2Color.G,
-                Accent2B = CustomAccent2Color.B,
-                TextR = CustomTextColor.R,
-                TextG = CustomTextColor.G,
-                TextB = CustomTextColor.B,
-                IconBgR = CustomCardColor.R,
-                IconBgG = CustomCardColor.G,
-                IconBgB = CustomCardColor.B,
-                DensityMode = DensityMode,
-                ReduceMotion = ReduceMotion
-            };
-
-            _themeService.SaveCustomTheme(theme);
-            Themes = new ObservableCollection<Theme>(_themeService.GetAllThemes());
-            SelectedTheme = theme;
-            StatusMessage = $"Özel tema '{theme.Name}' kaydedildi ve uygulandı.";
-        }
-
-        [RelayCommand]
-        public void DeleteCustomTheme(Theme theme)
-        {
-            if (theme == null || !theme.IsCustom) return;
-            _themeService.DeleteCustomTheme(theme.Name);
-            Themes = new ObservableCollection<Theme>(_themeService.GetAllThemes());
-            SelectedTheme = Themes.FirstOrDefault();
-            StatusMessage = $"Özel tema silindi.";
+            RadialOpacity = opacity;
+            _themeService.SetRadialOpacity(opacity);
         }
 
         [RelayCommand]

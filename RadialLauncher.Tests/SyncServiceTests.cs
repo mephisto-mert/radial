@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -152,6 +152,37 @@ namespace RadialLauncher.Tests
 
             bool imported = await syncService.ImportFromFileAsync("C:\\NonExistentPath_XYZ_123.json");
             Assert.False(imported);
+        }
+
+        [Fact]
+        public async Task CreateLocalBackup_CreatesValidBackupAndRotates()
+        {
+            var mockItemRepo = new Mock<IItemRepository>();
+            mockItemRepo.Setup(r => r.GetAll()).Returns(new List<LauncherItem>
+            {
+                new LauncherItem { Id = 1, Name = "TestApp", Target = "test.exe" }
+            });
+
+            var mockCatRepo = new Mock<ICategoryRepository>();
+            mockCatRepo.Setup(r => r.GetAll()).Returns(new List<Category>
+            {
+                new Category { Id = 1, Name = "TestCategory" }
+            });
+
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
+
+            var (success, filePath) = await syncService.CreateLocalBackupAsync();
+            Assert.True(success);
+            Assert.True(File.Exists(filePath));
+
+            var backups = syncService.GetLocalBackups();
+            Assert.NotEmpty(backups);
+            Assert.Contains(filePath, backups);
+
+            // Verify content
+            string content = await File.ReadAllTextAsync(filePath);
+            Assert.Contains("TestApp", content);
+            Assert.Contains("TestCategory", content);
         }
     }
 }

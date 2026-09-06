@@ -130,6 +130,7 @@
                 <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.Name, FallbackValue='Kategoriler'}" 
                            FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF" 
                            HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
+                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,3,0,1"/>
             </StackPanel>
         </Border>
 

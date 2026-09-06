@@ -16,12 +16,40 @@ namespace RadialLauncher.Tests
             var themes = themeService.GetAllThemes();
 
             Assert.NotNull(themes);
-            Assert.True(themes.Count >= 5);
+            Assert.True(themes.Count >= 8);
             Assert.Contains(themes, t => t.Name == "Dark");
-            Assert.Contains(themes, t => t.Name == "Light");
-            Assert.Contains(themes, t => t.Name == "Midnight Blue");
-            Assert.Contains(themes, t => t.Name == "Purple Haze");
+            Assert.Contains(themes, t => t.Name == "White");
+            Assert.Contains(themes, t => t.Name == "Red");
+            Assert.Contains(themes, t => t.Name == "Blue");
+            Assert.Contains(themes, t => t.Name == "Purple");
             Assert.Contains(themes, t => t.Name == "Forest");
+            Assert.Contains(themes, t => t.Name == "AMOLED Black");
+            Assert.Contains(themes, t => t.Name == "High Contrast");
+        }
+
+        [Fact]
+        public void RadialOpacity_ClampsAndPersistsCorrectly()
+        {
+            var themeService = ThemeService.Instance;
+            double original = themeService.GetRadialOpacity();
+
+            try
+            {
+                themeService.SetRadialOpacity(0.85);
+                Assert.Equal(0.85, themeService.GetRadialOpacity(), 2);
+
+                // Test clamping below 0.20
+                themeService.SetRadialOpacity(0.05);
+                Assert.Equal(0.20, themeService.GetRadialOpacity(), 2);
+
+                // Test clamping above 1.00
+                themeService.SetRadialOpacity(1.50);
+                Assert.Equal(1.00, themeService.GetRadialOpacity(), 2);
+            }
+            finally
+            {
+                themeService.SetRadialOpacity(original);
+            }
         }
 
         [Fact]

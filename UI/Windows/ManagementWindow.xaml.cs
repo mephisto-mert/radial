@@ -24,6 +24,7 @@ namespace RadialLauncher.UI.Windows
         private readonly IIconExtractor? _iconExtractor;
         public LauncherItem Item { get; set; }
         public string IsFavoriteText => Item.IsFavorite ? "⭐" : "—";
+        public int LaunchCount => Math.Max(Item.UseCount, Item.LaunchCount);
         public int Position => Item.Position;
         public string Name => Item.Name;
         public string Type => Item.Type;
@@ -109,11 +110,12 @@ namespace RadialLauncher.UI.Windows
         {
             LoadCategories();
             LoadThemes();
+            LoadOpacityState();
             RefreshGrid();
             LoadStartupState();
             LoadShortcutState();
             LoadDensityState();
-            UpdateSyncUiState();
+            UpdateBackupStatusLabel();
             if (AutoCheckUpdatesCheck != null)
             {
                 AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
@@ -144,16 +146,31 @@ namespace RadialLauncher.UI.Windows
             {
                 LivePreviewControl.Theme = _viewModel.SelectedTheme;
             }
+            UpdatePaletteSwatches(_viewModel.SelectedTheme);
+            if (ReduceMotionCheck != null)
+            {
+                ReduceMotionCheck.IsChecked = _viewModel.SelectedTheme?.ReduceMotion ?? false;
+            }
+        }
 
-            FollowWindowsThemeCheck.IsChecked = _viewModel.FollowWindowsTheme;
-            ExtractAccentCheck.IsChecked = _viewModel.ExtractAccentFromWallpaper;
-            ReduceMotionCheck.IsChecked = _viewModel.ReduceMotion;
+        private void LoadOpacityState()
+        {
+            double opacity = _themeService.GetRadialOpacity();
+            int percent = (int)Math.Round(opacity * 100.0);
+            if (OpacitySlider != null)
+            {
+                OpacitySlider.Value = Math.Clamp(percent, 20, 100);
+            }
+            if (OpacityValueText != null)
+            {
+                OpacityValueText.Text = $"%{percent}";
+            }
         }
 
         private void LoadDensityState()
         {
             if (DensityCombo == null) return;
-            string mode = _viewModel.SelectedTheme?.DensityMode ?? _viewModel.DensityMode;
+            string mode = _viewModel.SelectedTheme?.DensityMode ?? "Expanded";
             DensityCombo.SelectedIndex = (mode == "Compact") ? 1 : 0;
         }
 
@@ -163,15 +180,22 @@ namespace RadialLauncher.UI.Windows
             ShortcutCombo.SelectedIndex = sc switch
             {
                 "MiddleClick" => 0,
-                "CtrlRightClick" => 1,
-                "ShiftRightClick" => 2,
-                "AltRightClick" => 3,
-                "AltSpace" => 4,
-                "CtrlSpace" => 5,
-                "F4" => 6,
-                "Tilde" => 7,
+                "XButton1" => 1,
+                "XButton2" => 2,
+                "CtrlRightClick" => 3,
+                "ShiftRightClick" => 4,
+                "AltRightClick" => 5,
+                "Ctrl+XButton1" => 6,
+                "AltSpace" => 7,
+                "CtrlSpace" => 8,
+                "F4" => 9,
+                "Tilde" => 10,
                 _ => 0
             };
+            if (ActiveShortcutLabel != null)
+            {
+                ActiveShortcutLabel.Text = $"Aktif Kısayol: {sc}";
+            }
         }
 
         private void LoadStartupState()
@@ -183,23 +207,27 @@ namespace RadialLauncher.UI.Windows
         {
             if (_viewModel == null || CategoryFilterCombo == null || ItemsGrid == null || StatusText == null) return;
             var catMap = _viewModel.Categories?.GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First().Name) ?? new Dictionary<int, string>();
-            var query = SearchBox?.Text?.Trim().ToLowerInvariant() ?? "";
+            var query = SearchBox?.Text?.Trim() ?? "";
             int selectedCatId = 0;
             if (CategoryFilterCombo.SelectedItem is ComboBoxItem cbi && cbi.Tag is int id)
             {
                 selectedCatId = id;
             }
 
-            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "Genel"))).ToList();
-            if (selectedCatId > 0)
+            if (selectedCatId == 0)
             {
-                items = items.Where(i => i.Item.CategoryId == selectedCatId).ToList();
+                _viewModel.SelectedCategory = null;
             }
-            if (!string.IsNullOrEmpty(query))
+            else
             {
-                items = items.Where(i => i.Name.ToLowerInvariant().Contains(query) || i.Target.ToLowerInvariant().Contains(query)).ToList();
+                _viewModel.SelectedCategory = _viewModel.Categories?.FirstOrDefault(c => c.Id == selectedCatId)
+                    ?? new Category { Id = selectedCatId, Name = "Kategori" };
             }
 
+            _viewModel.FilterQuery = query;
+            _viewModel.RefreshItems();
+
+            var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "Genel"))).ToList();
             ItemsGrid.ItemsSource = items;
             StatusText.Text = $"Toplam {items.Count} öğe listelendi.";
         }
@@ -264,87 +292,47 @@ namespace RadialLauncher.UI.Windows
                 {
                     _viewModel.ApplyTheme(theme);
                     LivePreviewControl.Theme = theme;
+                    UpdatePaletteSwatches(theme);
+                    if (ReduceMotionCheck != null)
+                    {
+                        ReduceMotionCheck.IsChecked = theme.ReduceMotion;
+                    }
                 }
             }
         }
 
-        private void CustomColor_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (LivePreviewControl == null || CustomAccentBox == null || CustomBgBox == null || CustomCardBox == null || CustomThemeNameBox == null) return;
-            try
-            {
-                var accent = (Color)ColorConverter.ConvertFromString(CustomAccentBox.Text.Trim());
-                var bg = (Color)ColorConverter.ConvertFromString(CustomBgBox.Text.Trim());
-                var card = (Color)ColorConverter.ConvertFromString(CustomCardBox.Text.Trim());
-
-                var previewTheme = new Theme
-                {
-                    Name = CustomThemeNameBox.Text,
-                    AccentR = accent.R, AccentG = accent.G, AccentB = accent.B,
-                    BgR = bg.R, BgG = bg.G, BgB = bg.B,
-                    IconBgR = card.R, IconBgG = card.G, IconBgB = card.B
-                };
-                LivePreviewControl.Theme = previewTheme;
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "Live preview color parse failed for partial input");
-            }
-        }
-
-        private void SaveCustomTheme_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var accent = (Color)ColorConverter.ConvertFromString(CustomAccentBox.Text.Trim());
-                var bg = (Color)ColorConverter.ConvertFromString(CustomBgBox.Text.Trim());
-                var card = (Color)ColorConverter.ConvertFromString(CustomCardBox.Text.Trim());
-
-                _viewModel.CustomThemeName = CustomThemeNameBox.Text.Trim();
-                _viewModel.CustomAccentColor = accent;
-                _viewModel.CustomBgColor = bg;
-                _viewModel.CustomCardColor = card;
-                _viewModel.SaveCustomTheme();
-
-                LoadThemes();
-                StatusText.Text = _viewModel.StatusMessage;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Geçersiz renk kodu: {ex.Message}", "Hata");
-            }
-        }
-
-        private void FollowWindowsTheme_Click(object sender, RoutedEventArgs e)
+        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_viewModel == null || _themeService == null) return;
-            _viewModel.FollowWindowsTheme = FollowWindowsThemeCheck.IsChecked ?? false;
-            _themeService.SetFollowWindowsTheme(_viewModel.FollowWindowsTheme);
+            double opacity = e.NewValue / 100.0;
+            _themeService.SetRadialOpacity(opacity);
+            if (OpacityValueText != null)
+            {
+                OpacityValueText.Text = $"%{(int)e.NewValue}";
+            }
             if (LivePreviewControl != null)
             {
                 LivePreviewControl.Theme = _themeService.GetCurrentTheme();
             }
         }
 
-        private void ExtractAccent_Click(object sender, RoutedEventArgs e)
+        private void UpdatePaletteSwatches(Theme? theme)
         {
-            if (_viewModel == null || _themeService == null) return;
-            _viewModel.ExtractAccentFromWallpaper = ExtractAccentCheck.IsChecked ?? false;
-            _themeService.SetExtractAccentFromWallpaper(_viewModel.ExtractAccentFromWallpaper);
-            if (LivePreviewControl != null)
-            {
-                LivePreviewControl.Theme = _themeService.GetCurrentTheme();
-            }
+            if (theme == null) return;
+            if (SwatchAccent1 != null) SwatchAccent1.Fill = new SolidColorBrush(theme.AccentColor);
+            if (SwatchAccent2 != null) SwatchAccent2.Fill = new SolidColorBrush(theme.Accent2Color);
+            if (SwatchBackground != null) SwatchBackground.Fill = new SolidColorBrush(theme.BackgroundColor);
+            if (SwatchCard != null) SwatchCard.Fill = new SolidColorBrush(theme.IconBackgroundColor);
         }
 
         private void ReduceMotion_Click(object sender, RoutedEventArgs e)
         {
             if (_viewModel == null || _themeService == null) return;
-            _viewModel.ReduceMotion = ReduceMotionCheck.IsChecked ?? false;
+            bool reduce = ReduceMotionCheck?.IsChecked ?? false;
             var t = _themeService.GetCurrentTheme();
             if (t != null)
             {
-                t.ReduceMotion = _viewModel.ReduceMotion;
+                t.ReduceMotion = reduce;
                 _themeService.SaveCustomTheme(t);
             }
         }
@@ -356,7 +344,6 @@ namespace RadialLauncher.UI.Windows
             if (cb?.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 string mode = cbi.Content.ToString()!.Contains("Kompakt") ? "Compact" : "Expanded";
-                _viewModel.DensityMode = mode;
                 var t = _themeService.GetCurrentTheme();
                 if (t != null)
                 {
@@ -375,9 +362,12 @@ namespace RadialLauncher.UI.Windows
                 string sc = cbi.Content.ToString() switch
                 {
                     "Orta Tuş (Fare Tekerleği)" => "MiddleClick",
+                    "Fare 4 (Geri Tuşu - XButton1)" => "XButton1",
+                    "Fare 5 (İleri Tuşu - XButton2)" => "XButton2",
                     "Ctrl + Sağ Tık" => "CtrlRightClick",
                     "Shift + Sağ Tık" => "ShiftRightClick",
                     "Alt + Sağ Tık" => "AltRightClick",
+                    "Ctrl + Fare 4" => "Ctrl+XButton1",
                     "Alt + Boşluk (Alt+Space)" => "AltSpace",
                     "Ctrl + Boşluk (Ctrl+Space)" => "CtrlSpace",
                     "F4 Tuşu" => "F4",
@@ -385,6 +375,35 @@ namespace RadialLauncher.UI.Windows
                     _ => "MiddleClick"
                 };
                 _themeService.SetActivationShortcut(sc);
+                if (ActiveShortcutLabel != null)
+                {
+                    ActiveShortcutLabel.Text = $"Aktif Kısayol: {sc}";
+                }
+            }
+        }
+
+        private void AssignCustomShortcut_Click(object sender, RoutedEventArgs e)
+        {
+            string current = _themeService.GetActivationShortcut();
+            var input = Microsoft.VisualBasic.Interaction.InputBox(
+                "Yeni kısayol tuş veya fare kombinasyonunu girin:\n\nÖrnekler:\n• MiddleClick (Orta Tuş)\n• XButton1 (Fare 4)\n• XButton2 (Fare 5)\n• Ctrl+MiddleClick\n• Ctrl+XButton1\n• AltSpace\n• CtrlSpace\n• F4",
+                "Yeni Kısayol Ata",
+                current);
+
+            if (!string.IsNullOrWhiteSpace(input))
+            {
+                string clean = input.Trim();
+                string lower = clean.ToLowerInvariant();
+                if (lower == "alt+f4" || lower == "ctrl+alt+del" || lower == "win+l")
+                {
+                    MessageBox.Show("Bu kısayol Windows tarafından sistem seviyesinde ayrılmıştır ve kullanılamaz.", "Geçersiz Kısayol", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                _themeService.SetActivationShortcut(clean);
+                LoadShortcutState();
+                StatusText.Text = $"Yeni kısayol atandı: {clean}";
+                MessageBox.Show($"Kısayol başarıyla güncellendi:\n{clean}", "Kısayol Kaydedildi", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -400,6 +419,83 @@ namespace RadialLauncher.UI.Windows
             await _viewModel.ScanPc();
             RefreshGrid();
             StatusText.Text = _viewModel.StatusMessage;
+        }
+
+        private async void CreateLocalBackup_Click(object sender, RoutedEventArgs e)
+        {
+            StatusText.Text = "Yerel yedek oluşturuluyor...";
+            var result = await _syncService.CreateLocalBackupAsync();
+            if (result.success)
+            {
+                UpdateBackupStatusLabel();
+                StatusText.Text = "Yerel yedekleme tamamlandı.";
+                MessageBox.Show($"Yedekleme başarıyla tamamlandı:\n{result.filePath}", "Yedek Alındı", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                StatusText.Text = "Yedekleme oluşturulamadı.";
+                MessageBox.Show("Yerel yedek oluşturulurken bir hata meydana geldi.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void RestoreLocalBackup_Click(object sender, RoutedEventArgs e)
+        {
+            string backupsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RadialLauncher", "Backups");
+
+            var ofd = new OpenFileDialog
+            {
+                Title = "Geri Yüklenecek Yedeği Seçin",
+                Filter = "Yedek Dosyaları (*.json)|*.json",
+                InitialDirectory = Directory.Exists(backupsDir) ? backupsDir : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+            };
+
+            if (ofd.ShowDialog() == true)
+            {
+                var confirm = MessageBox.Show(
+                    $"'{Path.GetFileName(ofd.FileName)}' yedeği geri yüklenecek.\nMevcut verilerinizin üzerine yazılacaktır. Onaylıyor musunuz?",
+                    "Yedekten Geri Yükleme Onayı",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (confirm == MessageBoxResult.Yes)
+                {
+                    StatusText.Text = "Yedek geri yükleniyor...";
+                    bool ok = await _syncService.RestoreFromLocalBackupAsync(ofd.FileName);
+                    if (ok)
+                    {
+                        _viewModel.LoadInitialData();
+                        LoadCategories();
+                        LoadThemes();
+                        RefreshGrid();
+                        UpdateBackupStatusLabel();
+                        StatusText.Text = "Yedek başarıyla geri yüklendi.";
+                        MessageBox.Show("Yedek başarıyla geri yüklendi ve uygulandı.", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        StatusText.Text = "Geri yükleme başarısız.";
+                        MessageBox.Show("Yedek dosyası okunamadı veya biçimi geçersiz.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
+        private void UpdateBackupStatusLabel()
+        {
+            if (BackupStatusLabel == null) return;
+            var backups = _syncService.GetLocalBackups();
+            if (backups.Count > 0)
+            {
+                var latest = backups[0];
+                var time = File.GetCreationTime(latest);
+                BackupStatusLabel.Text = $"Toplam {backups.Count} yerel yedek mevcut. En son yedek: {time:yyyy-MM-dd HH:mm:ss} ({Path.GetFileName(latest)})";
+            }
+            else
+            {
+                BackupStatusLabel.Text = "Henüz oluşturulmuş yerel yedek bulunmuyor.";
+            }
         }
 
         private async void ExportButton_Click(object sender, RoutedEventArgs e)
@@ -420,109 +516,6 @@ namespace RadialLauncher.UI.Windows
                 await _viewModel.ImportData(ofd.FileName);
                 RefreshGrid();
                 StatusText.Text = _viewModel.StatusMessage;
-            }
-        }
-
-        private void UpdateSyncUiState()
-        {
-            if (SyncNowBtn == null || SyncPullBtn == null || PatStatusText == null) return;
-            bool hasPat = _syncService.HasPatConfigured();
-            SyncNowBtn.IsEnabled = hasPat;
-            SyncPullBtn.IsEnabled = hasPat;
-
-            if (hasPat)
-            {
-                string? gistId = _syncService.GetGistId();
-                PatStatusText.Text = string.IsNullOrEmpty(gistId) 
-                    ? "Durum: Token aktif (Gist henüz oluşturulmadı)" 
-                    : $"Durum: Token aktif (Gist ID: {gistId})";
-                PatStatusText.Foreground = new SolidColorBrush(Color.FromRgb(46, 204, 113));
-                SyncNowBtn.ToolTip = "Ayarlarınızı ve kısayollarınızı GitHub Gist'e yedekler.";
-                SyncPullBtn.ToolTip = "GitHub Gist'teki yedeği indirip uygular.";
-            }
-            else
-            {
-                PatStatusText.Text = "Durum: Token ayarlanmamış (Bulut senkronizasyonu devre dışı)";
-                PatStatusText.Foreground = new SolidColorBrush(Color.FromRgb(243, 156, 18));
-                string tooltip = "GitHub Gist senkronizasyonu için geçerli bir GitHub PAT (gist yetkili) kaydedin.";
-                SyncNowBtn.ToolTip = tooltip;
-                SyncPullBtn.ToolTip = tooltip;
-            }
-        }
-
-        private void SavePatBtn_Click(object sender, RoutedEventArgs e)
-        {
-            string token = GistPatBox.Password?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                MessageBox.Show("Lütfen geçerli bir GitHub Personal Access Token girin.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            _syncService.SavePat(token);
-            GistPatBox.Clear();
-            UpdateSyncUiState();
-            MessageBox.Show("GitHub Token güvenli şekilde şifrelenerek kaydedildi.", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private async void SyncNowBtn_Click(object sender, RoutedEventArgs e)
-        {
-            SyncNowBtn.IsEnabled = false;
-            StatusText.Text = "GitHub Gist'e yedekleniyor...";
-            try
-            {
-                var result = await _syncService.PushToGistAsync();
-                if (result.success)
-                {
-                    UpdateSyncUiState();
-                    StatusText.Text = result.message;
-                    MessageBox.Show(result.message, "Eşitleme Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    StatusText.Text = result.message;
-                    MessageBox.Show(result.message, "Eşitleme Başarısız", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            finally
-            {
-                UpdateSyncUiState();
-            }
-        }
-
-        private async void SyncPullBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var confirm = MessageBox.Show(
-                "Gist'ten geri yüklemek mevcut tüm yerel ayarlarınızın ve kısayollarınızın üzerine yazacaktır.\nDevam etmek istiyor musunuz?", 
-                "Geri Yükleme Onayı", 
-                MessageBoxButton.YesNo, 
-                MessageBoxImage.Warning);
-
-            if (confirm != MessageBoxResult.Yes) return;
-
-            SyncPullBtn.IsEnabled = false;
-            StatusText.Text = "GitHub Gist'ten indiriliyor...";
-            try
-            {
-                var result = await _syncService.PullFromGistAsync();
-                if (result.success)
-                {
-                    _viewModel.LoadInitialData();
-                    RefreshGrid();
-                    LoadCategories();
-                    LoadThemes();
-                    StatusText.Text = result.message;
-                    MessageBox.Show(result.message, "Geri Yükleme Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    StatusText.Text = result.message;
-                    MessageBox.Show(result.message, "Geri Yükleme Hatası", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            finally
-            {
-                UpdateSyncUiState();
             }
         }
 

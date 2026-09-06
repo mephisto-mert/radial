@@ -28,98 +28,86 @@ namespace RadialLauncher.Services.Themes
             new Theme
             {
                 Name = "Dark",
-                BgR = 18, BgG = 18, BgB = 20,
-                BackgroundOpacity = 0.94,
-                IconBgR = 34, IconBgG = 34, IconBgB = 38,
-                IconHoverR = 48, IconHoverG = 48, IconHoverB = 54,
-                TextR = 244, TextG = 244, TextB = 245,
-                AccentR = 129, AccentG = 140, AccentB = 248,
-                Accent2R = 167, Accent2G = 139, Accent2B = 250,
-                CenterR = 42, CenterG = 42, CenterB = 48
+                BgR = 18, BgG = 18, BgB = 22,
+                BackgroundOpacity = 0.90,
+                IconBgR = 36, IconBgG = 36, IconBgB = 42,
+                IconHoverR = 52, IconHoverG = 52, IconHoverB = 60,
+                TextR = 240, TextG = 240, TextB = 245,
+                AccentR = 88, AccentG = 140, AccentB = 236,
+                Accent2R = 140, Accent2G = 90, Accent2B = 245,
+                CenterR = 44, CenterG = 44, CenterB = 52
             },
             new Theme
             {
-                Name = "Light",
-                BgR = 244, BgG = 244, BgB = 246,
-                BackgroundOpacity = 0.96,
+                Name = "White",
+                BgR = 245, BgG = 245, BgB = 247,
+                BackgroundOpacity = 0.95,
                 IconBgR = 255, IconBgG = 255, IconBgB = 255,
-                IconHoverR = 228, IconHoverG = 228, IconHoverB = 231,
-                TextR = 17, TextG = 24, TextB = 39,
+                IconHoverR = 230, IconHoverG = 232, IconHoverB = 238,
+                TextR = 18, TextG = 20, TextB = 26,
                 AccentR = 37, AccentG = 99, AccentB = 235,
                 Accent2R = 79, Accent2G = 70, Accent2B = 229,
-                CenterR = 228, CenterG = 228, CenterB = 231
+                CenterR = 232, CenterG = 234, CenterB = 240
             },
             new Theme
             {
-                Name = "Midnight Blue",
-                BgR = 11, BgG = 19, BgB = 43,
-                BackgroundOpacity = 0.94,
-                IconBgR = 28, IconBgG = 37, IconBgB = 65,
-                IconHoverR = 45, IconHoverG = 60, IconHoverB = 98,
-                TextR = 224, TextG = 242, TextB = 254,
-                AccentR = 0, AccentG = 229, AccentB = 255,
+                Name = "Red",
+                BgR = 28, BgG = 10, BgB = 14,
+                BackgroundOpacity = 0.92,
+                IconBgR = 58, IconBgG = 20, IconBgB = 26,
+                IconHoverR = 84, IconHoverG = 28, IconHoverB = 38,
+                TextR = 255, TextG = 245, TextB = 245,
+                AccentR = 239, AccentG = 68, AccentB = 68,
+                Accent2R = 249, Accent2G = 115, Accent2B = 22,
+                CenterR = 58, CenterG = 20, CenterB = 26
+            },
+            new Theme
+            {
+                Name = "Blue",
+                BgR = 10, BgG = 20, BgB = 42,
+                BackgroundOpacity = 0.92,
+                IconBgR = 24, IconBgG = 42, IconBgB = 80,
+                IconHoverR = 36, IconHoverG = 62, IconHoverB = 118,
+                TextR = 240, TextG = 248, TextB = 255,
+                AccentR = 0, AccentG = 210, AccentB = 255,
                 Accent2R = 59, Accent2G = 130, Accent2B = 246,
-                CenterR = 28, CenterG = 37, CenterB = 65
+                CenterR = 24, CenterG = 42, CenterB = 80
             },
             new Theme
             {
-                Name = "Purple Haze",
-                BgR = 24, BgG = 11, BgB = 38,
-                BackgroundOpacity = 0.94,
-                IconBgR = 50, IconBgG = 22, IconBgB = 80,
-                IconHoverR = 72, IconHoverG = 32, IconHoverB = 115,
-                TextR = 253, TextG = 244, TextB = 255,
+                Name = "Purple",
+                BgR = 22, BgG = 10, BgB = 36,
+                BackgroundOpacity = 0.92,
+                IconBgR = 48, IconBgG = 22, IconBgB = 78,
+                IconHoverR = 72, IconHoverG = 34, IconHoverB = 116,
+                TextR = 253, TextG = 245, TextB = 255,
                 AccentR = 217, AccentG = 70, AccentB = 239,
                 Accent2R = 192, Accent2G = 132, Accent2B = 252,
-                CenterR = 50, CenterG = 22, CenterB = 80
+                CenterR = 48, CenterG = 22, CenterB = 78
             },
             new Theme
             {
                 Name = "Forest",
-                BgR = 9, BgG = 31, BgB = 20,
-                BackgroundOpacity = 0.94,
-                IconBgR = 19, IconBgG = 62, IconBgB = 40,
-                IconHoverR = 28, IconHoverG = 90, IconHoverB = 58,
-                TextR = 236, TextG = 253, TextB = 245,
+                BgR = 10, BgG = 28, BgB = 18,
+                BackgroundOpacity = 0.92,
+                IconBgR = 20, IconBgG = 58, IconBgB = 38,
+                IconHoverR = 30, IconHoverG = 84, IconHoverB = 56,
+                TextR = 240, TextG = 253, TextB = 244,
                 AccentR = 16, AccentG = 185, AccentB = 129,
                 Accent2R = 52, Accent2G = 211, Accent2B = 153,
-                CenterR = 19, CenterG = 62, CenterB = 40
-            },
-            new Theme
-            {
-                Name = "Cyberpunk",
-                BgR = 10, BgG = 9, BgB = 21,
-                BackgroundOpacity = 0.95,
-                IconBgR = 30, IconBgG = 27, IconBgB = 56,
-                IconHoverR = 47, IconHoverG = 42, IconHoverB = 88,
-                TextR = 254, TextG = 240, TextB = 138,
-                AccentR = 255, AccentG = 230, AccentB = 0,
-                Accent2R = 255, Accent2G = 0, Accent2B = 127,
-                CenterR = 30, CenterG = 27, CenterB = 56
-            },
-            new Theme
-            {
-                Name = "Crimson Red",
-                BgR = 31, BgG = 10, BgB = 13,
-                BackgroundOpacity = 0.94,
-                IconBgR = 64, IconBgG = 20, IconBgB = 26,
-                IconHoverR = 92, IconHoverG = 29, IconHoverB = 38,
-                TextR = 255, TextG = 241, TextB = 242,
-                AccentR = 239, AccentG = 68, AccentB = 68,
-                Accent2R = 249, Accent2G = 115, Accent2B = 22,
-                CenterR = 64, CenterG = 20, CenterB = 26
+                CenterR = 20, CenterG = 58, CenterB = 38
             },
             new Theme
             {
                 Name = "AMOLED Black",
                 BgR = 0, BgG = 0, BgB = 0,
                 BackgroundOpacity = 0.98,
-                IconBgR = 20, IconBgG = 20, IconBgB = 20,
-                IconHoverR = 38, IconHoverG = 38, IconHoverB = 38,
+                IconBgR = 18, IconBgG = 18, IconBgB = 18,
+                IconHoverR = 34, IconHoverG = 34, IconHoverB = 34,
                 TextR = 255, TextG = 255, TextB = 255,
                 AccentR = 168, AccentG = 85, AccentB = 247,
                 Accent2R = 59, Accent2G = 130, Accent2B = 246,
-                CenterR = 24, CenterG = 24, CenterB = 24
+                CenterR = 22, CenterG = 22, CenterB = 22
             },
             new Theme
             {
@@ -127,7 +115,7 @@ namespace RadialLauncher.Services.Themes
                 BgR = 0, BgG = 0, BgB = 0,
                 BackgroundOpacity = 1.0,
                 IconBgR = 0, IconBgG = 0, IconBgB = 0,
-                IconHoverR = 30, IconHoverG = 30, IconHoverB = 30,
+                IconHoverR = 40, IconHoverG = 40, IconHoverB = 40,
                 TextR = 255, TextG = 255, TextB = 255,
                 AccentR = 255, AccentG = 255, AccentB = 0,
                 Accent2R = 255, Accent2G = 255, Accent2B = 255,
@@ -176,8 +164,29 @@ namespace RadialLauncher.Services.Themes
 
         public Theme GetTheme(string name)
         {
+            if (string.IsNullOrWhiteSpace(name)) return _builtinThemes[0];
+            string trimmed = name.Trim();
+            
+            // Map legacy / alternative names to 8 curated themes
+            if (string.Equals(trimmed, "Light", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "White", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "White");
+            if (string.Equals(trimmed, "Crimson Red", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Red", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "Red");
+            if (string.Equals(trimmed, "Midnight Blue", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Blue", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "Blue");
+            if (string.Equals(trimmed, "Purple Haze", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Purple", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "Purple");
+            if (string.Equals(trimmed, "Forest", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "Forest");
+            if (string.Equals(trimmed, "AMOLED Black", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "AMOLED", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Black", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "AMOLED Black");
+            if (string.Equals(trimmed, "High Contrast", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Contrast", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "High Contrast");
+            if (string.Equals(trimmed, "Dark", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Name == "Dark");
+
             var all = GetAllThemes();
-            return all.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) ?? all[0];
+            return all.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) ?? _builtinThemes[0];
         }
 
         public Theme GetCurrentTheme()
@@ -185,44 +194,72 @@ namespace RadialLauncher.Services.Themes
             try
             {
                 var settings = LoadSettings();
+                Theme selected;
                 if (settings.FollowWindowsTheme)
                 {
                     bool isDark = IsWindowsInDarkMode();
-                    var candidate = GetTheme(isDark ? "Dark" : "Light");
-                    if (settings.ExtractAccentFromWallpaper)
-                    {
-                        var sysAccent = GetWindowsAccentColor();
-                        if (sysAccent.HasValue)
-                        {
-                            candidate.AccentR = sysAccent.Value.R;
-                            candidate.AccentG = sysAccent.Value.G;
-                            candidate.AccentB = sysAccent.Value.B;
-                        }
-                    }
-                    return candidate;
+                    selected = GetTheme(isDark ? "Dark" : "White");
+                }
+                else if (!string.IsNullOrEmpty(settings.ThemeName))
+                {
+                    selected = GetTheme(settings.ThemeName);
+                }
+                else
+                {
+                    selected = _builtinThemes[0];
                 }
 
-                if (!string.IsNullOrEmpty(settings.ThemeName))
+                if (settings.ExtractAccentFromWallpaper)
                 {
-                    var custom = GetTheme(settings.ThemeName);
-                    if (settings.ExtractAccentFromWallpaper)
+                    var sysAccent = GetWindowsAccentColor();
+                    if (sysAccent.HasValue)
                     {
-                        var sysAccent = GetWindowsAccentColor();
-                        if (sysAccent.HasValue)
-                        {
-                            custom.AccentR = sysAccent.Value.R;
-                            custom.AccentG = sysAccent.Value.G;
-                            custom.AccentB = sysAccent.Value.B;
-                        }
+                        selected.AccentR = sysAccent.Value.R;
+                        selected.AccentG = sysAccent.Value.G;
+                        selected.AccentB = sysAccent.Value.B;
                     }
-                    return custom;
                 }
+
+                selected.BackgroundOpacity = Math.Clamp(settings.RadialOpacity, 0.20, 1.0);
+                return selected;
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed to get current theme, falling back to default Dark");
             }
-            return _builtinThemes[0];
+            var fallback = _builtinThemes[0];
+            fallback.BackgroundOpacity = 0.90;
+            return fallback;
+        }
+
+        public double GetRadialOpacity()
+        {
+            try
+            {
+                var settings = LoadSettings();
+                return Math.Clamp(settings.RadialOpacity, 0.20, 1.0);
+            }
+            catch
+            {
+                return 0.90;
+            }
+        }
+
+        public void SetRadialOpacity(double opacity)
+        {
+            try
+            {
+                var settings = LoadSettings();
+                settings.RadialOpacity = Math.Clamp(opacity, 0.20, 1.0);
+                SaveSettings(settings);
+
+                var updated = GetCurrentTheme();
+                OnThemeChanged?.Invoke(updated);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to set radial opacity: {Opacity}", opacity);
+            }
         }
 
         public void SetCurrentTheme(string name)
@@ -452,11 +489,15 @@ namespace RadialLauncher.Services.Themes
             {
                 var dir = Path.GetDirectoryName(SettingsPath)!;
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+
+                string tmpPath = $"{SettingsPath}.tmp";
+                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(tmpPath, json);
+                File.Move(tmpPath, SettingsPath, overwrite: true);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to write settings to {Path}", SettingsPath);
+                Log.Error(ex, "Failed to write settings atomically to {Path}", SettingsPath);
             }
         }
 
@@ -464,6 +505,7 @@ namespace RadialLauncher.Services.Themes
         {
             public int SchemaVersion { get; set; } = 1;
             public string ThemeName { get; set; } = "Dark";
+            public double RadialOpacity { get; set; } = 0.90;
             public string ActivationShortcut { get; set; } = "MiddleClick";
             public bool FollowWindowsTheme { get; set; } = false;
             public bool ExtractAccentFromWallpaper { get; set; } = false;

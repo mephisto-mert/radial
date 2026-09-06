@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -122,17 +123,114 @@ namespace RadialLauncher.Services.Sync
             File.WriteAllBytes(VaultPath, cipherBytes);
         }
 
+        private static readonly string BackupsDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "RadialLauncher", "Backups");
+
+        public async Task<(bool success, string filePath)> CreateLocalBackupAsync()
+        {
+            try
+            {
+                if (!Directory.Exists(BackupsDir)) Directory.CreateDirectory(BackupsDir);
+
+                string timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                string fileName = $"backup-{timestamp}.json";
+                string targetPath = Path.Combine(BackupsDir, fileName);
+                string tmpPath = $"{targetPath}.tmp";
+
+                var payload = new SyncPayload
+                {
+                    Categories = _categoryRepo.GetAll(),
+                    Items = _itemRepo.GetAll()
+                };
+
+                string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(tmpPath, json);
+                File.Move(tmpPath, targetPath, overwrite: true);
+
+                // Rotate backups: keep last 10
+                RotateBackups(10);
+
+                Log.Information("Local backup created at {Path}", targetPath);
+                return (true, targetPath);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to create local backup");
+                return (false, string.Empty);
+            }
+        }
+
+        public List<string> GetLocalBackups()
+        {
+            try
+            {
+                if (!Directory.Exists(BackupsDir)) return new List<string>();
+                return Directory.GetFiles(BackupsDir, "backup-*.json")
+                                .OrderByDescending(f => File.GetCreationTimeUtc(f))
+                                .ToList();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to list local backups");
+                return new List<string>();
+            }
+        }
+
+        public async Task<bool> RestoreFromLocalBackupAsync(string filePath)
+        {
+            return await ImportFromFileAsync(filePath);
+        }
+
+        private void RotateBackups(int keepCount)
+        {
+            try
+            {
+                if (!Directory.Exists(BackupsDir)) return;
+                var files = Directory.GetFiles(BackupsDir, "backup-*.json")
+                                     .Select(f => new FileInfo(f))
+                                     .OrderByDescending(f => f.CreationTimeUtc)
+                                     .ToList();
+
+                if (files.Count > keepCount)
+                {
+                    for (int i = keepCount; i < files.Count; i++)
+                    {
+                        try
+                        {
+                            files[i].Delete();
+                            Log.Debug("Rotated old backup file {Path}", files[i].FullName);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "Could not delete old backup {Path}", files[i].FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to rotate backup files");
+            }
+        }
+
         public async Task<bool> ExportToFileAsync(string filePath)
         {
             try
             {
+                var dir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                string tmpPath = $"{filePath}.tmp";
                 var payload = new SyncPayload
                 {
                     Categories = _categoryRepo.GetAll(),
                     Items = _itemRepo.GetAll()
                 };
                 string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(filePath, json);
+                await File.WriteAllTextAsync(tmpPath, json);
+                File.Move(tmpPath, filePath, overwrite: true);
+
                 Log.Information("Exported launcher data to {Path}", filePath);
                 return true;
             }

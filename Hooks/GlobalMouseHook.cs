@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Serilog;
@@ -9,6 +9,8 @@ namespace RadialLauncher.Hooks
     {
         private const int WH_MOUSE_LL = 14;
         private const int WM_MOUSEMOVE = 0x0200;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONUP = 0x0202;
         private const int WM_RBUTTONDOWN = 0x0204;
         private const int WM_RBUTTONUP = 0x0205;
         private const int WM_MBUTTONDOWN = 0x0207;
@@ -126,32 +128,7 @@ namespace RadialLauncher.Hooks
                         _lastMouseMoveTime = now;
                     }
 
-                    bool triggered = false;
-
-                    if (TriggerMode == "MiddleClick" && msg == WM_MBUTTONDOWN)
-                    {
-                        triggered = true;
-                    }
-                    else if (TriggerMode == "AltRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0)
-                    {
-                        triggered = true;
-                    }
-                    else if (TriggerMode == "ShiftRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0)
-                    {
-                        triggered = true;
-                    }
-                    else if (TriggerMode == "CtrlRightClick" && msg == WM_RBUTTONDOWN && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
-                    {
-                        triggered = true;
-                    }
-                    else if (TriggerMode == "XButton1" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 1)
-                    {
-                        triggered = true;
-                    }
-                    else if (TriggerMode == "XButton2" && msg == WM_XBUTTONDOWN && ((hookStruct.mouseData >> 16) & 0xFFFF) == 2)
-                    {
-                        triggered = true;
-                    }
+                    bool triggered = IsMouseTriggerMatched(TriggerMode, msg, hookStruct.mouseData);
 
                     if (triggered)
                     {
@@ -176,6 +153,55 @@ namespace RadialLauncher.Hooks
                 }
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+
+        public static bool IsMouseTriggerMatched(string trigger, int msg, uint mouseData)
+        {
+            if (string.IsNullOrWhiteSpace(trigger)) return false;
+            string t = trigger.Trim();
+
+            // Ignore keyboard-only hotkeys
+            if (t == "AltSpace" || t == "CtrlSpace" || t == "F4" || t == "Tilde")
+                return false;
+
+            bool requireCtrl = t.Contains("Ctrl", StringComparison.OrdinalIgnoreCase);
+            bool requireShift = t.Contains("Shift", StringComparison.OrdinalIgnoreCase);
+            bool requireAlt = t.Contains("Alt", StringComparison.OrdinalIgnoreCase);
+            bool requireWin = t.Contains("Win", StringComparison.OrdinalIgnoreCase);
+
+            bool isCtrlPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+            bool isShiftPressed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            bool isAltPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+            bool isWinPressed = ((GetAsyncKeyState(0x5B) & 0x8000) != 0) || ((GetAsyncKeyState(0x5C) & 0x8000) != 0);
+
+            if (requireCtrl != isCtrlPressed) return false;
+            if (requireShift != isShiftPressed) return false;
+            if (requireAlt != isAltPressed) return false;
+            if (requireWin != isWinPressed) return false;
+
+            // Determine target mouse button
+            if (t.Contains("XButton1", StringComparison.OrdinalIgnoreCase) || t.Contains("Mouse4", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_XBUTTONDOWN && ((mouseData >> 16) & 0xFFFF) == 1;
+            }
+            if (t.Contains("XButton2", StringComparison.OrdinalIgnoreCase) || t.Contains("Mouse5", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_XBUTTONDOWN && ((mouseData >> 16) & 0xFFFF) == 2;
+            }
+            if (t.Contains("RightClick", StringComparison.OrdinalIgnoreCase) || t.Contains("RightButton", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_RBUTTONDOWN;
+            }
+            if (t.Contains("LeftClick", StringComparison.OrdinalIgnoreCase) || t.Contains("LeftButton", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_LBUTTONDOWN;
+            }
+            if (t.Contains("Middle", StringComparison.OrdinalIgnoreCase) || t.Contains("MButton", StringComparison.OrdinalIgnoreCase) || t.Contains("Wheel", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_MBUTTONDOWN;
+            }
+
+            return false;
         }
 
         [DllImport("user32.dll")]

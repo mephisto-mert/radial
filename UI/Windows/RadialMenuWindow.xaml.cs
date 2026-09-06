@@ -23,6 +23,9 @@ namespace RadialLauncher.UI.Windows
         private readonly List<(Button btn, Border labelBorder, LauncherItem item)> _visibleButtons = new();
         private readonly List<IntPtr> _activeDwmThumbs = new();
         private int _keyboardFocusIndex = -1;
+        private Point _centerDragStartPoint;
+        private bool _isCenterDragging = false;
+        private bool _hasPageNavigated = false;
 
         public RadialMenuViewModel ViewModel => _viewModel;
 
@@ -51,6 +54,10 @@ namespace RadialLauncher.UI.Windows
                 Dispatcher.Invoke(this.Hide);
             };
             _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
+
+            CenterButton.PreviewMouseDown += CenterButton_PreviewMouseDown;
+            CenterButton.PreviewMouseMove += CenterButton_PreviewMouseMove;
+            CenterButton.PreviewMouseUp += CenterButton_PreviewMouseUp;
 
             MouseMove += Window_MouseMove;
             Closed += (s, e) => ClearActiveDwmThumbnails();
@@ -370,6 +377,33 @@ namespace RadialLauncher.UI.Windows
             RadialMotionSystem.AnimateCenterMorph(CenterButton, _viewModel.IsSubmenu, theme.ReduceMotion);
 
             RenderCategoryDots();
+            RenderPageDots();
+        }
+
+        private void RenderPageDots()
+        {
+            if (PageDots == null) return;
+            PageDots.Children.Clear();
+            if (_viewModel.TotalPages <= 1)
+            {
+                PageDots.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            PageDots.Visibility = Visibility.Visible;
+            for (int i = 0; i < _viewModel.TotalPages; i++)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 5,
+                    Height = 5,
+                    Margin = new Thickness(2, 0, 2, 0),
+                    Fill = (i == _viewModel.CurrentPageIndex) 
+                        ? _viewModel.ActiveTheme.AccentBrush 
+                        : new SolidColorBrush(Color.FromArgb(90, 255, 255, 255))
+                };
+                PageDots.Children.Add(dot);
+            }
         }
 
         private ImageSource? ResolveItemIcon(LauncherItem item)
@@ -569,6 +603,52 @@ namespace RadialLauncher.UI.Windows
             if (char.IsLetterOrDigit(c) || char.IsPunctuation(c) || c == ' ')
             {
                 _viewModel.ApplySearch(_viewModel.SearchQuery + c);
+            }
+        }
+
+        private void CenterButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                _centerDragStartPoint = e.GetPosition(this);
+                _isCenterDragging = true;
+                _hasPageNavigated = false;
+                CenterButton.CaptureMouse();
+            }
+        }
+
+        private void CenterButton_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isCenterDragging && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var current = e.GetPosition(this);
+                double dx = current.X - _centerDragStartPoint.X;
+                if (!_hasPageNavigated && Math.Abs(dx) > 35)
+                {
+                    if (dx > 35)
+                    {
+                        _viewModel.NextPage();
+                    }
+                    else if (dx < -35)
+                    {
+                        _viewModel.PrevPage();
+                    }
+                    _hasPageNavigated = true;
+                    _centerDragStartPoint = current;
+                }
+            }
+        }
+
+        private void CenterButton_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isCenterDragging)
+            {
+                _isCenterDragging = false;
+                CenterButton.ReleaseMouseCapture();
+                if (_hasPageNavigated)
+                {
+                    e.Handled = true;
+                }
             }
         }
 
