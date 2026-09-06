@@ -246,12 +246,16 @@ namespace RadialLauncher.Services.Themes
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(theme.Name)) return;
                 theme.IsCustom = true;
-                string filePath = Path.Combine(CustomThemesDir, $"{theme.Name}.json");
+                string safeName = Path.GetFileName(theme.Name).Trim();
+                if (string.IsNullOrWhiteSpace(safeName)) return;
+
+                string filePath = Path.Combine(CustomThemesDir, $"{safeName}.json");
                 string json = JsonSerializer.Serialize(theme, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(filePath, json);
-                Log.Information("Saved custom theme: {Name}", theme.Name);
-                SetCurrentTheme(theme.Name);
+                Log.Information("Saved custom theme: {Name}", safeName);
+                SetCurrentTheme(safeName);
             }
             catch (Exception ex)
             {
@@ -263,11 +267,15 @@ namespace RadialLauncher.Services.Themes
         {
             try
             {
-                string filePath = Path.Combine(CustomThemesDir, $"{name}.json");
+                if (string.IsNullOrWhiteSpace(name)) return;
+                string safeName = Path.GetFileName(name).Trim();
+                if (string.IsNullOrWhiteSpace(safeName)) return;
+
+                string filePath = Path.Combine(CustomThemesDir, $"{safeName}.json");
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
-                    Log.Information("Deleted custom theme: {Name}", name);
+                    Log.Information("Deleted custom theme: {Name}", safeName);
                     SetCurrentTheme("Dark");
                 }
             }
