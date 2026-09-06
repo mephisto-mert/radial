@@ -144,6 +144,25 @@ namespace RadialLauncher.UI.ViewModels
         }
 
         [RelayCommand]
+        public void AddItem(LauncherItem item)
+        {
+            if (item == null) return;
+            item.IsUserAdded = true;
+            _itemRepo.Insert(item);
+            RefreshItems();
+            StatusMessage = $"{item.Name} " + LocalizationService.Instance.GetString("MsgItemAdded", "added.");
+        }
+
+        [RelayCommand]
+        public void UpdateItem(LauncherItem item)
+        {
+            if (item == null) return;
+            _itemRepo.Update(item);
+            RefreshItems();
+            StatusMessage = $"{item.Name} " + LocalizationService.Instance.GetString("MsgItemUpdated", "updated.");
+        }
+
+        [RelayCommand]
         public void ToggleFavorite(LauncherItem item)
         {
             if (item == null) return;

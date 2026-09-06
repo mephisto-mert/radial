@@ -137,6 +137,13 @@ namespace RadialLauncher.UI.Windows
                     ActionSelectComboBox.Visibility = Visibility.Collapsed;
                     EditMacroBtn.Visibility = Visibility.Collapsed;
                 }
+                else if (type == "URL")
+                {
+                    TargetTextBox.Visibility = Visibility.Visible;
+                    BrowseButton.Visibility = Visibility.Collapsed;
+                    ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
+                }
                 else
                 {
                     TargetTextBox.Visibility = Visibility.Visible;
@@ -222,20 +229,37 @@ namespace RadialLauncher.UI.Windows
                 categoryId = id;
             }
 
+            string name = NameTextBox.Text.Trim();
+            string target = TargetTextBox.Text.Trim();
+
             string itemType = "EXE";
             if (TypeComboBox.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 itemType = cbi.Content.ToString()!;
             }
 
+            if (target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+                target.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                target.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ||
+                itemType == "URL")
+            {
+                itemType = "URL";
+                if (!target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+                    !target.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    target = "https://" + target;
+                }
+            }
+
             CreatedItem = new LauncherItem
             {
-                Name = NameTextBox.Text.Trim(),
-                Target = TargetTextBox.Text.Trim(),
+                Name = name,
+                Target = target,
                 Arguments = ArgsTextBox.Text.Trim(),
                 Type = itemType,
                 CategoryId = categoryId,
-                IsFavorite = FavoriteCheckBox.IsChecked == true
+                IsFavorite = FavoriteCheckBox.IsChecked == true,
+                IsUserAdded = true
             };
 
             this.DialogResult = true;

@@ -112,5 +112,40 @@ namespace RadialLauncher.Tests
             Assert.Equal("B", mostUsed[0].Name);
             Assert.Equal("C", mostUsed[1].Name);
         }
+
+        [Fact]
+        public void Insert_And_Update_UrlItem_PersistsSuccessfully()
+        {
+            var urlItem = new LauncherItem
+            {
+                Name = "YouTube",
+                Target = "https://youtube.com",
+                Type = "URL",
+                CategoryId = 1,
+                IsFavorite = true,
+                IsUserAdded = true
+            };
+
+            int id = _repo.Insert(urlItem);
+            Assert.True(id > 0);
+
+            var retrieved = _repo.GetById(id);
+            Assert.NotNull(retrieved);
+            Assert.Equal("YouTube", retrieved!.Name);
+            Assert.Equal("https://youtube.com", retrieved.Target);
+            Assert.Equal("URL", retrieved.Type);
+            Assert.True(retrieved.IsUserAdded);
+
+            // Update URL
+            retrieved.Target = "https://music.youtube.com";
+            retrieved.Name = "YouTube Music";
+            bool updated = _repo.Update(retrieved);
+            Assert.True(updated);
+
+            var afterUpdate = _repo.GetById(id);
+            Assert.NotNull(afterUpdate);
+            Assert.Equal("YouTube Music", afterUpdate!.Name);
+            Assert.Equal("https://music.youtube.com", afterUpdate.Target);
+        }
     }
 }

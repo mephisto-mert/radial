@@ -446,10 +446,12 @@ namespace RadialLauncher.UI.Windows
         {
             var win = new AddItemWindow();
             win.Owner = this;
-            if (win.ShowDialog() == true)
+            if (win.ShowDialog() == true && win.CreatedItem != null)
             {
-                _viewModel.RefreshItems();
+                _viewModel.AddItem(win.CreatedItem);
                 RefreshGrid();
+                var loc = LocalizationService.Instance;
+                StatusText.Text = string.Format(loc.GetString("Status_Item_Added", "Added '{0}' successfully."), win.CreatedItem.Name);
             }
         }
 
@@ -461,8 +463,10 @@ namespace RadialLauncher.UI.Windows
                 win.Owner = this;
                 if (win.ShowDialog() == true)
                 {
-                    _viewModel.RefreshItems();
+                    _viewModel.UpdateItem(win.Item);
                     RefreshGrid();
+                    var loc = LocalizationService.Instance;
+                    StatusText.Text = string.Format(loc.GetString("Status_Item_Updated", "Updated '{0}' successfully."), win.Item.Name);
                 }
             }
         }
