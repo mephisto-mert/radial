@@ -1,99 +1,105 @@
-﻿# 🌟 Radial Launcher (Pie Command Center)
+# ?? Radial Launcher
 
 <div align="center">
   <img src="Resources/app.ico" width="128" height="128" alt="Radial Launcher Logo" />
   <br />
-  <h3>Modern, Donanım Hızlandırmalı Dairesel Başlatıcı ve Windows Komuta Merkezi</h3>
-  <p>Windows için akıcı animasyonlar, açık pencere yöneticisi, oyun kütüphane entegrasyonu ve sistem aksiyonları sunan yeni nesil dairesel menü.</p>
+  <h3>High-Performance Hardware-Accelerated Radial Menu &amp; Windows Command Center</h3>
+  <p>Ultra-fast circular application launcher, live window switcher, game library aggregator, macro automation, and system control dashboard for Windows 10 &amp; 11.</p>
 </div>
 
 ---
 
-## 🚀 Öne Çıkan Özellikler
+## ?? Key Features
 
-### 1. 🪟 Entegre Açık Pencere Yöneticisi (Window Switcher)
-- Bilgisayarda o an açık olan tüm uygulamaları anında tespit eder ve gerçek ikonlarıyla dairesel menüde listeler.
-- **Sol Tık:** İlgili pencereye yumuşak geçiş yapar (`SetForegroundWindow`).
-- **Orta Tık (Tekerlek):** Farenin orta tuşu ile tıklandığında ilgili pencereyi/uygulamayı anında kapatır (`WM_CLOSE`).
-
-### 2. 📁 Hiyerarşik Alt Menüler (Katmanlar / Sub-menus)
-- Öğeler `SUBMENU` türünde tanımlanabilir.
-- Alt menüye tıklandığında menü katmanın içine geçer ve merkez buton otomatik olarak **⬅ Geri** butonuna dönüşür.
-- Sınırsız derinlikte hiyerarşik menü navigasyonu sunar.
-
-### 3. ⚡ Doğrudan Sistem ve Medya Komutları (Call Function)
-- Herhangi bir üçüncü parti programa ihtiyaç duymadan doğrudan işletim sistemi seviyesinde çalışır:
-  - **Medya:** Ses Aç (+2%), Ses Kıs (-2%), Sesi Kapat/Aç, Oynat/Durdur, Sonraki Parça, Önceki Parça
-  - **Windows & Araçlar:** Masaüstünü Göster (Win+D), Ekran Alıntısı Aracı (Win+Shift+S), Görev Yöneticisi, Bilgisayarı Kilitle, Geri Dönüşüm Kutusunu Boşalt.
-
-### 4. 🎮 Otomatik Steam & Epic Games Algılama
-- Bilgisayardaki Steam kütüphanelerini (`libraryfolders.vdf`, `appmanifest_*.acf`) ve Epic Games manifest dosyalarını tek tıkla tarar.
-- Yüklü oyunları menüye ekler ve resmi yüksek çözünürlüklü `.ico` dosyalarını otomatik eşleştirir.
-
-### 5. 🌐 Akıllı Web Favicon Algılama
-- Eklenen web sitelerinin (YouTube, GitHub, Twitter vb.) favicon'larını Google Favicon API ile otomatik indirir, `%LOCALAPPDATA%` üzerinde önbelleğe alır.
-
-### 6. 🔍 Anlık Arama (Search-as-you-type)
-- Menü açıkken klavyeden doğrudan yazmaya başlayarak arama yapabilirsiniz.
-- Eşleşen öğeler anında filtrelenir, `Enter` tuşuna basıldığında ilk sonuç çalıştırılır.
-
-### 7. 🎨 Glassmorphism Tasarım & 60 FPS Animasyonlar
-- WPF ve DirectX donanım hızlandırmalı modern koyu arayüz.
-- Fare ile üzerine gelinen öğenin dinamik olarak büyümesi (Scale Hover Animation) ve merkezde tam adının gösterilmesi.
-- 5 farklı hazır tema: Dark, Light, Midnight Blue, Purple Haze, Forest.
+* **?? Live Window Switcher & DWM Previews:** Instant enumeration of all top-level desktop windows with real-time thumbnail previews and virtual desktop migration.
+* **? System & Media Actions:** Hardware-level volume control, media keys, Windows screenshot (Win+Shift+S), Pomodoro focus timer (25 min), lock screen, and system actions.
+* **?? Hierarchical Submenus & Layers:** Infinite-depth nested submenus with fluid morphing center back button and keyboard shortcut navigation.
+* **?? Steam & Epic Games Detection:** Automated background scanning of Steam libraries and Epic Games manifests with official game art extraction.
+* **?? Clipboard History Manager:** Low-latency thread-safe clipboard listener with 20-item rolling history, Unicode support, and 500KB text truncation memory guard.
+* **?? Theme Engine & Custom Themes:** 8 built-in themes (Dark, Light, Midnight Blue, Purple Haze, Forest, Cyberpunk, Crimson Red, AMOLED Black), live radial preview, wallpaper accent extraction, and Windows dark mode synchronization.
+* **?? Macro Automation Runner:** Multi-step action sequencer with configurable delays, cancellation support, and safe application exit lifecycle.
+* **?? GitHub Gist Cloud Sync:** Encrypted DPAPI vault for backing up and synchronizing settings across multiple machines.
+* **?? Modular Plugin Architecture:** Dynamic assembly plugin loading with isolated runtime exception boundaries ([Plugin Development Guide](docs/PLUGINS.md)).
+* **?? Instant Search-as-you-type:** Type any character while the radial menu is open to dynamically filter items with fuzzy matching.
 
 ---
 
-## 📊 Karşılaştırmalı Rakip Analizi
+## ?? Controls & Shortcuts
 
-Radial Launcher, piyasadaki mevcut dairesel çözümlerin zayıf yönlerini gidermek ve modern bir alternatif sunmak amacıyla geliştirilmiştir:
-
-| Kriter | **MouseLauncher** | **Circle Dock** | **MightyPie** | **Radial Launcher (Biz)** |
-| :--- | :--- | :--- | :--- | :--- |
-| **Geliştirme Mimarisi** | PureBasic / GDI | WinForms .NET 2.0 (2008) | C# WPF (Basit) | **Modern .NET 7 + WPF (DirectX Donanım Hızlandırmalı)** |
-| **Kapasite ve Düzen** | Sabit dilimler, taşma sorunu | Spiral dönen karışık liste | Sabit 8 buton kısıtı | **Altın Oranlı 15'li Akıllı Sayfalama + Kategori Filtresi** |
-| **Pencere Geçişi (Alt+Tab)**| ❌ Yok | ❌ Yok | ⚠️ Basit liste | **✅ Canlı İkonlar + Sol Tık Odaklanma + Orta Tık Kapatma** |
-| **Alt Menü / Katman Desteği**| ❌ Yok | ❌ Harici klasör | ⚠️ Sabit 3 katman | **✅ Dinamik Derinlik + "⬅ Geri" Navigasyon Yığını** |
-| **Sistem Komutları (Aksiyonlar)**| ❌ Yok | ❌ Yok | ⚠️ Kısıtlı | **✅ Medya, Ses, Ekran Alıntısı, Masaüstü, Kilit, Görev Yön.** |
-| **Oyun Platform Entegrasyonu**| ❌ Yok | ❌ Yok | ❌ Yok | **✅ Steam & Epic Games Otomatik Kütüphane & İkon Tarama** |
-| **Web Favicon Çekme** | ❌ Yok | ❌ Yok | ❌ Yok | **✅ Google Favicon Crawler + Yerel Önbellekleme** |
-| **Anlık Arama** | ❌ Yok | ❌ Yok | ❌ Yok | **✅ Menü Açıkken Doğrudan Yazarak Filtreleme** |
-| **Veritabanı Altyapısı** | `.ini` dosyası | `.xml` (bozulabilir) | Bellek İçi | **✅ ACID SQLite Veritabanı + JSON İçe/Dışa Aktarım** |
-| **Yönetim Arayüzü** | Basit ayar ekranı | Karışık ayarlar | Sınırlı ayar menüsü | **✅ Koyu Temalı Sürükle-Bırak Sıralamalı Yönetim Paneli** |
-
----
-
-## ⌨️ Varsayılan Kısayollar ve Kontroller
-
-| İşlem | Tuş / Fare Hareketi |
+| Action | Input / Shortcut |
 | :--- | :--- |
-| **Menüyü Aç** | Fare Orta Tuşu (Tekerlek Tıklaması) |
-| **Öğeyi Başlat** | Fare Sol Tık |
-| **Pencereyi Kapat** | Açık Pencereler modunda Fare Orta Tuş |
-| **Alt Menüye Gir** | Submenu öğesine Sol Tık |
-| **Geri Dön** | Merkezdeki `⬅` Butonu veya `Esc` / `Backspace` |
-| **Sayfa / Kategori Değiştir** | Fare Tekerleği Kaydırma veya Sol/Sağ Ok Tuşları |
-| **Arama Yap** | Menü açıkken herhangi bir harfe basmaya başlayın |
-| **Favori Yap / Çıkar** | Öğe üzerinde Sağ Tık |
-| **Yönetim Paneli** | Merkezdeki butona Sağ Tık veya Sistem Tepsisinden "Settings" |
+| **Open Menu** | Middle Mouse Button (Wheel Click) / Alt+Space / Ctrl+Space / F4 |
+| **Launch Item** | Left Click / Enter |
+| **Navigate Items** | Arrow Keys / Tab |
+| **Close Window Item** | Middle Click on Window item |
+| **Move Window to Virtual Desktop** | Right Click on Window item |
+| **Open Submenu** | Left Click on Submenu item |
+| **Back to Parent Menu** | Center � Button / Escape / Backspace |
+| **Change Category / Page** | Mouse Wheel Scroll / Category Pill Click |
+| **Instant Search** | Type directly on keyboard |
+| **Open Management & Settings** | Right Click on Center Button or Tray Icon Menu |
 
 ---
 
-## 🛠️ Kurulum ve Derleme
+## ?? Installation & Packaging
 
-Gereksinimler:
-- Windows 10 / Windows 11
-- [.NET 7.0 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) veya üzeri
+### 1. Portable Release
+Download RadialLauncher-1.0.0-win-x64.zip from [Releases](https://github.com/mephisto-mert/radial/releases), extract to any folder, and run RadialLauncher.exe.
 
-Projeyi derlemek ve çalıştırmak için:
-```bash
+### 2. Windows Installer
+Run RadialLauncher-1.0.0-Setup.exe to install to %ProgramFiles%\RadialLauncher with Start Menu and optional Desktop shortcuts.
+
+---
+
+## ??? Building from Source
+
+### Prerequisites
+* Windows 10 (1809+) or Windows 11
+* [.NET 7.0 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) (or [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0))
+
+### Build & Run
+``powershell
+# Clone repository
 git clone https://github.com/mephisto-mert/radial.git
 cd radial
+
+# Build Debug
 dotnet build
-dotnet run
-```
+
+# Run unit and integration tests (84 tests)
+dotnet test
+
+# Build & Run application
+dotnet run --project RadialLauncher.csproj
+``
+
+### Release Packaging
+To build the standalone release package and checksums:
+``powershell
+powershell -ExecutionPolicy Bypass -File scripts\package.ps1
+``
 
 ---
 
-## 📄 Lisans
-Bu proje açık kaynaklıdır ve MIT lisansı altında dağıtılmaktadır.
+## ?? Configuration & Data Paths
+
+* **Database (SQLite):** %LocalAppData%\RadialLauncher\radial.db
+* **Settings:** %LocalAppData%\RadialLauncher\settings.json
+* **Custom Themes:** %LocalAppData%\RadialLauncher\CustomThemes\*.json
+* **Plugins:** %LocalAppData%\RadialLauncher\Plugins\*.dll
+* **Log Files:** %LocalAppData%\RadialLauncher\Logs\radial_launcher_*.log
+* **Favicon Cache:** %LocalAppData%\RadialLauncher\FaviconCache\
+
+---
+
+## ?? Documentation & Guides
+
+* [Plugin Development Guide](docs/PLUGINS.md)
+* [Manual Windows QA Matrix](docs/MANUAL_QA.md)
+* [Platform & Upgrade Notes](docs/UPGRADE_NOTES.md)
+* [Changelog](CHANGELOG.md)
+
+---
+
+## ?? License
+This project is open-source under the MIT License.
