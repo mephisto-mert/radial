@@ -1,7 +1,10 @@
-﻿## Build and Output
+## Build and Output
 bin/
 obj/
 out/
+publish/
+artifacts/*.zip
+artifacts/*.exe
 *.log
 
 ## Visual Studio & IDEs
