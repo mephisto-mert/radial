@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using RadialLauncher.Services.Clipboard;
 using Xunit;
 
@@ -57,6 +59,50 @@ namespace RadialLauncher.Tests
 
             var history = service.GetRecentHistory(10);
             Assert.Empty(history);
+        }
+
+        [Fact]
+        public void AddToHistory_UnicodeAndTurkishCharacters_PreservedCorrectly()
+        {
+            var service = new ClipboardService();
+
+            string turkishText = "Türkçe Karakterler: ğüşıöç ĞÜŞİÖÇ 🌟 🚀";
+            service.AddToHistory(turkishText);
+
+            var history = service.GetRecentHistory(10);
+            Assert.Single(history);
+            Assert.Equal(turkishText, history[0].Text);
+        }
+
+        [Fact]
+        public void AddToHistory_ConcurrentAccess_IsThreadSafeAndRespectsCap()
+        {
+            var service = new ClipboardService();
+
+            Parallel.For(0, 100, i =>
+            {
+                service.AddToHistory($"Concurrent Item {i}");
+            });
+
+            var history = service.GetRecentHistory(50);
+            Assert.Equal(20, history.Count);
+        }
+
+        [Fact]
+        public void Listener_RepeatedStartAndStop_DoesNotThrow()
+        {
+            var service = new ClipboardService();
+
+            var ex1 = Record.Exception(() =>
+            {
+                service.StartListening(new IntPtr(100));
+                service.StartListening(new IntPtr(100)); // Repeated start
+                service.StopListening(new IntPtr(100));
+                service.StopListening(new IntPtr(100));  // Repeated stop
+                service.StopListening(IntPtr.Zero);
+            });
+
+            Assert.Null(ex1);
         }
     }
 }

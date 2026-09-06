@@ -28,12 +28,16 @@ namespace RadialLauncher.Services.Clipboard
         private readonly List<ClipboardItem> _history = new();
         private readonly object _lock = new();
         private const int MaxHistory = 20;
+        private const int MaxTextLength = 500000; // 500KB max per clipboard item
+
+        private IntPtr _listeningHwnd = IntPtr.Zero;
 
         public IReadOnlyList<ClipboardItem> GetRecentHistory(int limit = 20)
         {
             lock (_lock)
             {
-                return _history.Take(Math.Min(limit, MaxHistory)).ToList();
+                int takeCount = Math.Clamp(limit, 0, MaxHistory);
+                return _history.Take(takeCount).ToList();
             }
         }
 
@@ -97,12 +101,16 @@ namespace RadialLauncher.Services.Clipboard
         public void AddToHistory(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
+            
+            // Truncate huge text to avoid memory bloating
+            string safeText = text.Length > MaxTextLength ? text.Substring(0, MaxTextLength) : text;
+
             lock (_lock)
             {
-                var existing = _history.FirstOrDefault(h => h.Text == text);
+                var existing = _history.FirstOrDefault(h => h.Text == safeText);
                 if (existing != null) _history.Remove(existing);
 
-                _history.Insert(0, new ClipboardItem { Text = text, Timestamp = DateTime.UtcNow });
+                _history.Insert(0, new ClipboardItem { Text = safeText, Timestamp = DateTime.UtcNow });
                 while (_history.Count > MaxHistory)
                 {
                     _history.RemoveAt(_history.Count - 1);
@@ -113,28 +121,50 @@ namespace RadialLauncher.Services.Clipboard
         public void StartListening(IntPtr hwnd)
         {
             if (hwnd == IntPtr.Zero) return;
-            try
+            lock (_lock)
             {
-                bool success = AddClipboardFormatListener(hwnd);
-                Log.Information("Started clipboard format listener on HWND {Hwnd}: {Success}", hwnd, success);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to start clipboard format listener on HWND {Hwnd}", hwnd);
+                if (_listeningHwnd == hwnd) return; // Already listening on this HWND
+                try
+                {
+                    if (_listeningHwnd != IntPtr.Zero)
+                    {
+                        RemoveClipboardFormatListener(_listeningHwnd);
+                    }
+
+                    bool success = AddClipboardFormatListener(hwnd);
+                    if (success)
+                    {
+                        _listeningHwnd = hwnd;
+                        Log.Information("Started clipboard format listener on HWND {Hwnd}", hwnd);
+                    }
+                    else
+                    {
+                        Log.Warning("AddClipboardFormatListener returned false on HWND {Hwnd}", hwnd);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to start clipboard format listener on HWND {Hwnd}", hwnd);
+                }
             }
         }
 
         public void StopListening(IntPtr hwnd)
         {
             if (hwnd == IntPtr.Zero) return;
-            try
+            lock (_lock)
             {
-                RemoveClipboardFormatListener(hwnd);
-                Log.Information("Stopped clipboard format listener on HWND {Hwnd}", hwnd);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to stop clipboard format listener on HWND {Hwnd}", hwnd);
+                if (_listeningHwnd != hwnd && _listeningHwnd != IntPtr.Zero) return;
+                try
+                {
+                    RemoveClipboardFormatListener(hwnd);
+                    _listeningHwnd = IntPtr.Zero;
+                    Log.Information("Stopped clipboard format listener on HWND {Hwnd}", hwnd);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to stop clipboard format listener on HWND {Hwnd}", hwnd);
+                }
             }
         }
 
