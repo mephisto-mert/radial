@@ -198,6 +198,14 @@ namespace RadialLauncher.Tests
             {
                 var payload = new SyncService.SyncPayload
                 {
+                    Settings = new RadialLauncher.Services.Themes.ThemeService.AppSettings
+                    {
+                        ThemeName = "Purple",
+                        RadialOpacity = 0.85,
+                        ActivationShortcut = "CtrlSpace",
+                        DensityMode = "Compact",
+                        Language = "de"
+                    },
                     Categories = new List<Category> { new Category { Id = 1, Name = "RestoredCat" } },
                     Items = new List<LauncherItem> { new LauncherItem { Id = 1, Name = "RestoredApp", Target = "app.exe" } }
                 };
@@ -209,6 +217,14 @@ namespace RadialLauncher.Tests
 
                 mockCatRepo.Verify(r => r.Insert(It.Is<Category>(c => c.Name == "RestoredCat")), Times.Once);
                 mockItemRepo.Verify(r => r.Insert(It.Is<LauncherItem>(i => i.Name == "RestoredApp")), Times.Once);
+
+                // Verify restored theme settings and language
+                var currentTheme = RadialLauncher.Services.Themes.ThemeService.Instance.GetCurrentTheme();
+                Assert.Equal("Purple", currentTheme.Name);
+                Assert.Equal("de", RadialLauncher.Services.Localization.LocalizationService.Instance.CurrentLanguage);
+
+                // Cleanup settings
+                RadialLauncher.Services.Localization.LocalizationService.Instance.SetLanguage("en");
             }
             finally
             {

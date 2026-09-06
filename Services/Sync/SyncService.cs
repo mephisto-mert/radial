@@ -10,6 +10,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Localization;
+using RadialLauncher.Services.Themes;
 using Serilog;
 
 namespace RadialLauncher.Services.Sync
@@ -28,7 +30,8 @@ namespace RadialLauncher.Services.Sync
         public class SyncPayload
         {
             public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-            public string AppVersion { get; set; } = "2.0";
+            public string AppVersion { get; set; } = "1.0";
+            public ThemeService.AppSettings? Settings { get; set; }
             public List<Category> Categories { get; set; } = new();
             public List<LauncherItem> Items { get; set; } = new();
         }
@@ -140,6 +143,7 @@ namespace RadialLauncher.Services.Sync
 
                 var payload = new SyncPayload
                 {
+                    Settings = ThemeService.Instance.GetSettings(),
                     Categories = _categoryRepo.GetAll(),
                     Items = _itemRepo.GetAll()
                 };
@@ -224,6 +228,7 @@ namespace RadialLauncher.Services.Sync
                 string tmpPath = $"{filePath}.tmp";
                 var payload = new SyncPayload
                 {
+                    Settings = ThemeService.Instance.GetSettings(),
                     Categories = _categoryRepo.GetAll(),
                     Items = _itemRepo.GetAll()
                 };
@@ -263,6 +268,15 @@ namespace RadialLauncher.Services.Sync
                 var payload = JsonSerializer.Deserialize<SyncPayload>(json);
                 if (payload == null) return false;
 
+                if (payload.Settings != null)
+                {
+                    ThemeService.Instance.UpdateSettings(payload.Settings);
+                    if (!string.IsNullOrEmpty(payload.Settings.Language))
+                    {
+                        LocalizationService.Instance.SetLanguage(payload.Settings.Language);
+                    }
+                }
+
                 foreach (var cat in payload.Categories)
                 {
                     var existing = _categoryRepo.GetById(cat.Id);
@@ -298,6 +312,7 @@ namespace RadialLauncher.Services.Sync
             {
                 var payload = new SyncPayload
                 {
+                    Settings = ThemeService.Instance.GetSettings(),
                     Categories = _categoryRepo.GetAll(),
                     Items = _itemRepo.GetAll()
                 };

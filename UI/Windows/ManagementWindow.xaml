@@ -177,7 +177,7 @@
         <!-- Main Tab Control with Modern Left Sidebar -->
         <TabControl x:Name="MainTabs" Grid.Row="0">
             <!-- TAB 1: UYGULAMALAR & ÖĞELER -->
-            <TabItem Header="📋  Uygulamalar &amp; Kısayollar">
+            <TabItem x:Name="TabItem_Apps" Header="📋  Uygulamalar &amp; Kısayollar">
                 <Grid Margin="20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -188,12 +188,12 @@
                     <!-- Top Bar: Header & Actions -->
                     <DockPanel Grid.Row="0" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="Uygulama &amp; Kısayol Yönetimi" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                            <TextBlock Text="Radyal menüde listelenen tüm program, web sitesi ve klasörleri yönetin." FontSize="12" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="TxtTab1Title" Text="Uygulama &amp; Kısayol Yönetimi" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock x:Name="TxtTab1Sub" Text="Radyal menüde listelenen tüm program, web sitesi ve klasörleri yönetin." FontSize="12" Foreground="#94A3B8" Margin="0,2,0,0"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="🔍 Bilgisayarı Tara" Padding="14,7" Margin="0,0,8,0" Background="#20202C" Foreground="White" BorderBrush="#35FFFFFF" Click="ScanButton_Click"/>
-                            <Button Content="➕ Yeni Öğe Ekle" Padding="16,7" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="AddItemButton_Click"/>
+                            <Button x:Name="BtnScanPC" Content="🔍 Bilgisayarı Tara" Padding="14,7" Margin="0,0,8,0" Background="#20202C" Foreground="White" BorderBrush="#35FFFFFF" Click="ScanButton_Click"/>
+                            <Button x:Name="BtnAddItem" Content="➕ Yeni Öğe Ekle" Padding="16,7" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="AddItemButton_Click"/>
                         </StackPanel>
                     </DockPanel>
 
@@ -201,9 +201,9 @@
                     <Border Grid.Row="1" Background="#14141E" CornerRadius="8" Padding="12,8" Margin="0,0,0,14" BorderBrush="#20FFFFFF" BorderThickness="1">
                         <DockPanel>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Kategori:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="TxtCategoryLabel" Text="Kategori:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
                                 <ComboBox x:Name="CategoryFilterCombo" Width="180" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C26" Foreground="White"/>
-                                <TextBlock Text="Ara:" VerticalAlignment="Center" Margin="16,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="TxtSearchLabel" Text="Ara:" VerticalAlignment="Center" Margin="16,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
                                 <TextBox x:Name="SearchBox" Width="220" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
                             </StackPanel>
                         </DockPanel>
@@ -215,21 +215,21 @@
                               BorderBrush="#25FFFFFF" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1AFFFFFF"
                               HeadersVisibility="Column" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="⭐" Binding="{Binding IsFavoriteText}" Width="32"/>
-                            <DataGridTextColumn Header="Sıra" Binding="{Binding Position}" Width="36"/>
-                            <DataGridTemplateColumn Header="İkon" Width="38">
+                            <DataGridTextColumn x:Name="ColStar" Header="⭐" Binding="{Binding IsFavoriteText}" Width="32"/>
+                            <DataGridTextColumn x:Name="ColOrder" Header="Sıra" Binding="{Binding Position}" Width="36"/>
+                            <DataGridTemplateColumn x:Name="ColIcon" Header="İkon" Width="38">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Image Source="{Binding Icon}" Width="20" Height="20" Stretch="Uniform"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="İsim" Binding="{Binding Name}" Width="135"/>
-                            <DataGridTextColumn Header="Tür" Binding="{Binding Type}" Width="55"/>
-                            <DataGridTextColumn Header="Kategori" Binding="{Binding CategoryName}" Width="90"/>
-                            <DataGridTextColumn Header="Çalıştırma" Binding="{Binding LaunchCount}" Width="65"/>
-                            <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="*" MinWidth="120"/>
-                            <DataGridTemplateColumn Header="İşlemler" Width="115">
+                            <DataGridTextColumn x:Name="ColName" Header="İsim" Binding="{Binding Name}" Width="135"/>
+                            <DataGridTextColumn x:Name="ColType" Header="Tür" Binding="{Binding Type}" Width="55"/>
+                            <DataGridTextColumn x:Name="ColCategory" Header="Kategori" Binding="{Binding CategoryName}" Width="90"/>
+                            <DataGridTextColumn x:Name="ColLaunchCount" Header="Çalıştırma" Binding="{Binding LaunchCount}" Width="65"/>
+                            <DataGridTextColumn x:Name="ColTarget" Header="Hedef" Binding="{Binding Target}" Width="*" MinWidth="120"/>
+                            <DataGridTemplateColumn x:Name="ColActions" Header="İşlemler" Width="115">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
@@ -246,7 +246,7 @@
             </TabItem>
 
             <!-- TAB 2: TEMALAR & GÖRSEL DİZAYN SİSTEMİ -->
-            <TabItem Header="🎨  Temalar &amp; Görsellik">
+            <TabItem x:Name="TabItem_Themes" Header="🎨  Temalar &amp; Görsellik">
                 <Grid Margin="20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -254,8 +254,8 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock Text="Görsel Temalar &amp; Şeffaflık" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                        <TextBlock Text="8 seçkin renk paletinden birini seçin, radyal şeffaflığı ve yoğunluğu ayarlayın." FontSize="12" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                        <TextBlock x:Name="TxtTab2Title" Text="Görsel Temalar &amp; Şeffaflık" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock x:Name="TxtTab2Sub" Text="8 seçkin renk paletinden birini seçin, radyal şeffaflığı ve yoğunluğu ayarlayın." FontSize="12" Foreground="#94A3B8" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <Grid Grid.Row="1">
@@ -267,10 +267,10 @@
                         <!-- Left: Theme Selector & Live Radial Preview -->
                         <Border Grid.Column="0" Background="#14141E" CornerRadius="10" Padding="14" Margin="0,0,16,0" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="Hazır Temalar (8 Seçkin Tema)" FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="TxtThemesHeader" Text="Hazır Temalar (8 Seçkin Tema)" FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
                                 <ListBox x:Name="ThemesListBox" Height="170" Background="#161622" Foreground="White" BorderBrush="#35FFFFFF" SelectionChanged="ThemesListBox_SelectionChanged"/>
 
-                                <TextBlock Text="Canlı Dairesel Önizleme" FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,14,0,8"/>
+                                <TextBlock x:Name="TxtPreviewHeader" Text="Canlı Dairesel Önizleme" FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,14,0,8"/>
                                 <Border Background="#0C0C10" CornerRadius="10" Padding="8" BorderBrush="#25FFFFFF" BorderThickness="1" HorizontalAlignment="Center">
                                     <controls:RadialPreviewControl x:Name="LivePreviewControl"/>
                                 </Border>
@@ -284,10 +284,10 @@
                                 <Border Background="#14141E" CornerRadius="10" Padding="16" Margin="0,0,0,14" BorderBrush="#20FFFFFF" BorderThickness="1">
                                     <StackPanel>
                                         <DockPanel Margin="0,0,0,8">
-                                            <TextBlock Text="Radial Şeffaflığı (Opacity)" FontWeight="Bold" Foreground="White" FontSize="14"/>
+                                            <TextBlock x:Name="TxtOpacityTitle" Text="Radial Şeffaflığı (Opacity)" FontWeight="Bold" Foreground="White" FontSize="14"/>
                                             <TextBlock x:Name="OpacityValueText" Text="%90" FontWeight="Bold" Foreground="#588CEC" FontSize="14" HorizontalAlignment="Right"/>
                                         </DockPanel>
-                                        <TextBlock Text="Dairesel menünün arkaplan şeffaflık derecesini ayarlar." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
+                                        <TextBlock x:Name="TxtOpacitySub" Text="Dairesel menünün arkaplan şeffaflık derecesini ayarlar." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
                                         <Slider x:Name="OpacitySlider" Minimum="20" Maximum="100" Value="90" SmallChange="1" LargeChange="5"
                                                 TickFrequency="10" IsSnapToTickEnabled="False" VerticalAlignment="Center"
                                                 ValueChanged="OpacitySlider_ValueChanged"/>
@@ -297,11 +297,11 @@
                                 <!-- Density Card -->
                                 <Border Background="#14141E" CornerRadius="10" Padding="16" Margin="0,0,0,14" BorderBrush="#20FFFFFF" BorderThickness="1">
                                     <StackPanel>
-                                        <TextBlock Text="Halka Yoğunluğu (Density)" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,4"/>
-                                        <TextBlock Text="Tek bir halka sayfasında kaç öğe yerleştirileceğini belirler." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
+                                        <TextBlock x:Name="TxtDensityTitle" Text="Halka Yoğunluğu (Density)" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="TxtDensitySub" Text="Tek bir halka sayfasında kaç öğe yerleştirileceğini belirler." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
                                         <ComboBox x:Name="DensityCombo" Width="260" HorizontalAlignment="Left" Background="#1C1C26" Foreground="White" SelectionChanged="DensityCombo_SelectionChanged">
-                                            <ComboBoxItem Content="Geniş (15 Öğeli)"/>
-                                            <ComboBoxItem Content="Kompakt (18 Öğeli)"/>
+                                            <ComboBoxItem x:Name="DensityItemExpanded" Content="Geniş (15 Öğeli)"/>
+                                            <ComboBoxItem x:Name="DensityItemCompact" Content="Kompakt (18 Öğeli)"/>
                                         </ComboBox>
                                     </StackPanel>
                                 </Border>
@@ -309,8 +309,8 @@
                                 <!-- Accessibility & Performance Card -->
                                 <Border Background="#14141E" CornerRadius="10" Padding="16" Margin="0,0,0,14" BorderBrush="#20FFFFFF" BorderThickness="1">
                                     <StackPanel>
-                                        <TextBlock Text="Erişilebilirlik &amp; Performans" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,4"/>
-                                        <TextBlock Text="Düşük donanımlarda veya sade animasyon tercihinde hareketi azaltın." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
+                                        <TextBlock x:Name="TxtAccessTitle" Text="Erişilebilirlik &amp; Performans" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="TxtAccessSub" Text="Düşük donanımlarda veya sade animasyon tercihinde hareketi azaltın." FontSize="11.5" Foreground="#94A3B8" Margin="0,0,0,10"/>
                                         <CheckBox x:Name="ReduceMotionCheck" Content="Hareketi Azalt / Animasyonları Sadeleştir (Reduce Motion)" Foreground="White" Click="ReduceMotion_Click"/>
                                     </StackPanel>
                                 </Border>
@@ -318,30 +318,30 @@
                                 <!-- Palette Information Card -->
                                 <Border Background="#14141E" CornerRadius="10" Padding="16" Margin="0,0,0,14" BorderBrush="#20FFFFFF" BorderThickness="1">
                                     <StackPanel>
-                                        <TextBlock Text="Seçili Tema Renk Paleti" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,10"/>
+                                        <TextBlock x:Name="TxtPaletteTitle" Text="Seçili Tema Renk Paleti" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,10"/>
                                         <WrapPanel x:Name="PalettePreviewPanel">
                                             <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Rectangle x:Name="SwatchAccent1" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#588CEC"/>
-                                                    <TextBlock Text="Birincil Vurgu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
+                                                    <TextBlock x:Name="TxtAccent1Label" Text="Birincil Vurgu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                                 </StackPanel>
                                             </Border>
                                             <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Rectangle x:Name="SwatchAccent2" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#8C5AF5"/>
-                                                    <TextBlock Text="İkincil Vurgu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
+                                                    <TextBlock x:Name="TxtAccent2Label" Text="İkincil Vurgu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                                 </StackPanel>
                                             </Border>
                                             <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Rectangle x:Name="SwatchBackground" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#121216"/>
-                                                    <TextBlock Text="Arkaplan" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
+                                                    <TextBlock x:Name="TxtBgLabel" Text="Arkaplan" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                                 </StackPanel>
                                             </Border>
                                             <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Rectangle x:Name="SwatchCard" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#26262E"/>
-                                                    <TextBlock Text="İkon Baloncuğu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
+                                                    <TextBlock x:Name="TxtCardLabel" Text="İkon Baloncuğu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                                 </StackPanel>
                                             </Border>
                                         </WrapPanel>
@@ -354,17 +354,17 @@
             </TabItem>
 
             <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR -->
-            <TabItem Header="⚙️  Kısayol &amp; Başlangıç">
+            <TabItem x:Name="TabItem_Shortcuts" Header="⚙️  Kısayol &amp; Başlangıç">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
-                        <TextBlock Text="Tetikleme Kısayolu &amp; Başlangıç" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
-                        <TextBlock Text="Menüyü açmak için kullanacağınız fare ve klavye kısayollarını belirleyin." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                        <TextBlock x:Name="TxtTab3Title" Text="Tetikleme Kısayolu &amp; Başlangıç" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="TxtTab3Sub" Text="Menüyü açmak için kullanacağınız fare ve klavye kısayollarını belirleyin." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,16"/>
 
                         <!-- Shortcut Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="Menüyü Tetikleme Kısayolu" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
-                                <TextBlock Text="Radial Launcher'ı ekranda açmak için farenizden veya klavyenizden bir kısayol seçin." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                <TextBlock x:Name="TxtShortcutCardTitle" Text="Menüyü Tetikleme Kısayolu" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtShortcutCardSub" Text="Radial Launcher'ı ekranda açmak için farenizden veya klavyenizden bir kısayol seçin." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
                                 
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                     <ComboBox x:Name="ShortcutCombo" Width="300" Background="#1C1C26" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
@@ -380,7 +380,7 @@
                                         <ComboBoxItem Content="F4 Tuşu"/>
                                         <ComboBoxItem Content="~ (Tilde Tuşu)"/>
                                     </ComboBox>
-                                    <Button Content="🎯 Yeni Kısayol Ata" Margin="10,0,0,0" Padding="14,6" Background="#282835" Foreground="White" BorderBrush="#35FFFFFF" Click="AssignCustomShortcut_Click"/>
+                                    <Button x:Name="BtnAssignShortcut" Content="🎯 Yeni Kısayol Ata" Margin="10,0,0,0" Padding="14,6" Background="#282835" Foreground="White" BorderBrush="#35FFFFFF" Click="AssignCustomShortcut_Click"/>
                                 </StackPanel>
                                 <TextBlock x:Name="ActiveShortcutLabel" Text="Aktif Kısayol: MiddleClick" FontSize="12" Foreground="#588CEC" FontWeight="SemiBold"/>
                             </StackPanel>
@@ -389,7 +389,7 @@
                         <!-- Windows Startup Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="Windows Başlangıcı" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtStartupCardTitle" Text="Windows Başlangıcı" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
                                 <CheckBox x:Name="RunOnStartupCheck" Content="Windows açıldığında Radial Launcher'ı otomatik başlat" Foreground="White" Margin="0,4,0,0" Click="RunOnStartupCheck_Click"/>
                             </StackPanel>
                         </Border>
@@ -397,8 +397,8 @@
                         <!-- Menu Behavior Info Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="🎯 Menü Davranışı &amp; Gezinme Kuralları" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
-                                <TextBlock Text="• Otomatik Kapanma: Fare radyal menü alanından 330px uzaklaştığında menü otomatik kapanır.&#x0a;• Global Gezinme: Farenin orta tuşuyla basıp sağa/sola sürükleyerek veya fare tekerleğiyle sayfalar ve kategoriler arası geçebilirsiniz.&#x0a;• Hızlı Eylemler: Öğelerin üzerine fare ile gelindiğinde hızlı aksiyon kartı merkezde görüntülenir." FontSize="12" Foreground="#94A3B8" LineHeight="20" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TxtBehaviorTitle" Text="🎯 Menü Davranışı &amp; Gezinme Kuralları" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="TxtBehaviorBody" Text="• Otomatik Kapanma: Fare radyal menü alanından 330px uzaklaştığında menü otomatik kapanır.&#x0a;• Global Gezinme: Farenin orta tuşuyla basıp sağa/sola sürükleyerek veya fare tekerleğiyle sayfalar ve kategoriler arası geçebilirsiniz.&#x0a;• Hızlı Eylemler: Öğelerin üzerine fare ile gelindiğinde hızlı aksiyon kartı merkezde görüntülenir." FontSize="12" Foreground="#94A3B8" LineHeight="20" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -406,21 +406,21 @@
             </TabItem>
 
             <!-- TAB 4: YEDEKLEME & VERİ YÖNETİMİ -->
-            <TabItem Header="💾  Yedekleme &amp; Veri">
+            <TabItem x:Name="TabItem_Backups" Header="💾  Yedekleme &amp; Veri">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
-                        <TextBlock Text="Yedekleme &amp; Veri Yönetimi" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
-                        <TextBlock Text="Kısayollarınızı, istatistiklerinizi ve tema ayarlarınızı güvenle yedekleyin." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                        <TextBlock x:Name="TxtTab4Title" Text="Yedekleme &amp; Veri Yönetimi" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="TxtTab4Sub" Text="Kısayollarınızı, istatistiklerinizi ve tema ayarlarınızı güvenle yedekleyin." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,16"/>
 
                         <!-- Local Backup Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="💾 Yerel Disk Yedekleme &amp; Geri Yükleme" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
-                                <TextBlock Text="Tüm kısayollarınızı, kategorilerinizi ve istatistiklerinizi yerel diske otomatik veya manuel yedekleyin. Son 10 yedek güvenle korunur." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,14"/>
+                                <TextBlock x:Name="TxtLocalBackupTitle" Text="💾 Yerel Disk Yedekleme &amp; Geri Yükleme" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtLocalBackupSub" Text="Tüm kısayollarınızı, kategorilerinizi ve istatistiklerinizi yerel diske otomatik veya manuel yedekleyin. Son 10 yedek güvenle korunur." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,14"/>
 
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <Button Content="💾 Şimdi Yerel Yedekle" Padding="16,8" Margin="0,0,10,0" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CreateLocalBackup_Click"/>
-                                    <Button Content="📂 Yerel Yedekten Geri Yükle" Padding="16,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
+                                    <Button x:Name="BtnLocalBackupNow" Content="💾 Şimdi Yerel Yedekle" Padding="16,8" Margin="0,0,10,0" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CreateLocalBackup_Click"/>
+                                    <Button x:Name="BtnRestoreBackup" Content="📂 Yerel Yedekten Geri Yükle" Padding="16,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
                                 </StackPanel>
                                 <TextBlock x:Name="BackupStatusLabel" Text="Yedekleme konumu: %LOCALAPPDATA%\RadialLauncher\Backups\" FontSize="11" Foreground="#888" TextWrapping="Wrap"/>
                             </StackPanel>
@@ -429,12 +429,12 @@
                         <!-- JSON Export/Import Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="📤 JSON Dışa / İçe Aktar" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
-                                <TextBlock Text="Ayarlarınızı ve kısayollarınızı JSON dosyası olarak bilgisayarınıza kaydedin veya farklı bir cihazdan içe aktarın." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,14"/>
+                                <TextBlock x:Name="TxtJsonBackupTitle" Text="📤 JSON Dışa / İçe Aktar" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtJsonBackupSub" Text="Ayarlarınızı ve kısayollarınızı JSON dosyası olarak bilgisayarınıza kaydedin veya farklı bir cihazdan içe aktarın." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,14"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="📤 Dışa Aktar (JSON)" Padding="14,7" Margin="0,0,10,0" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ExportButton_Click"/>
-                                    <Button Content="📥 İçe Aktar (JSON)" Padding="14,7" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ImportButton_Click"/>
+                                    <Button x:Name="BtnExportJson" Content="📤 Dışa Aktar (JSON)" Padding="14,7" Margin="0,0,10,0" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ExportButton_Click"/>
+                                    <Button x:Name="BtnImportJson" Content="📥 İçe Aktar (JSON)" Padding="14,7" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ImportButton_Click"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -443,17 +443,17 @@
             </TabItem>
 
             <!-- TAB 5: GÜNCELLEMELER & TANILAMA & SİSTEM -->
-            <TabItem Header="ℹ️  Güncelleme &amp; Tanılama">
+            <TabItem x:Name="TabItem_System" Header="ℹ️  Güncelleme &amp; Tanılama">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="24" MaxWidth="720" HorizontalAlignment="Left">
-                        <TextBlock Text="Güncellemeler &amp; Tanılama" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
-                        <TextBlock Text="Sistem tanılama bilgileri, hata kayıtları ve yazılım güncellemeleri." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                        <TextBlock x:Name="TxtTab5Title" Text="Güncellemeler &amp; Tanılama" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="TxtTab5Sub" Text="Sistem tanılama bilgileri, hata kayıtları ve yazılım güncellemeleri." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,16"/>
 
                         <!-- Language Selection Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="🌐 Dil Seçimi / Display Language" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
-                                <TextBlock Text="Uygulama arayüzü ve radyal menü için dil seçin (Varsayılan: English). Alfabetik olarak sıralanmıştır." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
+                                <TextBlock x:Name="TxtLanguageTitle" Text="🌐 Dil Seçimi / Display Language" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtLanguageSub" Text="Uygulama arayüzü ve radyal menü için dil seçin (Varsayılan: English). Alfabetik olarak sıralanmıştır." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
                                 <ComboBox x:Name="LanguageCombo" Width="320" HorizontalAlignment="Left" Background="#1C1C26" Foreground="White" SelectionChanged="LanguageCombo_SelectionChanged"/>
                             </StackPanel>
                         </Border>
@@ -461,7 +461,7 @@
                         <!-- Updates Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="🚀 Yazılım Güncellemeleri" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtUpdatesTitle" Text="🚀 Yazılım Güncellemeleri" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
                                 <TextBlock x:Name="CurrentVersionText" Text="Yüklü Sürüm: v1.0.0 (Final Release)" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,10"/>
                                 <CheckBox x:Name="AutoCheckUpdatesCheck" Content="Açılışta güncellemeleri otomatik kontrol et" Foreground="White" Margin="0,0,0,12" Click="AutoCheckUpdatesCheck_Click"/>
                                 
@@ -475,12 +475,12 @@
                         <!-- Diagnostics Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="📊 Tanılama &amp; Sistem Kayıtları" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
-                                <TextBlock Text="Uygulama log dosyaları ve sistem tanılama bilgileri." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
+                                <TextBlock x:Name="TxtDiagTitle" Text="📊 Tanılama &amp; Sistem Kayıtları" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtDiagSub" Text="Uygulama log dosyaları ve sistem tanılama bilgileri." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="📁 Log Klasörünü Aç" Padding="14,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="OpenLogsFolderBtn_Click"/>
-                                    <Button Content="📋 Tanılamayı Kopyala" Padding="14,8" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="CopyDiagnosticsBtn_Click"/>
+                                    <Button x:Name="BtnOpenLogs" Content="📁 Log Klasörünü Aç" Padding="14,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="OpenLogsFolderBtn_Click"/>
+                                    <Button x:Name="BtnCopyDiag" Content="📋 Tanılamayı Kopyala" Padding="14,8" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="CopyDiagnosticsBtn_Click"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -488,9 +488,9 @@
                         <!-- Factory Reset Card -->
                         <Border Background="#1A1212" CornerRadius="10" Padding="18" BorderBrush="#40FF6B6B" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="⚠️ Fabrika Ayarlarına Sıfırla" FontSize="14" FontWeight="Bold" Foreground="#FF6B6B" Margin="0,0,0,6"/>
-                                <TextBlock Text="Tüm tema, kısayol ve görsel ayarları varsayılan fabrika değerlerine geri döndürür. (Kullanıcı veritabanı korunur)" FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                                <Button Content="Fabrika Ayarlarına Sıfırla" Padding="16,8" Background="#3D1A1A" Foreground="#FF6B6B" FontWeight="Bold" BorderThickness="1" BorderBrush="#66FF6B6B" HorizontalAlignment="Left" Click="ResetSettingsBtn_Click"/>
+                                <TextBlock x:Name="TxtResetTitle" Text="⚠️ Fabrika Ayarlarına Sıfırla" FontSize="14" FontWeight="Bold" Foreground="#FF6B6B" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtResetSub" Text="Tüm tema, kısayol ve görsel ayarları varsayılan fabrika değerlerine geri döndürür. (Kullanıcı veritabanı korunur)" FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                <Button x:Name="BtnResetSettings" Content="Fabrika Ayarlarına Sıfırla" Padding="16,8" Background="#3D1A1A" Foreground="#FF6B6B" FontWeight="Bold" BorderThickness="1" BorderBrush="#66FF6B6B" HorizontalAlignment="Left" Click="ResetSettingsBtn_Click"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

@@ -160,6 +160,7 @@ namespace RadialLauncher.Services.Context
             var actions = new List<ItemContextAction>();
             if (item == null) return actions;
 
+            var loc = Localization.LocalizationService.Instance;
             string type = (item.Type ?? "EXE").ToUpperInvariant();
             string target = item.Target ?? string.Empty;
             string name = item.Name ?? string.Empty;
@@ -171,7 +172,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_PLAY",
-                    Title = "Oyna",
+                    Title = loc.GetString("Play", "Oyna"),
                     Icon = "▶",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -181,7 +182,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "STEAM_STORE",
-                        Title = "Mağaza",
+                        Title = loc.GetString("Store", "Mağaza"),
                         Icon = "🛒",
                         ActionType = "URI",
                         Payload = $"https://store.steampowered.com/app/{appId}"
@@ -189,7 +190,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "STEAM_COMMUNITY",
-                        Title = "Topluluk",
+                        Title = loc.GetString("Community", "Topluluk"),
                         Icon = "👥",
                         ActionType = "URI",
                         Payload = $"https://steamcommunity.com/app/{appId}"
@@ -204,7 +205,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_OPEN",
-                    Title = "Başlat",
+                    Title = loc.GetString("Launch", "Başlat"),
                     Icon = "🚀",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -212,7 +213,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_LIBRARY",
-                    Title = "Kütüphane",
+                    Title = loc.GetString("Library", "Kütüphane"),
                     Icon = "🎮",
                     ActionType = "URI",
                     Payload = "steam://open/games"
@@ -220,7 +221,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_STORE_MAIN",
-                    Title = "Mağaza",
+                    Title = loc.GetString("Store", "Mağaza"),
                     Icon = "🛒",
                     ActionType = "URI",
                     Payload = "steam://open/store"
@@ -234,7 +235,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "EPIC_PLAY",
-                    Title = "Oyna",
+                    Title = loc.GetString("Play", "Oyna"),
                     Icon = "▶",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -242,7 +243,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "EPIC_STORE",
-                    Title = "Mağaza",
+                    Title = loc.GetString("Store", "Mağaza"),
                     Icon = "🛒",
                     ActionType = "URI",
                     Payload = "https://store.epicgames.com"
@@ -256,7 +257,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "URL_OPEN",
-                    Title = "Aç",
+                    Title = loc.GetString("Open", "Aç"),
                     Icon = "🌐",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -264,7 +265,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "URL_COPY",
-                    Title = "Kopyala",
+                    Title = loc.GetString("Copy", "Kopyala"),
                     Icon = "📋",
                     ActionType = "COPY_URL",
                     Payload = target
@@ -278,7 +279,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "FOLDER_OPEN",
-                    Title = "Aç",
+                    Title = loc.GetString("Open", "Aç"),
                     Icon = "📂",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -286,7 +287,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "FOLDER_CMD",
-                    Title = "Terminal",
+                    Title = loc.GetString("Terminal", "Terminal"),
                     Icon = "⚡",
                     ActionType = "TERMINAL",
                     Payload = target
@@ -300,7 +301,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "FILE_OPEN",
-                    Title = "Aç",
+                    Title = loc.GetString("Open", "Aç"),
                     Icon = "📄",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -310,7 +311,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "FILE_SHOW",
-                        Title = "Konum",
+                        Title = loc.GetString("Location", "Konum"),
                         Icon = "📁",
                         ActionType = "EXPLORE",
                         Payload = target
@@ -325,7 +326,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "APP_LAUNCH",
-                    Title = "Başlat",
+                    Title = loc.GetString("Launch", "Başlat"),
                     Icon = "▶",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -337,7 +338,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "APP_EXPLORE",
-                        Title = "Konum",
+                        Title = loc.GetString("Location", "Konum"),
                         Icon = "📁",
                         ActionType = "EXPLORE",
                         Payload = fileToLocate
@@ -346,7 +347,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "APP_ADMIN",
-                        Title = "Yönetici",
+                        Title = loc.GetString("Run_Admin", "Yönetici"),
                         Icon = "⚡",
                         ActionType = "RUNAS_ADMIN",
                         Payload = target
@@ -359,7 +360,7 @@ namespace RadialLauncher.Services.Context
             actions.Add(new ItemContextAction
             {
                 Id = "DEFAULT_LAUNCH",
-                Title = "Başlat",
+                Title = loc.GetString("Launch", "Başlat"),
                 Icon = "▶",
                 ActionType = "LAUNCH",
                 Payload = target

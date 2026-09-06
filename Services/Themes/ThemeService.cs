@@ -458,6 +458,16 @@ namespace RadialLauncher.Services.Themes
             }
         }
 
+        public AppSettings GetSettings() => LoadSettings();
+
+        public void UpdateSettings(AppSettings settings)
+        {
+            if (settings == null) return;
+            SaveSettings(settings);
+            var updated = GetTheme(settings.ThemeName);
+            OnThemeChanged?.Invoke(updated);
+        }
+
         public class AppSettings
         {
             public int SchemaVersion { get; set; } = 1;
@@ -469,6 +479,7 @@ namespace RadialLauncher.Services.Themes
             public string DensityMode { get; set; } = "Expanded";
             public bool HasSeenTutorial { get; set; } = false;
             public bool AutoCheckUpdates { get; set; } = true;
+            public string Language { get; set; } = "en";
         }
     }
 }

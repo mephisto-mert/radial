@@ -107,10 +107,12 @@ namespace RadialLauncher.UI.Windows
             DataContext = _viewModel;
             Loaded += ManagementWindow_Loaded;
             _themeService.OnThemeChanged += t => Dispatcher.Invoke(() => ApplyThemeVisuals(t));
+            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
         }
 
         private void ManagementWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            ApplyLocalization();
             ApplyThemeVisuals(_themeService.GetCurrentTheme());
             LoadCategories();
             LoadThemes();
@@ -502,43 +504,55 @@ namespace RadialLauncher.UI.Windows
 
         private async void RestoreLocalBackup_Click(object sender, RoutedEventArgs e)
         {
+            var loc = LocalizationService.Instance;
             string backupsDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "RadialLauncher", "Backups");
 
             var ofd = new OpenFileDialog
             {
-                Title = "Geri Yüklenecek Yedeği Seçin",
-                Filter = "Yedek Dosyaları (*.json)|*.json",
+                Title = loc.GetString("Restore_Backup", "Geri Yüklenecek Yedeği Seçin"),
+                Filter = "JSON (*.json)|*.json",
                 InitialDirectory = Directory.Exists(backupsDir) ? backupsDir : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
             };
 
             if (ofd.ShowDialog() == true)
             {
-                var confirm = MessageBox.Show(
-                    $"'{Path.GetFileName(ofd.FileName)}' yedeği geri yüklenecek.\nMevcut verilerinizin üzerine yazılacaktır. Onaylıyor musunuz?",
-                    "Yedekten Geri Yükleme Onayı",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                string confirmMsg = string.Format(loc.GetString("Restore_Confirm", "'{0}' yedeği geri yüklenecek.\nMevcut verilerinizin üzerine yazılacaktır. Onaylıyor musunuz?"), Path.GetFileName(ofd.FileName));
+                string confirmTitle = loc.GetString("Restore_Confirm_Title", "Yedekten Geri Yükleme Onayı");
+
+                var confirm = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                 if (confirm == MessageBoxResult.Yes)
                 {
-                    StatusText.Text = "Yedek geri yükleniyor...";
+                    StatusText.Text = loc.GetString("Restoring", "Yedek geri yükleniyor...");
                     bool ok = await _syncService.RestoreFromLocalBackupAsync(ofd.FileName);
                     if (ok)
                     {
                         _viewModel.LoadInitialData();
                         LoadCategories();
                         LoadThemes();
+                        LoadOpacityState();
+                        LoadStartupState();
+                        LoadShortcutState();
+                        LoadDensityState();
+                        LoadLanguageState();
+                        ApplyThemeVisuals(_themeService.GetCurrentTheme());
+                        ApplyLocalization();
                         RefreshGrid();
                         UpdateBackupStatusLabel();
-                        StatusText.Text = "Yedek başarıyla geri yüklendi.";
-                        MessageBox.Show("Yedek başarıyla geri yüklendi ve uygulandı.", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                        if (AutoCheckUpdatesCheck != null)
+                        {
+                            AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
+                        }
+                        string successMsg = loc.GetString("Restore_Success", "Yedek başarıyla geri yüklendi ve uygulandı.");
+                        StatusText.Text = successMsg;
+                        MessageBox.Show(successMsg, loc.GetString("Success", "Başarılı"), MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
-                        StatusText.Text = "Geri yükleme başarısız.";
-                        MessageBox.Show("Yedek dosyası okunamadı veya biçimi geçersiz.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                        StatusText.Text = loc.GetString("Error", "Geri yükleme başarısız.");
+                        MessageBox.Show(loc.GetString("Restore_Error", "Yedek dosyası okunamadı veya biçimi geçersiz."), loc.GetString("Error", "Hata"), MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -562,7 +576,7 @@ namespace RadialLauncher.UI.Windows
 
         private async void ExportButton_Click(object sender, RoutedEventArgs e)
         {
-            var sfd = new SaveFileDialog { Filter = "JSON Dosyası (*.json)|*.json", FileName = "radial_backup.json" };
+            var sfd = new SaveFileDialog { Filter = "JSON (*.json)|*.json", FileName = "radial_backup.json" };
             if (sfd.ShowDialog() == true)
             {
                 await _viewModel.ExportData(sfd.FileName);
@@ -572,11 +586,26 @@ namespace RadialLauncher.UI.Windows
 
         private async void ImportButton_Click(object sender, RoutedEventArgs e)
         {
-            var ofd = new OpenFileDialog { Filter = "JSON Dosyası (*.json)|*.json" };
+            var ofd = new OpenFileDialog { Filter = "JSON (*.json)|*.json" };
             if (ofd.ShowDialog() == true)
             {
                 await _viewModel.ImportData(ofd.FileName);
+                _viewModel.LoadInitialData();
+                LoadCategories();
+                LoadThemes();
+                LoadOpacityState();
+                LoadStartupState();
+                LoadShortcutState();
+                LoadDensityState();
+                LoadLanguageState();
+                ApplyThemeVisuals(_themeService.GetCurrentTheme());
+                ApplyLocalization();
                 RefreshGrid();
+                UpdateBackupStatusLabel();
+                if (AutoCheckUpdatesCheck != null)
+                {
+                    AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
+                }
                 StatusText.Text = _viewModel.StatusMessage;
             }
         }
@@ -696,21 +725,28 @@ namespace RadialLauncher.UI.Windows
 
         private void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
         {
-            var res = MessageBox.Show(
-                "Tüm tema, kısayol ve görsel ayarlarınız varsayılan fabrika değerlerine sıfırlanacaktır.\n(Kullanıcı öğeleri, kısayollar ve kullanım sayaçları KORUNUR)\n\nDevam etmek istiyor musunuz?",
-                "Ayarları Sıfırla",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+            var loc = LocalizationService.Instance;
+            string confirmMsg = loc.GetString("Reset_Confirm", "Tüm tema, kısayol ve görsel ayarlarınız varsayılan fabrika değerlerine sıfırlanacaktır.\n(Kullanıcı öğeleri, kısayollar ve kullanım sayaçları KORUNUR)\n\nDevam etmek istiyor musunuz?");
+            string confirmTitle = loc.GetString("Reset_Confirm_Title", "Ayarları Sıfırla");
 
+            var res = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (res != MessageBoxResult.Yes) return;
 
             try
             {
                 _themeService.ResetSettingsToDefault();
                 _viewModel.LoadInitialData();
+                LoadCategories();
                 LoadThemes();
+                LoadOpacityState();
+                LoadStartupState();
                 LoadShortcutState();
                 LoadDensityState();
+                LoadLanguageState();
+                ApplyThemeVisuals(_themeService.GetCurrentTheme());
+                ApplyLocalization();
+                RefreshGrid();
+                UpdateBackupStatusLabel();
                 if (AutoCheckUpdatesCheck != null)
                 {
                     AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
@@ -764,10 +800,110 @@ namespace RadialLauncher.UI.Windows
 
         private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (LanguageCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string langCode)
+            if (LanguageCombo?.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string langCode)
             {
                 LocalizationService.Instance.SetLanguage(langCode);
-                StatusText.Text = $"Dil değiştirildi: {selectedItem.Content}";
+                var s = _themeService.GetSettings();
+                s.Language = langCode;
+                _themeService.UpdateSettings(s);
+                ApplyLocalization();
+                StatusText.Text = $"Language changed: {selectedItem.Content}";
+            }
+        }
+
+        public void ApplyLocalization()
+        {
+            var loc = LocalizationService.Instance;
+
+            this.Title = loc.GetString("App_Title", "Radial Launcher — Settings & Management");
+
+            // Sidebar navigation
+            if (TabItem_Apps != null) TabItem_Apps.Header = loc.GetString("Nav_Apps", "📋  Applications & Shortcuts");
+            if (TabItem_Themes != null) TabItem_Themes.Header = loc.GetString("Nav_Themes", "🎨  Themes & Appearance");
+            if (TabItem_Shortcuts != null) TabItem_Shortcuts.Header = loc.GetString("Nav_Shortcuts", "⚙️  Shortcuts & Startup");
+            if (TabItem_Backups != null) TabItem_Backups.Header = loc.GetString("Nav_Backups", "💾  Backup & Data");
+            if (TabItem_System != null) TabItem_System.Header = loc.GetString("Nav_System", "ℹ️  System & Diagnostics");
+
+            // Tab 1: Apps & Items
+            if (TxtTab1Title != null) TxtTab1Title.Text = loc.GetString("Tab1_Title", "Application & Shortcut Management");
+            if (TxtTab1Sub != null) TxtTab1Sub.Text = loc.GetString("Tab1_Sub", "Manage all apps, games, websites, and folders listed in the radial menu.");
+            if (BtnScanPC != null) BtnScanPC.Content = loc.GetString("Scan_PC", "🔍 Scan PC");
+            if (BtnAddItem != null) BtnAddItem.Content = loc.GetString("Add_Item", "➕ Add New Item");
+            if (TxtCategoryLabel != null) TxtCategoryLabel.Text = loc.GetString("Category", "Category:");
+            if (TxtSearchLabel != null) TxtSearchLabel.Text = loc.GetString("Search", "Search:");
+            if (ColOrder != null) ColOrder.Header = loc.GetString("Col_Order", "Order");
+            if (ColIcon != null) ColIcon.Header = loc.GetString("Col_Icon", "Icon");
+            if (ColName != null) ColName.Header = loc.GetString("Col_Name", "Name");
+            if (ColType != null) ColType.Header = loc.GetString("Col_Type", "Type");
+            if (ColCategory != null) ColCategory.Header = loc.GetString("Col_Category", "Category");
+            if (ColLaunchCount != null) ColLaunchCount.Header = loc.GetString("Col_Launches", "Launches");
+            if (ColTarget != null) ColTarget.Header = loc.GetString("Col_Target", "Target");
+            if (ColActions != null) ColActions.Header = loc.GetString("Col_Actions", "Actions");
+
+            // Tab 2: Themes & Visuals
+            if (TxtTab2Title != null) TxtTab2Title.Text = loc.GetString("Tab2_Title", "Themes & Visual Customization");
+            if (TxtTab2Sub != null) TxtTab2Sub.Text = loc.GetString("Tab2_Sub", "Select from 8 curated themes, customize radial opacity and density.");
+            if (TxtThemesHeader != null) TxtThemesHeader.Text = loc.GetString("Themes_Header", "Curated Themes (8 Themes)");
+            if (TxtPreviewHeader != null) TxtPreviewHeader.Text = loc.GetString("Preview_Header", "Live Radial Preview");
+            if (TxtOpacityTitle != null) TxtOpacityTitle.Text = loc.GetString("Opacity_Title", "Radial Menu Opacity");
+            if (TxtOpacitySub != null) TxtOpacitySub.Text = loc.GetString("Opacity_Desc", "Adjust background transparency level of the circular overlay.");
+            if (TxtDensityTitle != null) TxtDensityTitle.Text = loc.GetString("Density_Title", "Ring Density Mode");
+            if (TxtDensitySub != null) TxtDensitySub.Text = loc.GetString("Density_Desc", "Number of items displayed per circular ring page.");
+            if (DensityItemExpanded != null) DensityItemExpanded.Content = loc.GetString("Density_Expanded", "Expanded (15 Items)");
+            if (DensityItemCompact != null) DensityItemCompact.Content = loc.GetString("Density_Compact", "Compact (18 Items)");
+            if (TxtAccessTitle != null) TxtAccessTitle.Text = loc.GetString("Access_Title", "Accessibility & Performance");
+            if (TxtAccessSub != null) TxtAccessSub.Text = loc.GetString("Access_Sub", "Reduce motion and simplify animations for low-spec systems.");
+            if (ReduceMotionCheck != null) ReduceMotionCheck.Content = loc.GetString("Reduce_Motion", "Reduce Motion / Simplified Animations");
+            if (TxtPaletteTitle != null) TxtPaletteTitle.Text = loc.GetString("Palette_Title", "Active Theme Color Palette");
+            if (TxtAccent1Label != null) TxtAccent1Label.Text = loc.GetString("Primary_Accent", "Primary Accent");
+            if (TxtAccent2Label != null) TxtAccent2Label.Text = loc.GetString("Secondary_Accent", "Secondary Accent");
+            if (TxtBgLabel != null) TxtBgLabel.Text = loc.GetString("Background", "Background");
+            if (TxtCardLabel != null) TxtCardLabel.Text = loc.GetString("Icon_Bubble", "Icon Bubble");
+
+            // Tab 3: Shortcuts & Startup
+            if (TxtTab3Title != null) TxtTab3Title.Text = loc.GetString("Tab3_Title", "Trigger Shortcut & Startup");
+            if (TxtTab3Sub != null) TxtTab3Sub.Text = loc.GetString("Tab3_Sub", "Set the mouse button or keyboard shortcut to open the radial menu.");
+            if (TxtShortcutCardTitle != null) TxtShortcutCardTitle.Text = loc.GetString("Trigger_Title", "Menu Activation Shortcut");
+            if (TxtShortcutCardSub != null) TxtShortcutCardSub.Text = loc.GetString("Trigger_Desc", "Select a mouse button or keyboard hotkey to summon Radial Launcher.");
+            if (BtnAssignShortcut != null) BtnAssignShortcut.Content = loc.GetString("Assign_Shortcut", "🎯 Assign Custom Shortcut");
+            if (TxtStartupCardTitle != null) TxtStartupCardTitle.Text = loc.GetString("Startup_Title", "Windows Startup");
+            if (RunOnStartupCheck != null) RunOnStartupCheck.Content = loc.GetString("Startup_Check", "Automatically start Radial Launcher in tray on Windows startup");
+            if (TxtBehaviorTitle != null) TxtBehaviorTitle.Text = loc.GetString("Behavior_Title", "🎯 Menu Behavior & Navigation Guidelines");
+            if (TxtBehaviorBody != null) TxtBehaviorBody.Text = loc.GetString("Behavior_Body", "• Auto-Close: Menu closes automatically when cursor moves 330px away.\n• Global Navigation: Drag with middle-mouse or use scroll wheel to switch pages/categories.\n• Quick Actions: Hovering items reveals instant actions at the center.");
+
+            // Tab 4: Backup & Data
+            if (TxtTab4Title != null) TxtTab4Title.Text = loc.GetString("Tab4_Title", "Backup & Data Management");
+            if (TxtTab4Sub != null) TxtTab4Sub.Text = loc.GetString("Tab4_Sub", "Safely backup and restore your shortcuts, stats, and theme settings.");
+            if (TxtLocalBackupTitle != null) TxtLocalBackupTitle.Text = loc.GetString("LocalBackup_Title", "💾 Local Disk Backup & Restore");
+            if (TxtLocalBackupSub != null) TxtLocalBackupSub.Text = loc.GetString("LocalBackup_Sub", "Automatically or manually backup shortcuts, categories, and settings to local storage. Last 10 backups are preserved.");
+            if (BtnLocalBackupNow != null) BtnLocalBackupNow.Content = loc.GetString("Backup_Now", "💾 Create Local Backup");
+            if (BtnRestoreBackup != null) BtnRestoreBackup.Content = loc.GetString("Restore_Backup", "📂 Restore from Backup");
+            if (TxtJsonBackupTitle != null) TxtJsonBackupTitle.Text = loc.GetString("JsonBackup_Title", "📤 JSON Export / Import");
+            if (TxtJsonBackupSub != null) TxtJsonBackupSub.Text = loc.GetString("JsonBackup_Sub", "Export or import your complete configuration and shortcuts as a JSON file.");
+            if (BtnExportJson != null) BtnExportJson.Content = loc.GetString("Export", "📤 Export (JSON)");
+            if (BtnImportJson != null) BtnImportJson.Content = loc.GetString("Import", "📥 Import (JSON)");
+
+            // Tab 5: Updates & Diagnostics
+            if (TxtTab5Title != null) TxtTab5Title.Text = loc.GetString("Tab5_Title", "Updates & Diagnostics");
+            if (TxtTab5Sub != null) TxtTab5Sub.Text = loc.GetString("Tab5_Sub", "System diagnostic logs, error logs, and application updates.");
+            if (TxtLanguageTitle != null) TxtLanguageTitle.Text = loc.GetString("Language", "🌐 Display Language");
+            if (TxtLanguageSub != null) TxtLanguageSub.Text = loc.GetString("Language_Desc", "Select language for application UI and radial menu (Default: English). Sorted alphabetically.");
+            if (TxtUpdatesTitle != null) TxtUpdatesTitle.Text = loc.GetString("Updates_Title", "🚀 Application Updates");
+            if (CurrentVersionText != null) CurrentVersionText.Text = loc.GetString("Installed_Version", "Installed Version: v1.0.0 (Final Release)");
+            if (AutoCheckUpdatesCheck != null) AutoCheckUpdatesCheck.Content = loc.GetString("AutoCheck_Updates", "Automatically check for updates on startup");
+            if (CheckUpdatesNowBtn != null) CheckUpdatesNowBtn.Content = loc.GetString("Check_Updates", "🔄 Check for Updates Now");
+            if (TxtDiagTitle != null) TxtDiagTitle.Text = loc.GetString("Diag_Title", "📊 System Diagnostics & Logs");
+            if (TxtDiagSub != null) TxtDiagSub.Text = loc.GetString("Diag_Sub", "Application logs and system diagnostic summary.");
+            if (BtnOpenLogs != null) BtnOpenLogs.Content = loc.GetString("Open_Logs", "📁 Open Logs Folder");
+            if (BtnCopyDiag != null) BtnCopyDiag.Content = loc.GetString("Copy_Diag", "📋 Copy Diagnostics");
+            if (TxtResetTitle != null) TxtResetTitle.Text = loc.GetString("Reset_Title", "⚠️ Reset to Factory Defaults");
+            if (TxtResetSub != null) TxtResetSub.Text = loc.GetString("Reset_Sub", "Restores all theme, shortcut, and visual settings to defaults. (User database is preserved)");
+            if (BtnResetSettings != null) BtnResetSettings.Content = loc.GetString("Reset_Factory", "Reset to Factory Defaults");
+
+            // Update Category combo "All Categories" header
+            if (CategoryFilterCombo != null && CategoryFilterCombo.Items.Count > 0 && CategoryFilterCombo.Items[0] is ComboBoxItem firstItem && firstItem.Tag is int tagVal && tagVal == 0)
+            {
+                firstItem.Content = loc.GetString("All_Categories", "All Categories");
             }
         }
     }

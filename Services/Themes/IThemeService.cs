@@ -23,6 +23,8 @@ namespace RadialLauncher.Services.Themes
         bool GetAutoCheckUpdates();
         void SetAutoCheckUpdates(bool autoCheck);
         void ResetSettingsToDefault();
+        ThemeService.AppSettings GetSettings();
+        void UpdateSettings(ThemeService.AppSettings settings);
 
         event Action<Theme>? OnThemeChanged;
         event Action<string>? OnShortcutChanged;
