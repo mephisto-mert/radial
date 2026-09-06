@@ -42,6 +42,7 @@ namespace RadialLauncher.Tests
         [Fact]
         public void AvailableActions_ContainsFocus25()
         {
+            RadialLauncher.Services.Localization.LocalizationService.Instance.SetLanguage("en");
             var service = new SystemActionService();
             var actions = service.GetAvailableActions();
 

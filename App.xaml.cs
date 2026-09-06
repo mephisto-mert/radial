@@ -43,6 +43,13 @@ namespace RadialLauncher
             var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
+                string[] rawArgs = e.Args ?? Environment.GetCommandLineArgs();
+                int dirIdx = Array.FindIndex(rawArgs, a => a.Equals("--data-dir", StringComparison.OrdinalIgnoreCase) || a.Equals("-d", StringComparison.OrdinalIgnoreCase));
+                if (dirIdx >= 0 && dirIdx < rawArgs.Length - 1)
+                {
+                    UserDataPathProvider.Instance.SetOverrideDataRoot(rawArgs[dirIdx + 1]);
+                }
+
                 // 1. Initialize Serilog rolling file logger
                 AppLogger.Initialize();
 

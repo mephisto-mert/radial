@@ -60,6 +60,21 @@ namespace RadialLauncher.Services.Data
                 return envOverride;
             }
 
+            try
+            {
+                string baseDir = AppContext.BaseDirectory;
+                string portableMarker = Path.Combine(baseDir, "portable.mode");
+                string portableMarkerTxt = Path.Combine(baseDir, "portable.txt");
+                string portableDataDir = Path.Combine(baseDir, "data");
+
+                if (Directory.Exists(portableDataDir) || File.Exists(portableMarker) || File.Exists(portableMarkerTxt))
+                {
+                    if (!Directory.Exists(portableDataDir)) Directory.CreateDirectory(portableDataDir);
+                    return portableDataDir;
+                }
+            }
+            catch { }
+
             string defaultFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadialLauncher");
             if (!Directory.Exists(defaultFolder)) Directory.CreateDirectory(defaultFolder);
             return defaultFolder;
