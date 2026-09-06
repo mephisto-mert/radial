@@ -549,8 +549,8 @@ namespace RadialLauncher.UI.Windows
             if (backups.Count > 0)
             {
                 var latest = backups[0];
-                var time = File.GetCreationTime(latest);
-                BackupStatusLabel.Text = $"Toplam {backups.Count} yerel yedek mevcut. En son yedek: {time:yyyy-MM-dd HH:mm:ss} ({Path.GetFileName(latest)})";
+                string timeStr = File.Exists(latest) ? File.GetCreationTime(latest).ToString("yyyy-MM-dd HH:mm:ss") : "Mevcut";
+                BackupStatusLabel.Text = $"Toplam {backups.Count} yerel yedek mevcut. En son: {timeStr} ({Path.GetFileName(latest)})";
             }
             else
             {

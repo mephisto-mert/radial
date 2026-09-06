@@ -171,7 +171,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_PLAY",
-                    Title = "Oyunu Oyna",
+                    Title = "Oyna",
                     Icon = "▶",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -181,7 +181,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "STEAM_STORE",
-                        Title = "Mağaza Sayfası",
+                        Title = "Mağaza",
                         Icon = "🛒",
                         ActionType = "URI",
                         Payload = $"https://store.steampowered.com/app/{appId}"
@@ -189,7 +189,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "STEAM_COMMUNITY",
-                        Title = "Topluluk & Rehber",
+                        Title = "Topluluk",
                         Icon = "👥",
                         ActionType = "URI",
                         Payload = $"https://steamcommunity.com/app/{appId}"
@@ -204,7 +204,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_OPEN",
-                    Title = "Steam'i Aç",
+                    Title = "Başlat",
                     Icon = "🚀",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -212,7 +212,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_LIBRARY",
-                    Title = "Oyun Kütüphanesi",
+                    Title = "Kütüphane",
                     Icon = "🎮",
                     ActionType = "URI",
                     Payload = "steam://open/games"
@@ -220,7 +220,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "STEAM_STORE_MAIN",
-                    Title = "Steam Mağazası",
+                    Title = "Mağaza",
                     Icon = "🛒",
                     ActionType = "URI",
                     Payload = "steam://open/store"
@@ -234,7 +234,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "EPIC_PLAY",
-                    Title = "Başlat",
+                    Title = "Oyna",
                     Icon = "▶",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -242,7 +242,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "EPIC_STORE",
-                    Title = "Epic Mağaza",
+                    Title = "Mağaza",
                     Icon = "🛒",
                     ActionType = "URI",
                     Payload = "https://store.epicgames.com"
@@ -256,7 +256,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "URL_OPEN",
-                    Title = "Tarayıcıda Aç",
+                    Title = "Aç",
                     Icon = "🌐",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -264,7 +264,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "URL_COPY",
-                    Title = "Linki Kopyala",
+                    Title = "Kopyala",
                     Icon = "📋",
                     ActionType = "COPY_URL",
                     Payload = target
@@ -278,7 +278,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "FOLDER_OPEN",
-                    Title = "Klasörü Aç",
+                    Title = "Aç",
                     Icon = "📂",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -286,7 +286,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "FOLDER_CMD",
-                    Title = "Terminal Aç",
+                    Title = "Terminal",
                     Icon = "⚡",
                     ActionType = "TERMINAL",
                     Payload = target
@@ -300,7 +300,7 @@ namespace RadialLauncher.Services.Context
                 actions.Add(new ItemContextAction
                 {
                     Id = "FILE_OPEN",
-                    Title = "Dosyayı Aç",
+                    Title = "Aç",
                     Icon = "📄",
                     ActionType = "LAUNCH",
                     Payload = target
@@ -310,7 +310,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "FILE_SHOW",
-                        Title = "Klasörde Göster",
+                        Title = "Konum",
                         Icon = "📁",
                         ActionType = "EXPLORE",
                         Payload = target
@@ -337,7 +337,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "APP_EXPLORE",
-                        Title = "Dosya Konumu",
+                        Title = "Konum",
                         Icon = "📁",
                         ActionType = "EXPLORE",
                         Payload = fileToLocate
@@ -346,7 +346,7 @@ namespace RadialLauncher.Services.Context
                     actions.Add(new ItemContextAction
                     {
                         Id = "APP_ADMIN",
-                        Title = "Yönetici Olarak",
+                        Title = "Yönetici",
                         Icon = "⚡",
                         ActionType = "RUNAS_ADMIN",
                         Payload = target

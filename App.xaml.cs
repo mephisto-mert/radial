@@ -203,6 +203,18 @@ namespace RadialLauncher
                 });
 
                 Log.Information("Radial Launcher startup sequence completed successfully in {ElapsedMs}ms", startupStopwatch.ElapsedMilliseconds);
+
+                if (e.Args != null && e.Args.Length > 0)
+                {
+                    if (Array.Exists(e.Args, a => string.Equals(a, "--settings", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Current.Dispatcher.BeginInvoke(new Action(OpenSettings));
+                    }
+                    else if (Array.Exists(e.Args, a => string.Equals(a, "--radial", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher()));
+                    }
+                }
             }
             catch (Exception ex)
             {

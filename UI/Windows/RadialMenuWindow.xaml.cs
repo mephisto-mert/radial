@@ -144,7 +144,7 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
-        private void ApplyThemeVisuals(Theme theme)
+        public void ApplyThemeVisuals(Theme theme)
         {
             byte alpha = (byte)(theme.BackgroundOpacity * 255);
             BaseFill.Color = Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B);
@@ -177,7 +177,7 @@ namespace RadialLauncher.UI.Windows
             SearchText.Foreground = new SolidColorBrush(theme.TextColor);
         }
 
-        private void RenderLayout()
+        public void RenderLayout()
         {
             ApplyThemeVisuals(_viewModel.ActiveTheme);
             ClearActiveDwmThumbnails();
@@ -416,7 +416,7 @@ namespace RadialLauncher.UI.Windows
             RenderPageDots();
         }
 
-        private void ShowContextActions(LauncherItem item)
+        public void ShowContextActions(LauncherItem item)
         {
             if (ContextActionCard == null || ContextActionPanel == null) return;
             ContextActionPanel.Children.Clear();
@@ -437,9 +437,9 @@ namespace RadialLauncher.UI.Windows
             {
                 var actionBtn = new Button
                 {
-                    Margin = new Thickness(2, 0, 2, 0),
-                    Padding = new Thickness(6, 2, 6, 2),
-                    Height = 22,
+                    Margin = new Thickness(1.5, 0, 1.5, 0),
+                    Padding = new Thickness(4, 1, 4, 1),
+                    Height = 20,
                     Background = btnBg,
                     BorderBrush = btnBorder,
                     BorderThickness = new Thickness(1),
@@ -450,7 +450,7 @@ namespace RadialLauncher.UI.Windows
 
                 actionBtn.Resources.Add(typeof(Border), new Style(typeof(Border))
                 {
-                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(4)) }
+                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(3.5)) }
                 });
 
                 var stack = new StackPanel { Orientation = Orientation.Horizontal };
@@ -459,8 +459,8 @@ namespace RadialLauncher.UI.Windows
                     stack.Children.Add(new TextBlock
                     {
                         Text = act.Icon,
-                        FontSize = 10,
-                        Margin = new Thickness(0, 0, 3, 0),
+                        FontSize = 9.0,
+                        Margin = new Thickness(0, 0, 2.5, 0),
                         VerticalAlignment = VerticalAlignment.Center,
                         Foreground = theme.AccentBrush
                     });
@@ -468,8 +468,8 @@ namespace RadialLauncher.UI.Windows
                 stack.Children.Add(new TextBlock
                 {
                     Text = act.Title,
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 9.0,
+                    FontWeight = FontWeights.Medium,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = textBrush
                 });
