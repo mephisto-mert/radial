@@ -7,6 +7,7 @@ namespace RadialLauncher.Hooks
     public class GlobalMouseHook : IDisposable
     {
         private const int WH_MOUSE_LL = 14;
+        private const int WM_MOUSEMOVE = 0x0200;
         private const int WM_RBUTTONDOWN = 0x0204;
         private const int WM_RBUTTONUP = 0x0205;
         private const int WM_MBUTTONDOWN = 0x0207;
@@ -22,6 +23,10 @@ namespace RadialLauncher.Hooks
 
         private LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
+
+        private POINT _lastMousePt;
+        private long _lastMouseMoveTime = 0;
+        public double LastCursorVelocity { get; private set; } = 0.0;
 
         public bool IsPassThroughEnabled { get; set; } = false;
         public string TriggerMode { get; set; } = "MiddleClick";
@@ -44,7 +49,7 @@ namespace RadialLauncher.Hooks
 
         private IntPtr SetHook(LowLevelMouseProc proc)
         {
-            IntPtr handle = GetModuleHandle(null);
+            IntPtr handle = GetModuleHandle(null!);
             return SetWindowsHookEx(WH_MOUSE_LL, proc, handle, 0);
         }
 
@@ -56,6 +61,27 @@ namespace RadialLauncher.Hooks
             {
                 int msg = (int)wParam;
                 MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+
+                if (msg == WM_MOUSEMOVE)
+                {
+                    long now = Environment.TickCount64;
+                    long dt = now - _lastMouseMoveTime;
+                    if (dt > 0 && dt <= 150)
+                    {
+                        double dx = hookStruct.pt.x - _lastMousePt.x;
+                        double dy = hookStruct.pt.y - _lastMousePt.y;
+                        double dist = Math.Sqrt(dx * dx + dy * dy);
+                        double instantVelocity = dist / dt; // pixels per ms
+                        LastCursorVelocity = (LastCursorVelocity * 0.3) + (instantVelocity * 0.7);
+                    }
+                    else if (dt > 150)
+                    {
+                        LastCursorVelocity = 0.0;
+                    }
+                    _lastMousePt = hookStruct.pt;
+                    _lastMouseMoveTime = now;
+                }
+
                 bool triggered = false;
 
                 if (TriggerMode == "MiddleClick" && msg == WM_MBUTTONDOWN)

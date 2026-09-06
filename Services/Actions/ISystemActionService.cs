@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace RadialLauncher.Services.Actions
@@ -15,5 +16,12 @@ namespace RadialLauncher.Services.Actions
         List<SystemActionInfo> GetAvailableActions();
         void ExecuteAction(string actionKey);
         string GetIconForAction(string actionKey);
+        
+        event System.Action<TimeSpan>? FocusTimerTick;
+        event System.Action? FocusTimerCompleted;
+        bool IsFocusTimerRunning { get; }
+        TimeSpan FocusTimerRemaining { get; }
+        void StartFocusTimer(int minutes = 25);
+        void StopFocusTimer();
     }
 }

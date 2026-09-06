@@ -10,6 +10,7 @@ using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Icons;
 using RadialLauncher.Services.Scanning;
+using RadialLauncher.Services.Sync;
 using RadialLauncher.Services.Themes;
 using RadialLauncher.Services.Windows;
 using RadialLauncher.UI.ViewModels;
@@ -69,6 +70,7 @@ namespace RadialLauncher.UI.Windows
         private readonly ManagementViewModel _viewModel;
         private readonly IStartupManager _startupManager;
         private readonly IThemeService _themeService;
+        private readonly ISyncService _syncService;
 
         public ManagementWindow() : this(
             App.ServiceProvider != null 
@@ -79,15 +81,19 @@ namespace RadialLauncher.UI.Windows
                 : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
             App.ServiceProvider != null 
                 ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ISyncService>(App.ServiceProvider) 
                 : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
         {
         }
 
-        public ManagementWindow(ManagementViewModel viewModel, IStartupManager startupManager, IThemeService themeService)
+        public ManagementWindow(ManagementViewModel viewModel, IStartupManager startupManager, IThemeService themeService, ISyncService syncService)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _startupManager = startupManager ?? throw new ArgumentNullException(nameof(startupManager));
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+            _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
 
             InitializeComponent();
 
@@ -103,6 +109,7 @@ namespace RadialLauncher.UI.Windows
             LoadStartupState();
             LoadShortcutState();
             LoadDensityState();
+            UpdateSyncUiState();
         }
 
         private void LoadCategories()
@@ -405,6 +412,109 @@ namespace RadialLauncher.UI.Windows
                 await _viewModel.ImportData(ofd.FileName);
                 RefreshGrid();
                 StatusText.Text = _viewModel.StatusMessage;
+            }
+        }
+
+        private void UpdateSyncUiState()
+        {
+            if (SyncNowBtn == null || SyncPullBtn == null || PatStatusText == null) return;
+            bool hasPat = _syncService.HasPatConfigured();
+            SyncNowBtn.IsEnabled = hasPat;
+            SyncPullBtn.IsEnabled = hasPat;
+
+            if (hasPat)
+            {
+                string? gistId = _syncService.GetGistId();
+                PatStatusText.Text = string.IsNullOrEmpty(gistId) 
+                    ? "Durum: Token aktif (Gist henüz oluşturulmadı)" 
+                    : $"Durum: Token aktif (Gist ID: {gistId})";
+                PatStatusText.Foreground = new SolidColorBrush(Color.FromRgb(46, 204, 113));
+                SyncNowBtn.ToolTip = "Ayarlarınızı ve kısayollarınızı GitHub Gist'e yedekler.";
+                SyncPullBtn.ToolTip = "GitHub Gist'teki yedeği indirip uygular.";
+            }
+            else
+            {
+                PatStatusText.Text = "Durum: Token ayarlanmamış (Bulut senkronizasyonu devre dışı)";
+                PatStatusText.Foreground = new SolidColorBrush(Color.FromRgb(243, 156, 18));
+                string tooltip = "GitHub Gist senkronizasyonu için geçerli bir GitHub PAT (gist yetkili) kaydedin.";
+                SyncNowBtn.ToolTip = tooltip;
+                SyncPullBtn.ToolTip = tooltip;
+            }
+        }
+
+        private void SavePatBtn_Click(object sender, RoutedEventArgs e)
+        {
+            string token = GistPatBox.Password?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                MessageBox.Show("Lütfen geçerli bir GitHub Personal Access Token girin.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            _syncService.SavePat(token);
+            GistPatBox.Clear();
+            UpdateSyncUiState();
+            MessageBox.Show("GitHub Token güvenli şekilde şifrelenerek kaydedildi.", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async void SyncNowBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SyncNowBtn.IsEnabled = false;
+            StatusText.Text = "GitHub Gist'e yedekleniyor...";
+            try
+            {
+                var result = await _syncService.PushToGistAsync();
+                if (result.success)
+                {
+                    UpdateSyncUiState();
+                    StatusText.Text = result.message;
+                    MessageBox.Show(result.message, "Eşitleme Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusText.Text = result.message;
+                    MessageBox.Show(result.message, "Eşitleme Başarısız", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            finally
+            {
+                UpdateSyncUiState();
+            }
+        }
+
+        private async void SyncPullBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var confirm = MessageBox.Show(
+                "Gist'ten geri yüklemek mevcut tüm yerel ayarlarınızın ve kısayollarınızın üzerine yazacaktır.\nDevam etmek istiyor musunuz?", 
+                "Geri Yükleme Onayı", 
+                MessageBoxButton.YesNo, 
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes) return;
+
+            SyncPullBtn.IsEnabled = false;
+            StatusText.Text = "GitHub Gist'ten indiriliyor...";
+            try
+            {
+                var result = await _syncService.PullFromGistAsync();
+                if (result.success)
+                {
+                    _viewModel.LoadInitialData();
+                    RefreshGrid();
+                    LoadCategories();
+                    LoadThemes();
+                    StatusText.Text = result.message;
+                    MessageBox.Show(result.message, "Geri Yükleme Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusText.Text = result.message;
+                    MessageBox.Show(result.message, "Geri Yükleme Hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            finally
+            {
+                UpdateSyncUiState();
             }
         }
     }

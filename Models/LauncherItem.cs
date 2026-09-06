@@ -20,6 +20,8 @@ namespace RadialLauncher.Models
         // Smart usage tracking & tags
         public int LaunchCount { get; set; } = 0;
         public DateTime? LastLaunched { get; set; }
+        public int UseCount { get; set; } = 0;
+        public DateTime? LastUsedAt { get; set; }
         public string Tags { get; set; } = string.Empty;
     }
 
@@ -38,5 +40,14 @@ namespace RadialLauncher.Models
         public string IconSymbol { get; set; } = string.Empty;
         public string ActionKey { get; set; } = string.Empty;
         public int Order { get; set; }
+    }
+
+    public class MacroStep
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = "EXE"; // "EXE", "URL", "ACTION"
+        public string Target { get; set; } = string.Empty;
+        public string Arguments { get; set; } = string.Empty;
+        public int DelayMs { get; set; } = 200;
     }
 }

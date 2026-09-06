@@ -52,6 +52,9 @@ namespace RadialLauncher.Services.Windows
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
         [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
@@ -168,6 +171,44 @@ namespace RadialLauncher.Services.Windows
         public void CloseWindow(IntPtr hWnd)
         {
             PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        public string GetForegroundProcessName()
+        {
+            try
+            {
+                IntPtr fgWnd = GetForegroundWindow();
+                if (fgWnd == IntPtr.Zero) return string.Empty;
+
+                GetWindowThreadProcessId(fgWnd, out uint pid);
+                if (pid == 0 || pid == (uint)Process.GetCurrentProcess().Id) return string.Empty;
+
+                string procName = string.Empty;
+                IntPtr hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+                if (hProc != IntPtr.Zero)
+                {
+                    var exeBuilder = new StringBuilder(1024);
+                    uint size = (uint)exeBuilder.Capacity;
+                    if (QueryFullProcessImageName(hProc, 0, exeBuilder, ref size))
+                    {
+                        procName = Path.GetFileName(exeBuilder.ToString());
+                    }
+                    CloseHandle(hProc);
+                }
+
+                if (string.IsNullOrEmpty(procName))
+                {
+                    var proc = Process.GetProcessById((int)pid);
+                    procName = proc.ProcessName + ".exe";
+                }
+
+                return procName.ToLowerInvariant();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed getting foreground process name");
+                return string.Empty;
+            }
         }
     }
 }

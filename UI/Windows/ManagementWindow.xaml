@@ -180,26 +180,50 @@
                 </Grid>
             </TabItem>
 
-            <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR -->
-            <TabItem Header="⚙️ Kısayol &amp; Başlangıç">
-                <StackPanel Margin="24" MaxWidth="520" HorizontalAlignment="Left">
-                    <TextBlock Text="Menüyü Tetikleme Kısayolu" FontSize="15" FontWeight="Bold" Margin="0,0,0,12"/>
-                    <ComboBox x:Name="ShortcutCombo" Width="260" HorizontalAlignment="Left" Background="#1C1C24" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
-                        <ComboBoxItem Content="Orta Tuş (Fare Tekerleği)"/>
-                        <ComboBoxItem Content="Ctrl + Sağ Tık"/>
-                        <ComboBoxItem Content="Shift + Sağ Tık"/>
-                        <ComboBoxItem Content="Alt + Sağ Tık"/>
-                        <ComboBoxItem Content="Alt + Boşluk (Alt+Space)"/>
-                        <ComboBoxItem Content="Ctrl + Boşluk (Ctrl+Space)"/>
-                        <ComboBoxItem Content="F4 Tuşu"/>
-                        <ComboBoxItem Content="~ (Tilde Tuşu)"/>
-                    </ComboBox>
+            <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR & BULUT -->
+            <TabItem Header="⚙️ Kısayol &amp; Bulut Eşitleme">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24" MaxWidth="580" HorizontalAlignment="Left">
+                        <TextBlock Text="Menüyü Tetikleme Kısayolu" FontSize="15" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <ComboBox x:Name="ShortcutCombo" Width="260" HorizontalAlignment="Left" Background="#1C1C24" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
+                            <ComboBoxItem Content="Orta Tuş (Fare Tekerleği)"/>
+                            <ComboBoxItem Content="Ctrl + Sağ Tık"/>
+                            <ComboBoxItem Content="Shift + Sağ Tık"/>
+                            <ComboBoxItem Content="Alt + Sağ Tık"/>
+                            <ComboBoxItem Content="Alt + Boşluk (Alt+Space)"/>
+                            <ComboBoxItem Content="Ctrl + Boşluk (Ctrl+Space)"/>
+                            <ComboBoxItem Content="F4 Tuşu"/>
+                            <ComboBoxItem Content="~ (Tilde Tuşu)"/>
+                        </ComboBox>
 
-                    <Separator Background="#22FFFFFF" Margin="0,24,0,24"/>
+                        <Separator Background="#22FFFFFF" Margin="0,20,0,20"/>
 
-                    <TextBlock Text="Windows Başlangıcı" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
-                    <CheckBox x:Name="RunOnStartupCheck" Content="Windows açıldığında Radial Launcher'ı otomatik başlat" Foreground="White" Click="RunOnStartupCheck_Click"/>
-                </StackPanel>
+                        <TextBlock Text="Windows Başlangıcı" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="RunOnStartupCheck" Content="Windows açıldığında Radial Launcher'ı otomatik başlat" Foreground="White" Click="RunOnStartupCheck_Click"/>
+
+                        <Separator Background="#22FFFFFF" Margin="0,20,0,20"/>
+
+                        <!-- GitHub Gist Cloud Sync -->
+                        <TextBlock Text="☁️ GitHub Gist Bulut Senkronizasyonu" FontSize="15" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <TextBlock Text="Ayarlarınızı ve kısayollarınızı GitHub Gist üzerinden yedekleyin veya başka bir bilgisayarla eşitleyin. Token yerel DPAPI ile şifrelenir." FontSize="12" Foreground="#AAA" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox x:Name="GistPatBox" Background="#1A1A24" Foreground="White" Padding="8,6" BorderBrush="#33FFFFFF"/>
+                            <Button x:Name="SavePatBtn" Grid.Column="1" Content="Token Kaydet" Margin="8,0,0,0" Padding="14,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="SavePatBtn_Click"/>
+                        </Grid>
+
+                        <TextBlock x:Name="PatStatusText" Text="Durum: Token ayarlanmamış" FontSize="11" Foreground="#F39C12" Margin="0,0,0,12"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Button x:Name="SyncNowBtn" Content="☁️ Şimdi Eşitle (Gist'e Yükle)" Padding="14,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="SyncNowBtn_Click"/>
+                            <Button x:Name="SyncPullBtn" Content="📥 Gist'ten Geri Yükle" Padding="14,8" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="SyncPullBtn_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
 

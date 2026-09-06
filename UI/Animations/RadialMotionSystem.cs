@@ -24,7 +24,17 @@ namespace RadialLauncher.UI.Animations
             EasingMode = EasingMode.EaseOut
         };
 
-        public static void AnimateWindowOpen(FrameworkElement windowRoot, bool reduceMotion = false)
+        public static double CalculateDurationScale(double velocityPxPerMs)
+        {
+            if (velocityPxPerMs <= 0.2) return 1.0;
+            if (velocityPxPerMs >= 2.0) return 0.4;
+            
+            // Subtle 2.5x range (0.4 to 1.0)
+            double t = (velocityPxPerMs - 0.2) / (2.0 - 0.2);
+            return 1.0 - (t * 0.6);
+        }
+
+        public static void AnimateWindowOpen(FrameworkElement windowRoot, bool reduceMotion = false, double cursorVelocity = 0.0)
         {
             if (reduceMotion)
             {
@@ -32,15 +42,22 @@ namespace RadialLauncher.UI.Animations
                 return;
             }
 
+            double speedScale = CalculateDurationScale(cursorVelocity);
+            int scaleDuration = Math.Max(70, (int)(240 * speedScale));
+            int opacityDuration = Math.Max(50, (int)(180 * speedScale));
+
             var transformGroup = new TransformGroup();
             var scale = new ScaleTransform(0.75, 0.75);
             transformGroup.Children.Add(scale);
             windowRoot.RenderTransform = transformGroup;
             windowRoot.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            var opacityAnim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180)) { EasingFunction = SmoothCubic };
-            var scaleXAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(240)) { EasingFunction = SpringOut };
-            var scaleYAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(240)) { EasingFunction = SpringOut };
+            IEasingFunction scaleEasing = speedScale < 0.6 ? SnappyQuintic : SpringOut;
+            IEasingFunction opacityEasing = speedScale < 0.6 ? SnappyQuintic : SmoothCubic;
+
+            var opacityAnim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(opacityDuration)) { EasingFunction = opacityEasing };
+            var scaleXAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(scaleDuration)) { EasingFunction = scaleEasing };
+            var scaleYAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(scaleDuration)) { EasingFunction = scaleEasing };
 
             windowRoot.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleXAnim);

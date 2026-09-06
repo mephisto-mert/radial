@@ -44,7 +44,70 @@ namespace RadialLauncher.Services.Actions
             new SystemActionInfo { ActionKey = "TASK_MANAGER", DisplayName = "Görev Yöneticisi", IconSymbol = "⚙️", Category = "Windows" },
             new SystemActionInfo { ActionKey = "LOCK_PC", DisplayName = "Bilgisayarı Kilitle", IconSymbol = "🔒", Category = "Sistem" },
             new SystemActionInfo { ActionKey = "EMPTY_RECYCLE_BIN", DisplayName = "Geri Dönüşüm Kutusunu Boşalt", IconSymbol = "🗑️", Category = "Sistem" },
+            new SystemActionInfo { ActionKey = "NEXT_DESKTOP", DisplayName = "Sonraki Masaüstü (Win+Ctrl+→)", IconSymbol = "➡️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "PREV_DESKTOP", DisplayName = "Önceki Masaüstü (Win+Ctrl+←)", IconSymbol = "⬅️", Category = "Windows" },
+            new SystemActionInfo { ActionKey = "FOCUS_25", DisplayName = "🍅 Odaklan (25dk)", IconSymbol = "🍅", Category = "Sistem" },
         };
+
+        public event Action<TimeSpan>? FocusTimerTick;
+        public event Action? FocusTimerCompleted;
+
+        private System.Threading.Timer? _focusTimer;
+        private DateTime _focusTimerEndTime;
+        private readonly object _timerLock = new();
+
+        public bool IsFocusTimerRunning { get; private set; }
+
+        public TimeSpan FocusTimerRemaining
+        {
+            get
+            {
+                lock (_timerLock)
+                {
+                    if (!IsFocusTimerRunning) return TimeSpan.Zero;
+                    var remaining = _focusTimerEndTime - DateTime.UtcNow;
+                    return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+                }
+            }
+        }
+
+        public void StartFocusTimer(int minutes = 25)
+        {
+            lock (_timerLock)
+            {
+                _focusTimer?.Dispose();
+                _focusTimerEndTime = DateTime.UtcNow.AddMinutes(minutes);
+                IsFocusTimerRunning = true;
+
+                _focusTimer = new System.Threading.Timer(OnTimerCallback, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+                Log.Information("Started focus timer for {Minutes} minutes, ending at {EndTime}", minutes, _focusTimerEndTime);
+            }
+        }
+
+        public void StopFocusTimer()
+        {
+            lock (_timerLock)
+            {
+                _focusTimer?.Dispose();
+                _focusTimer = null;
+                IsFocusTimerRunning = false;
+                Log.Information("Stopped focus timer");
+            }
+        }
+
+        private void OnTimerCallback(object? state)
+        {
+            TimeSpan remaining = FocusTimerRemaining;
+            if (remaining <= TimeSpan.Zero)
+            {
+                StopFocusTimer();
+                FocusTimerCompleted?.Invoke();
+            }
+            else
+            {
+                FocusTimerTick?.Invoke(remaining);
+            }
+        }
 
         public List<SystemActionInfo> GetAvailableActions() => AvailableActions;
 
@@ -55,6 +118,16 @@ namespace RadialLauncher.Services.Actions
                 Log.Information("Executing system action: {ActionKey}", actionKey);
                 switch (actionKey.ToUpperInvariant())
                 {
+                    case "FOCUS_25":
+                        if (IsFocusTimerRunning)
+                        {
+                            StopFocusTimer();
+                        }
+                        else
+                        {
+                            StartFocusTimer(25);
+                        }
+                        break;
                     case "VOLUME_UP":
                         SendKey(VK_VOLUME_UP);
                         break;
@@ -102,6 +175,30 @@ namespace RadialLauncher.Services.Actions
                         break;
                     case "EMPTY_RECYCLE_BIN":
                         SHEmptyRecycleBin(IntPtr.Zero, null, 7); // SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND
+                        break;
+                    case "NEXT_DESKTOP":
+                        keybd_event(VK_LWIN, 0, 0, UIntPtr.Zero);
+                        keybd_event(0x11, 0, 0, UIntPtr.Zero); // VK_CONTROL
+                        keybd_event(0x27, 0, 0, UIntPtr.Zero); // VK_RIGHT
+                        keybd_event(0x27, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        keybd_event(0x11, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        break;
+                    case "PREV_DESKTOP":
+                        keybd_event(VK_LWIN, 0, 0, UIntPtr.Zero);
+                        keybd_event(0x11, 0, 0, UIntPtr.Zero); // VK_CONTROL
+                        keybd_event(0x25, 0, 0, UIntPtr.Zero); // VK_LEFT
+                        keybd_event(0x25, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        keybd_event(0x11, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        break;
+                    case "RESTART_APP":
+                        string? exe = Process.GetCurrentProcess().MainModule?.FileName;
+                        if (!string.IsNullOrEmpty(exe))
+                        {
+                            Process.Start(new ProcessStartInfo { FileName = exe, UseShellExecute = true });
+                        }
+                        System.Windows.Application.Current?.Dispatcher?.Invoke(() => System.Windows.Application.Current.Shutdown());
                         break;
                 }
             }

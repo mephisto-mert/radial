@@ -180,6 +180,21 @@ namespace RadialLauncher.Data
                     Log.Information("Applied Database Migration 3: Usage Frequency, Quick Actions, Custom Themes");
                 }
 
+                // Migration 4: Recency/Frequency-Aware Tracking (UseCount and LastUsedAt)
+                if (currentVersion < 4)
+                {
+                    EnsureColumnExists(connection, "Items", "UseCount", "INTEGER DEFAULT 0");
+                    EnsureColumnExists(connection, "Items", "LastUsedAt", "TEXT");
+
+                    // Backfill from LaunchCount and LastLaunched if existing
+                    connection.Execute("UPDATE Items SET UseCount = LaunchCount WHERE (UseCount IS NULL OR UseCount = 0) AND LaunchCount > 0;");
+                    connection.Execute("UPDATE Items SET LastUsedAt = LastLaunched WHERE LastUsedAt IS NULL AND LastLaunched IS NOT NULL;");
+
+                    connection.Execute("PRAGMA user_version = 4;");
+                    currentVersion = 4;
+                    Log.Information("Applied Database Migration 4: Recency/Frequency Tracking (UseCount and LastUsedAt)");
+                }
+
                 BackfillGamesAndIcons(connection);
             }
             catch (Exception ex)

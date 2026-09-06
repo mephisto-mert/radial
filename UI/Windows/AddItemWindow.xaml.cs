@@ -62,7 +62,7 @@ namespace RadialLauncher.UI.Windows
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (TargetTextBox == null || BrowseButton == null || ActionSelectComboBox == null) return;
+            if (TargetTextBox == null || BrowseButton == null || ActionSelectComboBox == null || EditMacroBtn == null) return;
             if (TypeComboBox.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 string type = cbi.Content.ToString()!;
@@ -71,6 +71,18 @@ namespace RadialLauncher.UI.Windows
                     TargetTextBox.Visibility = Visibility.Collapsed;
                     BrowseButton.Visibility = Visibility.Collapsed;
                     ActionSelectComboBox.Visibility = Visibility.Visible;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
+                }
+                else if (type == "MACRO")
+                {
+                    TargetTextBox.Visibility = Visibility.Collapsed;
+                    BrowseButton.Visibility = Visibility.Collapsed;
+                    ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Visible;
+                    if (string.IsNullOrWhiteSpace(TargetTextBox.Text))
+                    {
+                        TargetTextBox.Text = "[]";
+                    }
                 }
                 else if (type == "SUBMENU")
                 {
@@ -78,13 +90,28 @@ namespace RadialLauncher.UI.Windows
                     TargetTextBox.Text = "SUBMENU";
                     BrowseButton.Visibility = Visibility.Collapsed;
                     ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
                     TargetTextBox.Visibility = Visibility.Visible;
                     BrowseButton.Visibility = Visibility.Visible;
                     ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
                 }
+            }
+        }
+
+        private void EditMacroBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new MacroEditorDialog(TargetTextBox.Text, _actionService)
+            {
+                Owner = this
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                TargetTextBox.Text = dlg.GetSerializedSteps();
+                EditMacroBtn.Content = $"⚡ Makro ({dlg.Steps.Count} Adım Tanımlı)";
             }
         }
 

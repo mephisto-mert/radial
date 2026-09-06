@@ -7,6 +7,7 @@ using RadialLauncher.Data;
 using RadialLauncher.Data.Repositories;
 using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Clipboard;
+using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Games;
 using RadialLauncher.Services.Icons;
 using RadialLauncher.Services.Logging;
@@ -16,6 +17,7 @@ using RadialLauncher.Services.Scanning;
 using RadialLauncher.Services.Sync;
 using RadialLauncher.Services.Themes;
 using RadialLauncher.Services.VirtualDesktop;
+using RadialLauncher.Services.Updates;
 using RadialLauncher.Services.Windows;
 using RadialLauncher.UI.ViewModels;
 using RadialLauncher.UI.Windows;
@@ -71,6 +73,10 @@ namespace RadialLauncher
                 var dbManager = ServiceProvider.GetRequiredService<IDatabaseManager>();
                 dbManager.InitializeDatabase();
 
+                // 2b. Initialize Plugin System
+                var pluginService = ServiceProvider.GetRequiredService<IPluginService>();
+                pluginService.LoadPlugins();
+
                 // 3. Initialize Radial Window
                 _radialMenu = ServiceProvider.GetRequiredService<RadialMenuWindow>();
                 _radialMenu.Show();
@@ -81,6 +87,29 @@ namespace RadialLauncher
                 // 4. Setup Tray Icon
                 notifyIcon = new TaskbarIcon();
                 notifyIcon.ToolTipText = "Radial Launcher (Pro v2.0)";
+
+                var systemActions = ServiceProvider.GetRequiredService<ISystemActionService>();
+                systemActions.FocusTimerTick += (remaining) =>
+                {
+                    Current.Dispatcher.BeginInvoke(() =>
+                    {
+                        if (notifyIcon != null)
+                        {
+                            notifyIcon.ToolTipText = $"Radial Launcher (🍅 {remaining.Minutes:D2}:{remaining.Seconds:D2})";
+                        }
+                    });
+                };
+                systemActions.FocusTimerCompleted += () =>
+                {
+                    Current.Dispatcher.BeginInvoke(() =>
+                    {
+                        if (notifyIcon != null)
+                        {
+                            notifyIcon.ToolTipText = "Radial Launcher (Pro v2.0)";
+                            notifyIcon.ShowBalloonTip("🍅 Odaklanma Tamamlandı!", "25 dakikalık odaklanma süreniz başarıyla bitti. Harika iş!", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+                        }
+                    });
+                };
 
                 try 
                 {
@@ -128,7 +157,8 @@ namespace RadialLauncher
                 mouseHook.TriggerMode = themeService.GetActivationShortcut();
                 mouseHook.OnMiddleMouseDown += (s, pt) => 
                 {
-                    Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt)));
+                    double vel = mouseHook?.LastCursorVelocity ?? 0.0;
+                    Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt, vel)));
                 };
                 mouseHook.Start();
 
@@ -144,6 +174,30 @@ namespace RadialLauncher
                     }
                     SetupHotKey(newShortcut);
                 };
+
+                // 7. Check for application updates non-blockingly
+                _ = System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        var updateService = ServiceProvider.GetService<IUpdateCheckService>();
+                        if (updateService != null)
+                        {
+                            var updateInfo = await updateService.CheckForUpdatesAsync();
+                            if (updateInfo != null && updateInfo.IsUpdateAvailable)
+                            {
+                                await Current.Dispatcher.InvokeAsync(() =>
+                                {
+                                    notifyIcon?.ShowBalloonTip("🚀 Güncelleme Mevcut!", $"Yeni sürüm v{updateInfo.LatestVersion} yayınlandı.\nGitHub üzerinden indirebilirsiniz.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception updateEx)
+                    {
+                        Log.Debug(updateEx, "Background update check encountered an issue");
+                    }
+                });
 
                 Log.Information("Radial Launcher startup sequence completed successfully!");
             }
@@ -161,6 +215,11 @@ namespace RadialLauncher
             {
                 client.Timeout = TimeSpan.FromSeconds(5);
                 client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            });
+
+            services.AddHttpClient("GitHubClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(15);
             });
 
             // Database & Repositories
@@ -184,6 +243,8 @@ namespace RadialLauncher
             services.AddSingleton<IVirtualDesktopService, VirtualDesktopService>();
             services.AddSingleton<IPluginService, PluginService>();
             services.AddSingleton<ISyncService, SyncService>();
+            services.AddSingleton<IContextualActionService, ContextualActionService>();
+            services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
 
             // ViewModels
             services.AddSingleton<RadialMenuViewModel>();
@@ -219,6 +280,12 @@ namespace RadialLauncher
                     var helper = new System.Windows.Interop.WindowInteropHelper(_radialMenu);
                     _hwndSource = System.Windows.Interop.HwndSource.FromHwnd(helper.EnsureHandle());
                     _hwndSource?.AddHook(HwndHook);
+
+                    var clipboardService = ServiceProvider?.GetService<IClipboardService>();
+                    if (_hwndSource != null)
+                    {
+                        clipboardService?.StartListening(_hwndSource.Handle);
+                    }
                 }
 
                 if (_hwndSource != null)
@@ -261,22 +328,29 @@ namespace RadialLauncher
         private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             const int WM_HOTKEY = 0x0312;
+            const int WM_CLIPBOARDUPDATE = 0x031D;
+
             if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
             {
                 OpenLauncher();
                 handled = true;
             }
+            else if (msg == WM_CLIPBOARDUPDATE)
+            {
+                var clipboardService = ServiceProvider?.GetService<IClipboardService>();
+                clipboardService?.RecordCurrentClipboard();
+            }
             return IntPtr.Zero;
         }
 
-        public void OpenLauncher(Hooks.Point pt = default)
+        public void OpenLauncher(Hooks.Point pt = default, double velocity = 0.0)
         {
             if (_radialMenu == null) return;
             if (pt.X == 0 && pt.Y == 0)
             {
                 GetCursorPos(out pt);
             }
-            _radialMenu.ShowAt(pt.X, pt.Y);
+            _radialMenu.ShowAt(pt.X, pt.Y, velocity);
         }
 
         private ManagementWindow? _managementWindow;
@@ -311,6 +385,9 @@ namespace RadialLauncher
             {
                 if (_hwndSource != null)
                 {
+                    var clipboardService = ServiceProvider?.GetService<IClipboardService>();
+                    clipboardService?.StopListening(_hwndSource.Handle);
+
                     UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID);
                     _hwndSource.RemoveHook(HwndHook);
                     _hwndSource.Dispose();

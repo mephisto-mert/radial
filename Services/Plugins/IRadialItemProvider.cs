@@ -15,5 +15,7 @@ namespace RadialLauncher.Services.Plugins
     {
         void RegisterProvider(IRadialItemProvider provider);
         IReadOnlyList<IRadialItemProvider> GetProviders();
+        void LoadPlugins(string? pluginsDir = null);
+        void LoadPluginAssembly(string dllPath);
     }
 }

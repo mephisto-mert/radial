@@ -8,5 +8,6 @@ namespace RadialLauncher.Services.Windows
         List<WindowInfo> GetOpenWindows();
         void SwitchToWindow(IntPtr hWnd);
         void CloseWindow(IntPtr hWnd);
+        string GetForegroundProcessName();
     }
 }

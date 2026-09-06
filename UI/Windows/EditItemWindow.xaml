@@ -44,6 +44,7 @@
             <ComboBoxItem Content="FOLDER"/>
             <ComboBoxItem Content="SUBMENU"/>
             <ComboBoxItem Content="ACTION"/>
+            <ComboBoxItem Content="MACRO"/>
         </ComboBox>
 
         <!-- Target -->
@@ -53,6 +54,8 @@
         <ComboBox x:Name="ActionSelectComboBox" Grid.Row="2" Grid.Column="1" Margin="0,0,8,10" Height="28"
                   Background="#2A2A32" Foreground="White" BorderBrush="#444" Visibility="Collapsed"
                   SelectionChanged="ActionSelectComboBox_SelectionChanged" DisplayMemberPath="DisplayName" SelectedValuePath="ActionKey"/>
+        <Button x:Name="EditMacroBtn" Content="⚡ Makro Adımlarını Düzenle..." Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Height="28" Margin="0,0,0,10"
+                Background="#2980B9" Foreground="White" FontWeight="Bold" BorderThickness="0" Visibility="Collapsed" Click="EditMacroBtn_Click"/>
         <Button x:Name="BrowseTargetButton" Content="Gözat..." Grid.Row="2" Grid.Column="2" Width="65" Height="28" Margin="0,0,0,10"
                 Background="#3A3A45" Foreground="White" BorderThickness="0" Click="BrowseTargetButton_Click"/>
 

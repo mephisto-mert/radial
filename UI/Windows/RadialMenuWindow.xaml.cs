@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using RadialLauncher.Models;
@@ -44,13 +45,17 @@ namespace RadialLauncher.UI.Windows
 
             DataContext = _viewModel;
 
-            _viewModel.RequestClose += () => Dispatcher.Invoke(this.Hide);
+            _viewModel.RequestClose += () => 
+            {
+                ClearActiveDwmThumbnails();
+                Dispatcher.Invoke(this.Hide);
+            };
             _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
 
             MouseMove += Window_MouseMove;
         }
 
-        public void ShowAt(int screenX, int screenY)
+        public void ShowAt(int screenX, int screenY, double cursorVelocity = 0.0)
         {
             try
             {
@@ -76,7 +81,7 @@ namespace RadialLauncher.UI.Windows
                 this.Activate();
                 this.Focus();
 
-                RadialMotionSystem.AnimateWindowOpen(RootGrid, _viewModel.ActiveTheme.ReduceMotion);
+                RadialMotionSystem.AnimateWindowOpen(RootGrid, _viewModel.ActiveTheme.ReduceMotion, cursorVelocity);
             }
             catch (Exception ex)
             {
@@ -110,12 +115,8 @@ namespace RadialLauncher.UI.Windows
 
         private void RenderLayout()
         {
-            // Clear existing DWM thumbs
-            foreach (var thumb in _activeDwmThumbs)
-            {
-                DwmThumbnailHelper.UnregisterThumbnail(thumb);
-            }
-            _activeDwmThumbs.Clear();
+            ApplyThemeVisuals(_viewModel.ActiveTheme);
+            ClearActiveDwmThumbnails();
 
             // Clear previous buttons from canvas except CenterButton
             var toRemove = new List<UIElement>();
@@ -138,6 +139,7 @@ namespace RadialLauncher.UI.Windows
             {
                 var p = placements[i];
                 var item = items[i];
+                IntPtr currentHoverThumb = IntPtr.Zero;
 
                 var btn = new Button
                 {
@@ -219,6 +221,35 @@ namespace RadialLauncher.UI.Windows
                 btn.Click += (s, e) => _viewModel.LaunchItem(item);
                 lblBorder.MouseLeftButtonUp += (s, e) => _viewModel.LaunchItem(item);
 
+                if (item.Type == "WINDOW" && long.TryParse(item.Target, out long hWndVal))
+                {
+                    void ShowDesktopMoveMenu(object sender, MouseButtonEventArgs e)
+                    {
+                        e.Handled = true;
+                        var cm = new ContextMenu();
+                        var desktops = _viewModel.DesktopService.GetDesktops();
+                        int desktopCount = Math.Max(2, desktops.Count);
+                        for (int d = 0; d < desktopCount; d++)
+                        {
+                            int targetDesktop = d;
+                            string dName = (d < desktops.Count && !string.IsNullOrEmpty(desktops[d].Name)) 
+                                ? desktops[d].Name 
+                                : $"Masaüstü {d + 1}";
+                            var mi = new MenuItem { Header = $"🪟 {dName}'e Taşı" };
+                            mi.Click += (ms, me) =>
+                            {
+                                _viewModel.DesktopService.MoveWindowToDesktop((IntPtr)hWndVal, targetDesktop);
+                                _viewModel.RefreshPageItems();
+                            };
+                            cm.Items.Add(mi);
+                        }
+                        cm.PlacementTarget = btn;
+                        cm.IsOpen = true;
+                    }
+                    btn.MouseRightButtonUp += ShowDesktopMoveMenu;
+                    lblBorder.MouseRightButtonUp += ShowDesktopMoveMenu;
+                }
+
                 void OnEnter(object s, MouseEventArgs e)
                 {
                     _keyboardFocusIndex = localIndex;
@@ -229,6 +260,53 @@ namespace RadialLauncher.UI.Windows
                     txt.FontWeight = FontWeights.Bold;
                     _viewModel.HoveredItemTitle = item.Name;
                     RadialMotionSystem.AnimateHover(btn, lblBorder, true, theme.ReduceMotion);
+
+                    if (item.Type == "WINDOW" && long.TryParse(item.Target, out long targetHwnd) && targetHwnd != 0)
+                    {
+                        try
+                        {
+                            var source = PresentationSource.FromVisual(this);
+                            double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+                            double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+                            Point canvasOffset = ItemsCanvas.TranslatePoint(new Point(0, 0), this);
+                            double btnLogicalX = canvasOffset.X + Canvas.GetLeft(btn);
+                            double btnLogicalY = canvasOffset.Y + Canvas.GetTop(btn);
+
+                            double previewW = 160;
+                            double previewH = 100;
+                            double previewX = Math.Clamp(btnLogicalX + (p.CircleSize / 2.0) - (previewW / 2.0), 20.0, this.Width - previewW - 20.0);
+                            double previewY = (btnLogicalY > 300) 
+                                ? Math.Max(20.0, btnLogicalY - previewH - 12.0) 
+                                : Math.Min(this.Height - previewH - 20.0, btnLogicalY + p.CircleSize + 12.0);
+
+                            int destLeft = (int)(previewX * dpiX);
+                            int destTop = (int)(previewY * dpiY);
+                            int destWidth = (int)(previewW * dpiX);
+                            int destHeight = (int)(previewH * dpiY);
+
+                            IntPtr destHwnd = new WindowInteropHelper(this).Handle;
+                            if (destHwnd != IntPtr.Zero)
+                            {
+                                if (currentHoverThumb != IntPtr.Zero)
+                                {
+                                    DwmThumbnailHelper.UnregisterThumbnail(currentHoverThumb);
+                                    _activeDwmThumbs.Remove(currentHoverThumb);
+                                    currentHoverThumb = IntPtr.Zero;
+                                }
+
+                                currentHoverThumb = DwmThumbnailHelper.RegisterThumbnail(destHwnd, (IntPtr)targetHwnd, destLeft, destTop, destWidth, destHeight);
+                                if (currentHoverThumb != IntPtr.Zero)
+                                {
+                                    _activeDwmThumbs.Add(currentHoverThumb);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "Failed registering DWM thumbnail preview for window {Hwnd}", targetHwnd);
+                        }
+                    }
                 }
 
                 void OnLeave(object s, MouseEventArgs e)
@@ -240,6 +318,13 @@ namespace RadialLauncher.UI.Windows
                     txt.FontWeight = FontWeights.Normal;
                     _viewModel.HoveredItemTitle = string.Empty;
                     RadialMotionSystem.AnimateHover(btn, lblBorder, false, theme.ReduceMotion);
+
+                    if (currentHoverThumb != IntPtr.Zero)
+                    {
+                        DwmThumbnailHelper.UnregisterThumbnail(currentHoverThumb);
+                        _activeDwmThumbs.Remove(currentHoverThumb);
+                        currentHoverThumb = IntPtr.Zero;
+                    }
                 }
 
                 btn.MouseEnter += OnEnter;
@@ -344,9 +429,31 @@ namespace RadialLauncher.UI.Windows
         {
             if (e.Key == Key.Escape)
             {
-                _viewModel.CenterButtonClick();
+                if (_viewModel.IsSearchMode)
+                {
+                    _viewModel.SearchQuery = string.Empty;
+                    _viewModel.IsSearchMode = false;
+                    _viewModel.RefreshPageItems();
+                }
+                else
+                {
+                    _viewModel.CenterButtonClick();
+                }
                 e.Handled = true;
                 return;
+            }
+
+            if (e.Key == Key.Back)
+            {
+                if (_viewModel.IsSearchMode && !string.IsNullOrEmpty(_viewModel.SearchQuery))
+                {
+                    string newQ = _viewModel.SearchQuery.Length > 1 
+                        ? _viewModel.SearchQuery[..^1] 
+                        : string.Empty;
+                    _viewModel.ApplySearch(newQ);
+                    e.Handled = true;
+                    return;
+                }
             }
 
             if (e.Key == Key.Right || e.Key == Key.Down)
@@ -436,7 +543,24 @@ namespace RadialLauncher.UI.Windows
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
+            ClearActiveDwmThumbnails();
             this.Hide();
+        }
+
+        private void ClearActiveDwmThumbnails()
+        {
+            try
+            {
+                foreach (var thumb in _activeDwmThumbs)
+                {
+                    DwmThumbnailHelper.UnregisterThumbnail(thumb);
+                }
+                _activeDwmThumbs.Clear();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Error clearing active DWM thumbnails");
+            }
         }
     }
 }

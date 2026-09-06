@@ -9,6 +9,8 @@ using RadialLauncher.Data.Repositories;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Actions;
 using RadialLauncher.Services.Clipboard;
+using RadialLauncher.Services.Context;
+using RadialLauncher.Services.Plugins;
 using RadialLauncher.Services.Processes;
 using RadialLauncher.Services.Themes;
 using RadialLauncher.Services.VirtualDesktop;
@@ -29,6 +31,11 @@ namespace RadialLauncher.UI.ViewModels
         private readonly IVirtualDesktopService _desktopService;
         private readonly ISystemActionService _systemActionService;
         private readonly IWindowSwitcherService _windowSwitcher;
+        private readonly IPluginService _pluginService;
+        private readonly IContextualActionService _contextualActionService;
+        private List<LauncherItem> _contextualItems = new();
+
+        public IVirtualDesktopService DesktopService => _desktopService;
 
         private readonly Stack<(int parentId, string title)> _navStack = new();
         private List<LauncherItem> _allItems = new();
@@ -92,7 +99,9 @@ namespace RadialLauncher.UI.ViewModels
             IClipboardService clipboardService,
             IVirtualDesktopService desktopService,
             ISystemActionService systemActionService,
-            IWindowSwitcherService windowSwitcher)
+            IWindowSwitcherService windowSwitcher,
+            IPluginService pluginService,
+            IContextualActionService contextualActionService)
         {
             _itemRepo = itemRepo;
             _categoryRepo = categoryRepo;
@@ -102,6 +111,8 @@ namespace RadialLauncher.UI.ViewModels
             _desktopService = desktopService;
             _systemActionService = systemActionService;
             _windowSwitcher = windowSwitcher;
+            _pluginService = pluginService;
+            _contextualActionService = contextualActionService;
 
             _activeTheme = _themeService.GetCurrentTheme();
             _themeService.OnThemeChanged += (t) =>
@@ -127,6 +138,17 @@ namespace RadialLauncher.UI.ViewModels
 
             ActiveTheme = _themeService.GetCurrentTheme();
 
+            try
+            {
+                string fgProc = _windowSwitcher.GetForegroundProcessName();
+                _contextualItems = _contextualActionService.GetContextualItems(fgProc);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed loading contextual items for foreground process");
+                _contextualItems = new List<LauncherItem>();
+            }
+
             // Load data
             _allItems = _itemRepo.GetAll();
             var allDbCats = _categoryRepo.GetAll();
@@ -138,16 +160,34 @@ namespace RadialLauncher.UI.ViewModels
             // 2. Open Windows category placed immediately next to Most Used
             var openWinCat = new Category { Id = -99, Name = "🪟 Açık Pencereler", Color = "#9b59b6", Position = 1 };
 
-            var validCats = new List<Category> { mostUsedCat, openWinCat };
+            // 2b. Clipboard History category
+            var clipboardCat = new Category { Id = -98, Name = "📋 Pano Geçmişi", Color = "#e67e22", Position = 2 };
+
+            var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat };
 
             foreach (var c in allDbCats)
             {
                 if (c.Id == mostUsedCat.Id || c.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)) continue;
                 if (c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase)) continue;
+                if (c.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase)) continue;
                 if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
                 {
                     validCats.Add(c);
                 }
+            }
+
+            // 3. Plugin categories
+            int pluginIdx = 0;
+            var providers = _pluginService?.GetProviders() ?? new List<RadialLauncher.Services.Plugins.IRadialItemProvider>();
+            foreach (var provider in providers)
+            {
+                validCats.Add(new Category
+                {
+                    Id = -200 - pluginIdx++,
+                    Name = provider.CategoryName,
+                    Color = string.IsNullOrEmpty(provider.CategoryColor) ? "#9b59b6" : provider.CategoryColor,
+                    Position = 100 + pluginIdx
+                });
             }
 
             Categories = new ObservableCollection<Category>(validCats);
@@ -155,7 +195,8 @@ namespace RadialLauncher.UI.ViewModels
             CurrentCategory = Categories.Count > 0 ? Categories[CurrentCategoryIndex] : null;
 
             // Load recent clipboard
-            RecentClipboards = new ObservableCollection<ClipboardItem>(_clipboardService.GetRecentHistory(5));
+            var recentClips = _clipboardService?.GetRecentHistory(5) ?? new List<ClipboardItem>();
+            RecentClipboards = new ObservableCollection<ClipboardItem>(recentClips);
 
             RefreshPageItems();
         }
@@ -178,12 +219,19 @@ namespace RadialLauncher.UI.ViewModels
 
             if (IsSearchMode && !string.IsNullOrWhiteSpace(SearchQuery))
             {
-                string q = SearchQuery.Trim().ToLowerInvariant();
-                filtered = _allItems.Where(i =>
-                    i.Name.ToLowerInvariant().Contains(q) ||
-                    i.Target.ToLowerInvariant().Contains(q) ||
-                    (i.Tags != null && i.Tags.ToLowerInvariant().Contains(q))
-                ).ToList();
+                if (SearchQuery.StartsWith("/"))
+                {
+                    filtered = GetCommandPaletteResults(SearchQuery);
+                }
+                else
+                {
+                    string q = SearchQuery.Trim().ToLowerInvariant();
+                    filtered = _allItems.Where(i =>
+                        i.Name.ToLowerInvariant().Contains(q) ||
+                        i.Target.ToLowerInvariant().Contains(q) ||
+                        (i.Tags != null && i.Tags.ToLowerInvariant().Contains(q))
+                    ).ToList();
+                }
             }
             else if (IsSubmenu && _navStack.Count > 0)
             {
@@ -216,15 +264,46 @@ namespace RadialLauncher.UI.ViewModels
                         Position = idx
                     }).ToList();
                 }
+                else if (cat.Id == -98 || cat.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase))
+                {
+                    var clips = _clipboardService?.GetRecentHistory(20) ?? new List<ClipboardItem>();
+                    filtered = clips.Select((c, idx) => new LauncherItem
+                    {
+                        Id = -400 - idx,
+                        Name = c.Preview,
+                        Type = "CLIPBOARD",
+                        Target = c.Text,
+                        CategoryId = cat.Id,
+                        Position = idx
+                    }).ToList();
+                }
+                else if (cat.Id <= -200)
+                {
+                    int providerIndex = (-cat.Id) - 200;
+                    var providers = _pluginService.GetProviders();
+                    if (providerIndex >= 0 && providerIndex < providers.Count)
+                    {
+                        filtered = providers[providerIndex].GetItems()?.ToList() ?? new List<LauncherItem>();
+                    }
+                    else
+                    {
+                        filtered = new List<LauncherItem>();
+                    }
+                }
                 else if (cat.Id <= 1 || cat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Hepsi", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Smart usage tracking: page 1 prioritizes user-added items, then most used
-                    filtered = _allItems.Where(i => i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite)
+                    // Recency/frequency-aware weighted ranking:
+                    DateTime now = DateTime.UtcNow;
+                    filtered = _allItems.Where(i => i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite || i.UseCount > 0 || i.LaunchCount > 0)
                                         .Where(i => i.ParentId == 0)
-                                        .OrderByDescending(i => i.IsFavorite)
-                                        .ThenByDescending(i => i.LaunchCount)
+                                        .OrderByDescending(i => CalculateUsageScore(i, now))
                                         .ThenBy(i => i.Position)
                                         .ToList();
+
+                    if (_contextualItems != null && _contextualItems.Count > 0)
+                    {
+                        filtered.InsertRange(0, _contextualItems);
+                    }
                 }
                 else
                 {
@@ -260,10 +339,53 @@ namespace RadialLauncher.UI.ViewModels
                 return;
             }
 
+            if (string.Equals(item.Type, "CLIPBOARD", StringComparison.OrdinalIgnoreCase))
+            {
+                RequestClose?.Invoke();
+                _clipboardService?.PasteItem(item.Target);
+                return;
+            }
+
             if (string.Equals(item.Type, "WINDOW", StringComparison.OrdinalIgnoreCase) && long.TryParse(item.Target, out long hWndVal))
             {
                 _windowSwitcher.SwitchToWindow((IntPtr)hWndVal);
                 RequestClose?.Invoke();
+                return;
+            }
+
+            if (string.Equals(item.Type, "COMMAND_THEME", StringComparison.OrdinalIgnoreCase))
+            {
+                _themeService.SetCurrentTheme(item.Target);
+                ActiveTheme = _themeService.GetCurrentTheme();
+                RequestLayoutUpdate?.Invoke();
+                RequestClose?.Invoke();
+                return;
+            }
+
+            if (string.Equals(item.Type, "COMMAND_RESTART", StringComparison.OrdinalIgnoreCase))
+            {
+                RequestClose?.Invoke();
+                _systemActionService.ExecuteAction("RESTART_APP");
+                return;
+            }
+
+            if (string.Equals(item.Type, "COMMAND_LOGS", StringComparison.OrdinalIgnoreCase))
+            {
+                RequestClose?.Invoke();
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string logDir = System.IO.Path.Combine(appData, "RadialLauncher", "logs");
+                if (!System.IO.Directory.Exists(logDir)) System.IO.Directory.CreateDirectory(logDir);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = logDir, UseShellExecute = true });
+                return;
+            }
+
+            if (string.Equals(item.Type, "COMMAND_SETTINGS", StringComparison.OrdinalIgnoreCase))
+            {
+                RequestClose?.Invoke();
+                RadialLauncher.App.Current?.Dispatcher?.Invoke(() =>
+                {
+                    ((App)RadialLauncher.App.Current).OpenSettings();
+                });
                 return;
             }
 
@@ -365,6 +487,111 @@ namespace RadialLauncher.UI.ViewModels
             {
                 _systemActionService.ExecuteAction(action.ActionKey);
             }
+        }
+
+        public static double CalculateUsageScore(LauncherItem item, DateTime? now = null)
+        {
+            if (item == null) return 0.0;
+            DateTime current = now ?? DateTime.UtcNow;
+            int count = Math.Max(item.UseCount, item.LaunchCount);
+            DateTime? last = item.LastUsedAt ?? item.LastLaunched;
+
+            double recencyFactor = 0.1;
+            if (last.HasValue)
+            {
+                double hours = Math.Max(0.0, (current - last.Value).TotalHours);
+                // Exponential decay: 7-day half-life (168 hours)
+                recencyFactor = Math.Exp(-0.693147 * hours / 168.0);
+            }
+
+            double baseScore = (count + 1.0) * (0.3 + 0.7 * recencyFactor);
+            double favoriteBonus = item.IsFavorite ? 10.0 : 0.0;
+            double userAddedBonus = item.IsUserAdded ? 5.0 : 0.0;
+
+            return baseScore + favoriteBonus + userAddedBonus;
+        }
+
+        public List<LauncherItem> GetCommandPaletteResults(string query)
+        {
+            var list = new List<LauncherItem>();
+            string trimmed = (query ?? string.Empty).Trim();
+            string cmd = trimmed.ToLowerInvariant();
+
+            if (cmd == "/" || cmd.StartsWith("/theme") || cmd.StartsWith("/tema"))
+            {
+                string themeArg = cmd.Length > 6 ? cmd[6..].Trim() : string.Empty;
+                var allThemes = _themeService.GetAllThemes();
+                var matchingThemes = string.IsNullOrEmpty(themeArg) 
+                    ? allThemes 
+                    : allThemes.Where(t => t.Name.ToLowerInvariant().Contains(themeArg)).ToList();
+
+                int tIdx = 0;
+                foreach (var t in matchingThemes)
+                {
+                    list.Add(new LauncherItem
+                    {
+                        Id = -500 - (tIdx++),
+                        Name = $"🎨 {t.Name}",
+                        Type = "COMMAND_THEME",
+                        Target = t.Name,
+                        CategoryId = -1,
+                        Position = tIdx
+                    });
+                }
+            }
+
+            if (cmd == "/" || "/restart".StartsWith(cmd) || cmd.StartsWith("/restart") || cmd.StartsWith("/yeniden"))
+            {
+                list.Add(new LauncherItem
+                {
+                    Id = -550,
+                    Name = "🔄 Yeniden Başlat (/restart)",
+                    Type = "COMMAND_RESTART",
+                    Target = "RESTART",
+                    CategoryId = -1
+                });
+            }
+
+            if (cmd == "/" || "/logs".StartsWith(cmd) || cmd.StartsWith("/logs") || "/log".StartsWith(cmd))
+            {
+                list.Add(new LauncherItem
+                {
+                    Id = -551,
+                    Name = "📂 Log Klasörü (/logs)",
+                    Type = "COMMAND_LOGS",
+                    Target = "LOGS",
+                    CategoryId = -1
+                });
+            }
+
+            if (cmd == "/" || "/settings".StartsWith(cmd) || cmd.StartsWith("/settings") || "/ayarlar".StartsWith(cmd))
+            {
+                list.Add(new LauncherItem
+                {
+                    Id = -552,
+                    Name = "⚙️ Ayarlar (/settings)",
+                    Type = "COMMAND_SETTINGS",
+                    Target = "SETTINGS",
+                    CategoryId = -1
+                });
+            }
+
+            if (cmd.Length > 1 && !cmd.StartsWith("/theme") && !cmd.StartsWith("/tema"))
+            {
+                string rawSearch = cmd.TrimStart('/');
+                if (!string.IsNullOrWhiteSpace(rawSearch))
+                {
+                    var itemMatches = _allItems.Where(i =>
+                        i.Name.ToLowerInvariant().Contains(rawSearch) ||
+                        i.Target.ToLowerInvariant().Contains(rawSearch) ||
+                        (i.Tags != null && i.Tags.ToLowerInvariant().Contains(rawSearch))
+                    ).Take(12).ToList();
+
+                    list.AddRange(itemMatches);
+                }
+            }
+
+            return list;
         }
     }
 }

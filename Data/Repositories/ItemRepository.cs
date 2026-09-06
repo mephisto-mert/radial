@@ -108,8 +108,8 @@ namespace RadialLauncher.Data.Repositories
                 using var conn = CreateConnection();
                 conn.Open();
                 string sql = @"
-                    INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded, LaunchCount, LastLaunched, Tags)
-                    VALUES (@Name, @Type, @Target, @Arguments, @WorkingDirectory, @IconPath, @CategoryId, @Position, @IsFavorite, @ParentId, @IsUserAdded, @LaunchCount, @LastLaunched, @Tags);
+                    INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded, LaunchCount, LastLaunched, UseCount, LastUsedAt, Tags)
+                    VALUES (@Name, @Type, @Target, @Arguments, @WorkingDirectory, @IconPath, @CategoryId, @Position, @IsFavorite, @ParentId, @IsUserAdded, @LaunchCount, @LastLaunched, @UseCount, @LastUsedAt, @Tags);
                     SELECT last_insert_rowid();";
                 int id = conn.ExecuteScalar<int>(sql, item);
                 item.Id = id;
@@ -143,6 +143,8 @@ namespace RadialLauncher.Data.Repositories
                         IsUserAdded = @IsUserAdded,
                         LaunchCount = @LaunchCount,
                         LastLaunched = @LastLaunched,
+                        UseCount = @UseCount,
+                        LastUsedAt = @LastUsedAt,
                         Tags = @Tags
                     WHERE Id = @Id;";
                 return conn.Execute(sql, item) > 0;
@@ -192,7 +194,9 @@ namespace RadialLauncher.Data.Repositories
                 conn.Execute(@"
                     UPDATE Items 
                     SET LaunchCount = LaunchCount + 1, 
-                        LastLaunched = @now 
+                        UseCount = UseCount + 1,
+                        LastLaunched = @now,
+                        LastUsedAt = @now 
                     WHERE Id = @id", 
                     new { id, now = DateTime.UtcNow });
             }

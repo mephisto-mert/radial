@@ -66,6 +66,7 @@ namespace RadialLauncher.UI.Windows
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (TargetTextBox == null || BrowseTargetButton == null || ActionSelectComboBox == null || EditMacroBtn == null) return;
             if (TypeComboBox.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
             {
                 string type = cbi.Content.ToString()!;
@@ -74,6 +75,14 @@ namespace RadialLauncher.UI.Windows
                     TargetTextBox.Visibility = Visibility.Collapsed;
                     BrowseTargetButton.Visibility = Visibility.Collapsed;
                     ActionSelectComboBox.Visibility = Visibility.Visible;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
+                }
+                else if (type == "MACRO")
+                {
+                    TargetTextBox.Visibility = Visibility.Collapsed;
+                    BrowseTargetButton.Visibility = Visibility.Collapsed;
+                    ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Visible;
                 }
                 else if (type == "SUBMENU")
                 {
@@ -81,13 +90,28 @@ namespace RadialLauncher.UI.Windows
                     TargetTextBox.Text = "SUBMENU";
                     BrowseTargetButton.Visibility = Visibility.Collapsed;
                     ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
                     TargetTextBox.Visibility = Visibility.Visible;
                     BrowseTargetButton.Visibility = Visibility.Visible;
                     ActionSelectComboBox.Visibility = Visibility.Collapsed;
+                    EditMacroBtn.Visibility = Visibility.Collapsed;
                 }
+            }
+        }
+
+        private void EditMacroBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new MacroEditorDialog(TargetTextBox.Text, _actionService)
+            {
+                Owner = this
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                TargetTextBox.Text = dlg.GetSerializedSteps();
+                EditMacroBtn.Content = $"⚡ Makro ({dlg.Steps.Count} Adım Tanımlı)";
             }
         }
 
@@ -124,6 +148,17 @@ namespace RadialLauncher.UI.Windows
                     TypeComboBox.SelectedItem = cbi;
                     break;
                 }
+            }
+
+            if (string.Equals(Item.Type, "MACRO", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(Item.Target))
+            {
+                try
+                {
+                    var steps = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<MacroStep>>(Item.Target);
+                    int cnt = steps?.Count ?? 0;
+                    EditMacroBtn.Content = $"⚡ Makro ({cnt} Adım Tanımlı)";
+                }
+                catch (System.Exception) { }
             }
 
             CategoryComboBox.SelectedValue = Item.CategoryId;
