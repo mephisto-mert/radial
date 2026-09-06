@@ -12,13 +12,17 @@ namespace RadialLauncher.UI.Windows
         public string SelectedShortcut { get; private set; } = string.Empty;
         public string FriendlyName { get; private set; } = string.Empty;
 
+        private readonly Action _onLanguageChangedHandler;
+
         public ShortcutAssignWindow(string currentShortcut = "MiddleClick")
         {
             InitializeComponent();
             ApplyLocalization();
             SetShortcut(currentShortcut);
 
-            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+            _onLanguageChangedHandler = () => Dispatcher.Invoke(ApplyLocalization);
+            LocalizationService.Instance.OnLanguageChanged += _onLanguageChangedHandler;
+            Closed += (s, e) => LocalizationService.Instance.OnLanguageChanged -= _onLanguageChangedHandler;
         }
 
         public void ApplyLocalization()

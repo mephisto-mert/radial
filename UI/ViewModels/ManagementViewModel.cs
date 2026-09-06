@@ -92,7 +92,7 @@ namespace RadialLauncher.UI.ViewModels
         public void RefreshItems()
         {
             var all = _itemRepo.GetAll();
-            if (SelectedCategory != null && (SelectedCategory.Id <= 1 || SelectedCategory.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase)))
+            if (SelectedCategory != null && (SelectedCategory.SystemKey == "Cat_MostUsed" || SelectedCategory.Id == 1))
             {
                 // Exact same recency/frequency weighted calculation as RadialMenuViewModel
                 DateTime now = DateTime.UtcNow;

@@ -22,6 +22,7 @@ namespace RadialLauncher.Services.Themes
         {
             new Theme
             {
+                Id = "Dark",
                 Name = "Dark",
                 BgR = 18, BgG = 18, BgB = 22,
                 BackgroundOpacity = 0.90,
@@ -34,6 +35,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "White",
                 Name = "White",
                 BgR = 245, BgG = 245, BgB = 247,
                 BackgroundOpacity = 0.95,
@@ -46,6 +48,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "Red",
                 Name = "Red",
                 BgR = 28, BgG = 10, BgB = 14,
                 BackgroundOpacity = 0.92,
@@ -58,6 +61,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "Blue",
                 Name = "Blue",
                 BgR = 10, BgG = 20, BgB = 42,
                 BackgroundOpacity = 0.92,
@@ -70,6 +74,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "Purple",
                 Name = "Purple",
                 BgR = 22, BgG = 10, BgB = 36,
                 BackgroundOpacity = 0.92,
@@ -82,6 +87,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "Forest",
                 Name = "Forest",
                 BgR = 10, BgG = 28, BgB = 18,
                 BackgroundOpacity = 0.92,
@@ -94,6 +100,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "AmoledBlack",
                 Name = "AMOLED Black",
                 BgR = 0, BgG = 0, BgB = 0,
                 BackgroundOpacity = 0.98,
@@ -106,6 +113,7 @@ namespace RadialLauncher.Services.Themes
             },
             new Theme
             {
+                Id = "HighContrast",
                 Name = "High Contrast",
                 BgR = 0, BgG = 0, BgB = 0,
                 BackgroundOpacity = 1.0,
@@ -141,23 +149,29 @@ namespace RadialLauncher.Services.Themes
             if (string.IsNullOrWhiteSpace(name)) return _builtinThemes[0];
             string trimmed = name.Trim();
             
-            // Map legacy / alternative names to 8 curated themes
+            // 1. Direct match by Id or Name
+            var exact = _builtinThemes.FirstOrDefault(t => 
+                string.Equals(t.Id, trimmed, StringComparison.OrdinalIgnoreCase) || 
+                string.Equals(t.Name, trimmed, StringComparison.OrdinalIgnoreCase));
+            if (exact != null) return exact;
+
+            // 2. Map legacy / alternative names to 8 curated themes
             if (string.Equals(trimmed, "Light", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "White", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "White");
+                return _builtinThemes.First(t => t.Id == "White");
             if (string.Equals(trimmed, "Crimson Red", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Red", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "Red");
+                return _builtinThemes.First(t => t.Id == "Red");
             if (string.Equals(trimmed, "Midnight Blue", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Blue", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "Blue");
+                return _builtinThemes.First(t => t.Id == "Blue");
             if (string.Equals(trimmed, "Purple Haze", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Purple", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "Purple");
-            if (string.Equals(trimmed, "Forest", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "Forest");
-            if (string.Equals(trimmed, "AMOLED Black", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "AMOLED", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Black", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "AMOLED Black");
-            if (string.Equals(trimmed, "High Contrast", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Contrast", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "High Contrast");
+                return _builtinThemes.First(t => t.Id == "Purple");
+            if (string.Equals(trimmed, "Forest", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Forest Emerald", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Forest Green", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Id == "Forest");
+            if (string.Equals(trimmed, "AMOLED Black", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "AMOLED", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Black", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "AmoledBlack", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Id == "AmoledBlack");
+            if (string.Equals(trimmed, "High Contrast", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "Contrast", StringComparison.OrdinalIgnoreCase) || string.Equals(trimmed, "HighContrast", StringComparison.OrdinalIgnoreCase))
+                return _builtinThemes.First(t => t.Id == "HighContrast");
             if (string.Equals(trimmed, "Dark", StringComparison.OrdinalIgnoreCase))
-                return _builtinThemes.First(t => t.Name == "Dark");
+                return _builtinThemes.First(t => t.Id == "Dark");
 
             return _builtinThemes.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) ?? _builtinThemes[0];
         }

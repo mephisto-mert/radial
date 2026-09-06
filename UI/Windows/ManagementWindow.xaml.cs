@@ -101,6 +101,9 @@ namespace RadialLauncher.UI.Windows
         {
         }
 
+        private readonly Action<Theme> _onThemeChangedHandler;
+        private readonly Action _onLanguageChangedHandler;
+
         public ManagementWindow(ManagementViewModel viewModel, IStartupManager startupManager, IThemeService themeService, ISyncService syncService)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
@@ -112,8 +115,18 @@ namespace RadialLauncher.UI.Windows
 
             DataContext = _viewModel;
             Loaded += ManagementWindow_Loaded;
-            _themeService.OnThemeChanged += t => Dispatcher.Invoke(() => ApplyThemeVisuals(t));
-            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+
+            _onThemeChangedHandler = t => Dispatcher.Invoke(() => ApplyThemeVisuals(t));
+            _onLanguageChangedHandler = () => Dispatcher.Invoke(ApplyLocalization);
+
+            _themeService.OnThemeChanged += _onThemeChangedHandler;
+            LocalizationService.Instance.OnLanguageChanged += _onLanguageChangedHandler;
+
+            Closed += (s, e) =>
+            {
+                _themeService.OnThemeChanged -= _onThemeChangedHandler;
+                LocalizationService.Instance.OnLanguageChanged -= _onLanguageChangedHandler;
+            };
         }
 
         private void ManagementWindow_Loaded(object sender, RoutedEventArgs e)
@@ -199,15 +212,28 @@ namespace RadialLauncher.UI.Windows
 
         private void LoadCategories()
         {
+            if (CategoryFilterCombo == null || _viewModel == null) return;
             var loc = LocalizationService.Instance;
+            int currentSelectedId = 0;
+            if (CategoryFilterCombo.SelectedItem is ComboBoxItem cbi && cbi.Tag is int id)
+            {
+                currentSelectedId = id;
+            }
+
             CategoryFilterCombo.Items.Clear();
             CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = loc.GetString("All_Categories", "All Categories"), Tag = 0 });
 
-            foreach (var cat in _viewModel.Categories)
+            int newIndex = 0;
+            for (int i = 0; i < _viewModel.Categories.Count; i++)
             {
+                var cat = _viewModel.Categories[i];
                 CategoryFilterCombo.Items.Add(new ComboBoxItem { Content = loc.GetCategoryDisplayName(cat), Tag = cat.Id });
+                if (cat.Id == currentSelectedId)
+                {
+                    newIndex = i + 1;
+                }
             }
-            CategoryFilterCombo.SelectedIndex = 0;
+            CategoryFilterCombo.SelectedIndex = newIndex;
         }
 
         private void BtnRenameCategory_Click(object sender, RoutedEventArgs e)
@@ -255,12 +281,26 @@ namespace RadialLauncher.UI.Windows
 
         private void LoadThemes()
         {
+            if (ThemesListBox == null || _viewModel == null) return;
+            string currentId = _viewModel.SelectedTheme?.Id ?? "Dark";
             ThemesListBox.Items.Clear();
-            foreach (var t in _viewModel.Themes)
+            int selectedIdx = 0;
+            for (int i = 0; i < _viewModel.Themes.Count; i++)
             {
-                ThemesListBox.Items.Add(t.Name);
+                var t = _viewModel.Themes[i];
+                var lbi = new ListBoxItem
+                {
+                    Content = t.DisplayName,
+                    Tag = t.Id
+                };
+                ThemesListBox.Items.Add(lbi);
+                if (string.Equals(t.Id, currentId, StringComparison.OrdinalIgnoreCase) || string.Equals(t.Name, currentId, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedIdx = i;
+                }
             }
-            ThemesListBox.SelectedItem = _viewModel.SelectedTheme?.Name ?? "Dark";
+            ThemesListBox.SelectedIndex = selectedIdx;
+
             if (LivePreviewControl != null)
             {
                 LivePreviewControl.Theme = _viewModel.SelectedTheme;
@@ -443,9 +483,21 @@ namespace RadialLauncher.UI.Windows
         {
             if (_viewModel == null || LivePreviewControl == null) return;
             var lb = sender as ListBox ?? ThemesListBox;
-            if (lb?.SelectedItem is string themeName)
+            string? selectedId = null;
+            if (lb?.SelectedItem is ListBoxItem lbi && lbi.Tag is string tid)
             {
-                var theme = _viewModel.Themes.FirstOrDefault(t => t.Name == themeName);
+                selectedId = tid;
+            }
+            else if (lb?.SelectedItem is string tname)
+            {
+                selectedId = tname;
+            }
+
+            if (!string.IsNullOrEmpty(selectedId))
+            {
+                var theme = _viewModel.Themes.FirstOrDefault(t => 
+                    string.Equals(t.Id, selectedId, StringComparison.OrdinalIgnoreCase) || 
+                    string.Equals(t.Name, selectedId, StringComparison.OrdinalIgnoreCase));
                 if (theme != null)
                 {
                     _viewModel.ApplyTheme(theme);
@@ -995,7 +1047,10 @@ namespace RadialLauncher.UI.Windows
                 BtnRenameCategory.ToolTip = loc.GetString("Rename_Category", "Rename Category");
             }
 
+            LoadCategories();
+            LoadThemes();
             LoadShortcutState();
+            RefreshGrid();
         }
     }
 }

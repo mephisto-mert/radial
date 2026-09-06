@@ -79,5 +79,46 @@ namespace RadialLauncher.Tests
             Assert.Contains("QuickActions", tables);
             Assert.Contains("CustomThemes", tables);
         }
+
+        [Fact]
+        public void MigrationsAndBackfills_NeverAssignSystemKeyToUserCustomCategories()
+        {
+            // Initialize database
+            _db.InitializeDatabase();
+
+            // Insert custom categories that have names resembling system categories
+            using var conn = new SqliteConnection(_db.GetConnectionString());
+            conn.Open();
+
+            using (var insertCmd = conn.CreateCommand())
+            {
+                insertCmd.CommandText = @"
+                    INSERT INTO Categories (Name, Position, SystemKey) VALUES ('Games User', 10, NULL);
+                    INSERT INTO Categories (Name, Position, SystemKey) VALUES ('My System Actions', 11, NULL);
+                    INSERT INTO Categories (Name, Position, SystemKey) VALUES ('Open Windows List', 12, NULL);
+                    INSERT INTO Categories (Name, Position, SystemKey) VALUES ('Oyun Koleksiyonu', 13, NULL);
+                ";
+                insertCmd.ExecuteNonQuery();
+            }
+
+            // Run database initialization again (which runs migration and backfill passes)
+            _db.InitializeDatabase();
+
+            // Check that all 4 user categories still have SystemKey IS NULL
+            using (var checkCmd = conn.CreateCommand())
+            {
+                checkCmd.CommandText = "SELECT Name, SystemKey FROM Categories WHERE Position >= 10;";
+                using var reader = checkCmd.ExecuteReader();
+                int count = 0;
+                while (reader.Read())
+                {
+                    count++;
+                    string name = reader.GetString(0);
+                    bool isNull = reader.IsDBNull(1);
+                    Assert.True(isNull, $"Category '{name}' should have NULL SystemKey but got '{(!isNull ? reader.GetString(1) : "")}'");
+                }
+                Assert.Equal(4, count);
+            }
+        }
     }
 }

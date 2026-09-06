@@ -136,7 +136,8 @@ namespace RadialLauncher.Tests
             var userGames = new Category { Id = 991, Name = "Games", SystemKey = null };
             var userSystem = new Category { Id = 992, Name = "System", SystemKey = null };
             var userWindows = new Category { Id = 993, Name = "Open Windows", SystemKey = null };
-            var userCustom = new Category { Id = 994, Name = "My Custom Category", SystemKey = null };
+            var userClipboard = new Category { Id = 994, Name = "Clipboard History", SystemKey = null };
+            var userCustom = new Category { Id = 995, Name = "My Custom Category", SystemKey = null };
 
             foreach (var lang in loc.SupportedLanguages)
             {
@@ -144,7 +145,57 @@ namespace RadialLauncher.Tests
                 Assert.Equal("Games", userGames.DisplayName);
                 Assert.Equal("System", userSystem.DisplayName);
                 Assert.Equal("Open Windows", userWindows.DisplayName);
+                Assert.Equal("Clipboard History", userClipboard.DisplayName);
                 Assert.Equal("My Custom Category", userCustom.DisplayName);
+            }
+
+            loc.SetLanguage("en");
+        }
+
+        [Fact]
+        public void BuiltinCategory_WithSystemKey_IsProperlyTranslatedInAll11Languages()
+        {
+            var loc = LocalizationService.Instance;
+
+            var sysMostUsed = new Category { Id = 1, Name = "Most Used", SystemKey = "Cat_MostUsed" };
+            var sysWindows = new Category { Id = 2, Name = "Open Windows", SystemKey = "Cat_OpenWindows" };
+            var sysClipboard = new Category { Id = 3, Name = "Clipboard History", SystemKey = "Cat_ClipboardHistory" };
+            var sysSystem = new Category { Id = 4, Name = "System", SystemKey = "Cat_System" };
+            var sysGames = new Category { Id = 5, Name = "Games", SystemKey = "Cat_Games" };
+
+            // English
+            loc.SetLanguage("en");
+            Assert.Equal("⭐ Most Used", sysMostUsed.DisplayName);
+            Assert.Equal("🪟 Open Windows", sysWindows.DisplayName);
+            Assert.Equal("📋 Clipboard History", sysClipboard.DisplayName);
+            Assert.Equal("⚡ System", sysSystem.DisplayName);
+            Assert.Equal("🎮 Games", sysGames.DisplayName);
+
+            // Turkish
+            loc.SetLanguage("tr");
+            Assert.Equal("⭐ Sık Kullanılanlar", sysMostUsed.DisplayName);
+            Assert.Equal("🪟 Açık Pencereler", sysWindows.DisplayName);
+            Assert.Equal("📋 Pano Geçmişi", sysClipboard.DisplayName);
+            Assert.Equal("⚡ Sistem", sysSystem.DisplayName);
+            Assert.Equal("🎮 Oyunlar", sysGames.DisplayName);
+
+            // German
+            loc.SetLanguage("de");
+            Assert.Equal("⭐ Meistgenutzt", sysMostUsed.DisplayName);
+            Assert.Equal("🪟 Offene Fenster", sysWindows.DisplayName);
+            Assert.Equal("📋 Zwischenablage", sysClipboard.DisplayName);
+            Assert.Equal("⚡ System", sysSystem.DisplayName);
+            Assert.Equal("🎮 Spiele", sysGames.DisplayName);
+
+            // Verify all 11 languages have non-empty values
+            foreach (var lang in loc.SupportedLanguages)
+            {
+                loc.SetLanguage(lang.Code);
+                Assert.False(string.IsNullOrWhiteSpace(sysMostUsed.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(sysWindows.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(sysClipboard.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(sysSystem.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(sysGames.DisplayName));
             }
 
             loc.SetLanguage("en");

@@ -61,8 +61,12 @@ namespace RadialLauncher.UI.Windows
             ActionSelectComboBox.ItemsSource = _actionService.GetAvailableActions();
             ApplyLocalization();
 
-            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+            _onLanguageChangedHandler = () => Dispatcher.Invoke(ApplyLocalization);
+            LocalizationService.Instance.OnLanguageChanged += _onLanguageChangedHandler;
+            Closed += (s, e) => LocalizationService.Instance.OnLanguageChanged -= _onLanguageChangedHandler;
         }
+
+        private readonly Action _onLanguageChangedHandler;
 
         public void ApplyLocalization()
         {
@@ -80,6 +84,25 @@ namespace RadialLauncher.UI.Windows
             if (FavoriteCheckBox != null) FavoriteCheckBox.Content = loc.GetString("Item_Favorite_Add", "Add to Favorites (Inner Ring ⭐)");
             if (SaveButton != null) SaveButton.Content = loc.GetString("Save", "Save");
             if (CancelButton != null) CancelButton.Content = loc.GetString("Cancel", "Cancel");
+
+            if (CategoryComboBox != null)
+            {
+                int currentCatId = (CategoryComboBox.SelectedValue is int id) ? id : 1;
+                LoadCategories();
+                CategoryComboBox.SelectedValue = currentCatId;
+            }
+
+            if (ActionSelectComboBox != null)
+            {
+                string? selectedAction = (ActionSelectComboBox.SelectedItem as SystemActionInfo)?.ActionKey;
+                ActionSelectComboBox.ItemsSource = null;
+                var actions = _actionService.GetAvailableActions();
+                ActionSelectComboBox.ItemsSource = actions;
+                if (!string.IsNullOrEmpty(selectedAction))
+                {
+                    ActionSelectComboBox.SelectedItem = actions.Find(a => a.ActionKey == selectedAction);
+                }
+            }
         }
 
         private void TypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -185,8 +185,6 @@ namespace RadialLauncher.UI.ViewModels
             foreach (var c in allDbCats)
             {
                 if (c.Id == mostUsedCat.Id || c.SystemKey == "Cat_MostUsed" || c.SystemKey == "Cat_OpenWindows" || c.SystemKey == "Cat_ClipboardHistory") continue;
-                if (c.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Open Windows", StringComparison.OrdinalIgnoreCase)) continue;
-                if (c.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("Clipboard History", StringComparison.OrdinalIgnoreCase)) continue;
                 if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
                 {
                     validCats.Add(c);
@@ -263,7 +261,7 @@ namespace RadialLauncher.UI.ViewModels
                 {
                     filtered = new List<LauncherItem>();
                 }
-                else if (cat.SystemKey == "Cat_OpenWindows" || cat.Id == -99 || cat.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Open Windows", StringComparison.OrdinalIgnoreCase))
+                else if (cat.SystemKey == "Cat_OpenWindows" || cat.Id == -99)
                 {
                     var openWins = _windowSwitcher?.GetOpenWindows() ?? new List<WindowInfo>();
                     WindowIcons?.Clear();
@@ -282,7 +280,7 @@ namespace RadialLauncher.UI.ViewModels
                         Position = idx
                     }).ToList();
                 }
-                else if (cat.SystemKey == "Cat_ClipboardHistory" || cat.Id == -98 || cat.Name.Contains("Pano Geçmişi", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Clipboard History", StringComparison.OrdinalIgnoreCase))
+                else if (cat.SystemKey == "Cat_ClipboardHistory" || cat.Id == -98)
                 {
                     var clips = _clipboardService?.GetRecentHistory(20) ?? new List<ClipboardItem>();
                     filtered = clips.Select((c, idx) => new LauncherItem
@@ -300,7 +298,7 @@ namespace RadialLauncher.UI.ViewModels
                     int providerIndex = (-cat.Id) - 200;
                     filtered = _pluginService?.GetSafeItems(providerIndex)?.ToList() ?? new List<LauncherItem>();
                 }
-                else if (cat.SystemKey == "Cat_MostUsed" || cat.Id <= 1 || cat.Name.Contains("Kullanılanlar", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Most Used", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Hepsi", StringComparison.OrdinalIgnoreCase))
+                else if (cat.SystemKey == "Cat_MostUsed" || cat.Id == 1)
                 {
                     // Recency/frequency-aware weighted ranking:
                     DateTime now = DateTime.UtcNow;
@@ -576,7 +574,10 @@ namespace RadialLauncher.UI.ViewModels
                 var allThemes = _themeService.GetAllThemes();
                 var matchingThemes = string.IsNullOrEmpty(themeArg) 
                     ? allThemes 
-                    : allThemes.Where(t => t.Name.ToLowerInvariant().Contains(themeArg)).ToList();
+                    : allThemes.Where(t => 
+                        (!string.IsNullOrEmpty(t.DisplayName) && t.DisplayName.ToLowerInvariant().Contains(themeArg)) || 
+                        (!string.IsNullOrEmpty(t.Name) && t.Name.ToLowerInvariant().Contains(themeArg)) || 
+                        (!string.IsNullOrEmpty(t.Id) && t.Id.ToLowerInvariant().Contains(themeArg))).ToList();
 
                 int tIdx = 0;
                 foreach (var t in matchingThemes)
@@ -584,9 +585,9 @@ namespace RadialLauncher.UI.ViewModels
                     list.Add(new LauncherItem
                     {
                         Id = -500 - (tIdx++),
-                        Name = $"🎨 {t.Name}",
+                        Name = $"🎨 {t.DisplayName}",
                         Type = "COMMAND_THEME",
-                        Target = t.Name,
+                        Target = t.Id,
                         CategoryId = -1,
                         Position = tIdx
                     });

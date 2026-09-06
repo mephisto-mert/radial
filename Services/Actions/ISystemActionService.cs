@@ -6,7 +6,19 @@ namespace RadialLauncher.Services.Actions
     public class SystemActionInfo
     {
         public string ActionKey { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
+        private string _displayName = string.Empty;
+        public string DisplayName
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(ActionKey))
+                {
+                    return Localization.LocalizationService.Instance.GetString($"SysAction_{ActionKey}", _displayName);
+                }
+                return _displayName;
+            }
+            set => _displayName = value;
+        }
         public string IconSymbol { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
     }

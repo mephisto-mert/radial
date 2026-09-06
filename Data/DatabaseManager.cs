@@ -95,19 +95,19 @@ namespace RadialLauncher.Data
                     EnsureColumnExists(connection, "Items", "IsUserAdded", "INTEGER DEFAULT 1");
                     EnsureColumnExists(connection, "Categories", "SystemKey", "TEXT");
 
-                    int winCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE SystemKey = 'Cat_OpenWindows' OR Name LIKE '%Açık Pencereler%' OR Name LIKE '%Open Windows%'");
+                    int winCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE SystemKey = 'Cat_OpenWindows'");
                     if (winCat == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
                         connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('🪟 Open Windows', '#9b59b6', @nextPos, 'Cat_OpenWindows')", new { nextPos });
                     }
 
-                    int sysCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE SystemKey = 'Cat_System' OR Name LIKE '%Sistem%' OR Name LIKE '%System%'");
+                    int sysCat = connection.QuerySingle<int>("SELECT COUNT(*) FROM Categories WHERE SystemKey = 'Cat_System'");
                     if (sysCat == 0)
                     {
                         int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
                         connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('⚡ System', '#f1c40f', @nextPos, 'Cat_System')", new { nextPos });
-                        int newSysCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE SystemKey = 'Cat_System' OR Name LIKE '%Sistem%' OR Name LIKE '%System%'");
+                        int newSysCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE SystemKey = 'Cat_System'");
 
                         var sysActions = new[]
                         {
@@ -200,10 +200,10 @@ namespace RadialLauncher.Data
                 {
                     EnsureColumnExists(connection, "Categories", "SystemKey", "TEXT");
 
-                    // Assign stable system keys to known built-in categories (deterministic check with standard emoji or default IDs)
-                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_OpenWindows' WHERE (SystemKey IS NULL OR SystemKey = '') AND (Name = '🪟 Open Windows' OR Name = '🪟 Açık Pencereler' OR (Id <= 4 AND (Name LIKE '%Open Windows%' OR Name LIKE '%Açık Pencereler%')));");
-                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_System' WHERE (SystemKey IS NULL OR SystemKey = '') AND (Name = '⚡ System' OR Name = '⚡ Sistem' OR (Id <= 4 AND (Name LIKE '%System%' OR Name LIKE '%Sistem%')));");
-                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_Games' WHERE (SystemKey IS NULL OR SystemKey = '') AND (Name = '🎮 Games' OR Name = '🎮 Oyunlar' OR (Id <= 4 AND (Name LIKE '%Games%' OR Name LIKE '%Oyun%')));");
+                    // Assign stable system keys to known built-in categories
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_OpenWindows' WHERE (SystemKey IS NULL OR SystemKey = '') AND Name = '🪟 Open Windows';");
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_System' WHERE (SystemKey IS NULL OR SystemKey = '') AND Name = '⚡ System';");
+                    connection.Execute("UPDATE Categories SET SystemKey = 'Cat_Games' WHERE (SystemKey IS NULL OR SystemKey = '') AND Name = '🎮 Games';");
                     connection.Execute("UPDATE Categories SET SystemKey = 'Cat_MostUsed' WHERE Id = 1 AND (SystemKey IS NULL OR SystemKey = '');");
 
                     connection.Execute("PRAGMA user_version = 5;");
@@ -241,14 +241,10 @@ namespace RadialLauncher.Data
             try
             {
                 int gamesCatId = 0;
-                var gamesCat = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE SystemKey = 'Cat_Games' OR Name = '🎮 Games' OR Name = '🎮 Oyunlar' OR (Id <= 4 AND (Name LIKE '%Games%' OR Name LIKE '%Oyun%'))");
+                var gamesCat = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE SystemKey = 'Cat_Games'");
                 if (gamesCat != null)
                 {
                     gamesCatId = gamesCat.Id;
-                    if (string.IsNullOrEmpty(gamesCat.SystemKey))
-                    {
-                        connection.Execute("UPDATE Categories SET SystemKey = 'Cat_Games' WHERE Id = @Id", new { gamesCat.Id });
-                    }
                 }
                 else
                 {

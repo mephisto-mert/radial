@@ -25,12 +25,18 @@ namespace RadialLauncher.UI.Windows
             CategoryNameTextBox.Text = _initialName;
             ApplyLocalization();
 
+            _onLanguageChangedHandler = () => Dispatcher.Invoke(ApplyLocalization);
+            LocalizationService.Instance.OnLanguageChanged += _onLanguageChangedHandler;
+            Closed += (s, e) => LocalizationService.Instance.OnLanguageChanged -= _onLanguageChangedHandler;
+
             Loaded += (s, e) =>
             {
                 CategoryNameTextBox.Focus();
                 CategoryNameTextBox.SelectAll();
             };
         }
+
+        private readonly Action _onLanguageChangedHandler;
 
         public void ApplyLocalization()
         {

@@ -129,18 +129,64 @@ namespace RadialLauncher.Tests
         }
 
         [Theory]
-        [InlineData("MiddleClick", "Middle Click")]
-        [InlineData("XButton1", "Mouse 4")]
-        [InlineData("XButton2", "Mouse 5")]
-        [InlineData("Ctrl+XButton1", "Ctrl + Mouse 4")]
-        [InlineData("AltSpace", "Alt + Space")]
-        [InlineData("CtrlSpace", "Ctrl + Space")]
-        public void ToFriendlyName_ReturnsReadableEnglishDescriptions(string code, string expectedSubstring)
+        [InlineData("Dark", "Dark", "Koyu", "Dunkel")]
+        [InlineData("White", "White", "Açık / Beyaz", "Hell / Weiß")]
+        [InlineData("Red", "Crimson Red", "Kızıl Kırmızı", "Karminrot")]
+        [InlineData("Blue", "Midnight Blue", "Gece Mavisi", "Mitternachtsblau")]
+        [InlineData("Purple", "Purple Haze", "Mor Sis", "Lila Dunst")]
+        [InlineData("Forest", "Forest Emerald", "Zümrüt Ormanı", "Smaragdwald")]
+        [InlineData("AmoledBlack", "AMOLED Black", "AMOLED Siyah", "AMOLED Schwarz")]
+        [InlineData("HighContrast", "High Contrast", "Yüksek Karşıtlık", "Hoher Kontrast")]
+        public void Theme_DisplayName_TranslatesDynamicallyAcrossLanguages(string id, string enName, string trName, string deName)
         {
+            var themeService = ThemeService.Instance;
             var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
+
+            var theme = themeService.GetTheme(id);
+            Assert.NotNull(theme);
+            Assert.Equal(id, theme.Id);
+
             loc.SetLanguage("en");
-            string friendly = RadialLauncher.UI.Windows.ShortcutAssignWindow.ToFriendlyName(code);
-            Assert.Contains(expectedSubstring, friendly);
+            Assert.Equal(enName, theme.DisplayName);
+
+            loc.SetLanguage("tr");
+            Assert.Equal(trName, theme.DisplayName);
+
+            loc.SetLanguage("de");
+            Assert.Equal(deName, theme.DisplayName);
+
+            loc.SetLanguage("en");
+        }
+
+        [Fact]
+        public void ThemeService_AllBuiltinThemes_HaveUniqueIdAndName()
+        {
+            var themeService = ThemeService.Instance;
+            var themes = themeService.GetAllThemes();
+
+            var ids = themes.Select(t => t.Id).ToList();
+            var names = themes.Select(t => t.Name).ToList();
+
+            Assert.Equal(ids.Distinct().Count(), ids.Count);
+            Assert.Equal(names.Distinct().Count(), names.Count);
+            Assert.All(themes, t => Assert.False(string.IsNullOrWhiteSpace(t.Id)));
+            Assert.All(themes, t => Assert.False(string.IsNullOrWhiteSpace(t.Name)));
+        }
+
+        [Theory]
+        [InlineData("AmoledBlack", "AmoledBlack")]
+        [InlineData("AMOLED Black", "AmoledBlack")]
+        [InlineData("HighContrast", "HighContrast")]
+        [InlineData("High Contrast", "HighContrast")]
+        [InlineData("Forest", "Forest")]
+        [InlineData("Forest Green", "Forest")]
+        public void GetTheme_MatchesByIdOrName_ReturnsCorrectTheme(string identifier, string expectedId)
+        {
+            var themeService = ThemeService.Instance;
+            var theme = themeService.GetTheme(identifier);
+
+            Assert.NotNull(theme);
+            Assert.Equal(expectedId, theme.Id);
         }
     }
 }

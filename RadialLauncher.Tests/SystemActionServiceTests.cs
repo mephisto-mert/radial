@@ -65,5 +65,69 @@ namespace RadialLauncher.Tests
             var icon = RadialLauncher.Services.Icons.VectorIconFactory.GetActionIcon(actionKey);
             Assert.NotNull(icon);
         }
+
+        [Fact]
+        public void SystemActionInfo_DisplayName_TranslatesDynamicallyAcrossLanguages()
+        {
+            var service = new SystemActionService();
+            var actions = service.GetAvailableActions();
+            var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
+
+            var volUp = actions.Find(a => a.ActionKey == "VOLUME_UP");
+            var focus25 = actions.Find(a => a.ActionKey == "FOCUS_25");
+            var lockPc = actions.Find(a => a.ActionKey == "LOCK_PC");
+            var recycle = actions.Find(a => a.ActionKey == "EMPTY_RECYCLE_BIN");
+
+            Assert.NotNull(volUp);
+            Assert.NotNull(focus25);
+            Assert.NotNull(lockPc);
+            Assert.NotNull(recycle);
+
+            // English
+            loc.SetLanguage("en");
+            Assert.Equal("Volume Up (+2%)", volUp.DisplayName);
+            Assert.Equal("🍅 Focus Timer (25m)", focus25.DisplayName);
+            Assert.Equal("Lock PC", lockPc.DisplayName);
+            Assert.Equal("Empty Recycle Bin", recycle.DisplayName);
+
+            // Turkish
+            loc.SetLanguage("tr");
+            Assert.Equal("Sesi Aç (+%2)", volUp.DisplayName);
+            Assert.Equal("🍅 Odak Zamanlayıcı (25dk)", focus25.DisplayName);
+            Assert.Equal("Bilgisayarı Kilitle", lockPc.DisplayName);
+            Assert.Equal("Geri Dönüşüm Kutusunu Boşalt", recycle.DisplayName);
+
+            // German
+            loc.SetLanguage("de");
+            Assert.Equal("Lautstärke erhöhen (+2%)", volUp.DisplayName);
+            Assert.Equal("🍅 Fokus-Timer (25 Min.)", focus25.DisplayName);
+            Assert.Equal("PC sperren", lockPc.DisplayName);
+            Assert.Equal("Papierkorb leeren", recycle.DisplayName);
+
+            // Restore English
+            loc.SetLanguage("en");
+        }
+
+        [Fact]
+        public void SystemActionInfo_All14Actions_HaveNonEmptyDisplayNamesInAll11Languages()
+        {
+            var service = new SystemActionService();
+            var actions = service.GetAvailableActions();
+            var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
+
+            Assert.Equal(14, actions.Count);
+
+            foreach (var lang in loc.SupportedLanguages)
+            {
+                loc.SetLanguage(lang.Code);
+                foreach (var action in actions)
+                {
+                    Assert.False(string.IsNullOrWhiteSpace(action.DisplayName),
+                        $"Action {action.ActionKey} has empty DisplayName in {lang.Code}");
+                }
+            }
+
+            loc.SetLanguage("en");
+        }
     }
 }

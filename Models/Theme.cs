@@ -7,8 +7,23 @@ namespace RadialLauncher.Models
 {
     public class Theme
     {
+        public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = "Dark";
         public bool IsCustom { get; set; } = false;
+
+        [JsonIgnore]
+        public string DisplayName
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(Id))
+                {
+                    string loc = RadialLauncher.Services.Localization.LocalizationService.Instance.GetString($"Theme_{Id}", string.Empty);
+                    if (!string.IsNullOrEmpty(loc)) return loc;
+                }
+                return !string.IsNullOrEmpty(Name) ? Name : "Dark";
+            }
+        }
 
         // Background
         public byte BgR { get; set; } = 18;

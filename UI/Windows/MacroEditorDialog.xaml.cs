@@ -44,8 +44,12 @@ namespace RadialLauncher.UI.Windows
             NewStepActionComboBox.ItemsSource = _actionService.GetAvailableActions();
             ApplyLocalization();
 
-            LocalizationService.Instance.OnLanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+            _onLanguageChangedHandler = () => Dispatcher.Invoke(ApplyLocalization);
+            LocalizationService.Instance.OnLanguageChanged += _onLanguageChangedHandler;
+            Closed += (s, e) => LocalizationService.Instance.OnLanguageChanged -= _onLanguageChangedHandler;
         }
+
+        private readonly Action _onLanguageChangedHandler;
 
         public void ApplyLocalization()
         {
@@ -65,6 +69,18 @@ namespace RadialLauncher.UI.Windows
             if (AddStepBtn != null) AddStepBtn.Content = loc.GetString("Macro_Add", "Add");
             if (SaveBtn != null) SaveBtn.Content = loc.GetString("Save", "Save");
             if (CancelBtn != null) CancelBtn.Content = loc.GetString("Cancel", "Cancel");
+
+            if (NewStepActionComboBox != null)
+            {
+                string? selectedAction = (NewStepActionComboBox.SelectedItem as SystemActionInfo)?.ActionKey;
+                NewStepActionComboBox.ItemsSource = null;
+                var actions = _actionService.GetAvailableActions();
+                NewStepActionComboBox.ItemsSource = actions;
+                if (!string.IsNullOrEmpty(selectedAction))
+                {
+                    NewStepActionComboBox.SelectedItem = actions.Find(a => a.ActionKey == selectedAction);
+                }
+            }
         }
 
         public string GetSerializedSteps()
