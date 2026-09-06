@@ -80,6 +80,24 @@ namespace RadialLauncher.Tests
         }
 
         [Fact]
+        public async Task CheckForUpdatesAsync_WhenMalformedUrl_FallsBackToSafeHttpsUrl()
+        {
+            string json = "{\"tag_name\":\"v99.0.0\",\"body\":\"Security patch\",\"html_url\":\"javascript:alert(1)\"}";
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            };
+
+            var factory = new MockHttpClientFactory(response);
+            var service = new UpdateCheckService(factory);
+
+            var result = await service.CheckForUpdatesAsync();
+
+            Assert.NotNull(result);
+            Assert.StartsWith("https://github.com/mephisto-mert/radial", result.ReleaseUrl);
+        }
+
+        [Fact]
         public async Task CheckForUpdatesAsync_WhenHttpError_ReturnsNull()
         {
             var response = new HttpResponseMessage(HttpStatusCode.NotFound);

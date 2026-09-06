@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -50,13 +50,18 @@ namespace RadialLauncher.Services.Updates
                     bool isNewer = latestVersion > currentVersion;
                     Log.Information("Update check result: Current={Current}, Latest={Latest}, Available={IsNewer}", currentVersion, latestVersion, isNewer);
 
+                    // Ensure safe HTTPS release URL
+                    string safeUrl = (Uri.TryCreate(htmlUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+                        ? htmlUrl
+                        : $"https://github.com/{RepoOwner}/{RepoName}/releases";
+
                     return new UpdateInfo
                     {
                         IsUpdateAvailable = isNewer,
                         LatestVersion = cleanTag,
                         CurrentVersion = currentVersion.ToString(),
                         ReleaseNotes = body,
-                        ReleaseUrl = htmlUrl
+                        ReleaseUrl = safeUrl
                     };
                 }
 
