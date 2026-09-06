@@ -50,6 +50,28 @@ namespace RadialLauncher.Tests
         }
 
         [Fact]
+        public void CalculatePlacements_ZeroOrNegativeCount_ReturnsEmptyList()
+        {
+            var emptyZero = RadialLayoutCalculator.CalculatePlacements(0);
+            var emptyNeg = RadialLayoutCalculator.CalculatePlacements(-5);
+
+            Assert.Empty(emptyZero);
+            Assert.Empty(emptyNeg);
+        }
+
+        [Fact]
+        public void CalculateMagneticHoverOffset_WhenClose_ReturnsNonZeroPullOffset()
+        {
+            Point itemCenter = new Point(100, 100);
+            Point mousePos = new Point(120, 100); // 20px away, within 60px threshold
+
+            var offset = RadialLayoutCalculator.CalculateMagneticHoverOffset(itemCenter, mousePos, 8.0);
+
+            Assert.True(offset.X > 0);
+            Assert.Equal(0, offset.Y);
+        }
+
+        [Fact]
         public void CalculateMagneticHoverOffset_ReturnsZeroWhenFar()
         {
             Point itemCenter = new Point(100, 100);

@@ -11,9 +11,11 @@ namespace RadialLauncher.Tests
         {
             double scaleZero = RadialMotionSystem.CalculateDurationScale(0.0);
             double scaleSlow = RadialMotionSystem.CalculateDurationScale(0.15);
+            double scaleNeg = RadialMotionSystem.CalculateDurationScale(-5.0);
 
             Assert.Equal(1.0, scaleZero);
             Assert.Equal(1.0, scaleSlow);
+            Assert.Equal(1.0, scaleNeg);
         }
 
         [Fact]
