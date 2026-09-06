@@ -19,29 +19,29 @@ namespace RadialLauncher.UI.Helpers
 
     public static class RadialLayoutCalculator
     {
-        public const double DefaultBaseRadius = 185.0;
-        public const double CompactBaseRadius = 160.0;
-        public const double LabelWidth = 72.0;
-        public const double LabelHeight = 26.0;
+        public const double DefaultBaseRadius = 175.0;
+        public const double CompactBaseRadius = 150.0;
+        public const double LabelWidth = 64.0;
+        public const double LabelHeight = 20.0;
 
         public static List<RadialItemPlacement> CalculatePlacements(
             int itemCount,
-            double centerCanvasX = 270.0,
-            double centerCanvasY = 270.0,
+            double centerCanvasX = 250.0,
+            double centerCanvasY = 250.0,
             bool isCompact = false)
         {
             var result = new List<RadialItemPlacement>();
             if (itemCount <= 0) return result;
 
-            // Adaptive item sizing & spacing based on count N
-            double circleSize = isCompact ? 46.0 : (itemCount > 15 ? 44.0 : 52.0);
-            double iconSize = isCompact ? 34.0 : (itemCount > 15 ? 32.0 : 40.0);
+            // Refined, sleek item sizing & spacing
+            double circleSize = isCompact ? 42.0 : (itemCount > 15 ? 42.0 : 48.0);
+            double iconSize = isCompact ? 24.0 : (itemCount > 15 ? 24.0 : 28.0);
 
             // Radius scales slightly with item count to avoid crowding
             double baseRadius = isCompact ? CompactBaseRadius : DefaultBaseRadius;
             if (itemCount > 12)
             {
-                baseRadius += (itemCount - 12) * 2.5;
+                baseRadius += (itemCount - 12) * 2.0;
             }
 
             double angleStep = (2 * Math.PI) / itemCount;

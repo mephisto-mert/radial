@@ -1,8 +1,8 @@
-﻿<Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
+<Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
-        Title="Radial Launcher" Height="680" Width="680"
+        Title="Radial Launcher" Height="600" Width="600"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
@@ -14,9 +14,9 @@
     </Window.Resources>
     <Grid x:Name="RootGrid" RenderTransformOrigin="0.5,0.5">
         <!-- Outer glow shadow -->
-        <Ellipse x:Name="GlowEllipse" Width="560" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Ellipse x:Name="GlowEllipse" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Ellipse.Effect>
-                <DropShadowEffect BlurRadius="36" ShadowDepth="0" Color="#558CACEC" Opacity="0.5"/>
+                <DropShadowEffect BlurRadius="30" ShadowDepth="0" Color="#558CACEC" Opacity="0.45"/>
             </Ellipse.Effect>
             <Ellipse.Fill>
                 <RadialGradientBrush>
@@ -27,7 +27,7 @@
         </Ellipse>
 
         <!-- Base circle with gradient -->
-        <Ellipse x:Name="BaseCircle" Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <Ellipse x:Name="BaseCircle" Width="480" Height="480" HorizontalAlignment="Center" VerticalAlignment="Center"
                  StrokeThickness="1.5">
             <Ellipse.Fill>
                 <SolidColorBrush x:Name="BaseFill" Color="#E8121216"/>
@@ -42,31 +42,31 @@
         </Ellipse>
 
         <!-- Hover Info Header in Upper Center -->
-        <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-120,0,0"
-                   TextAlignment="Center" MaxWidth="280" TextTrimming="CharacterEllipsis">
+        <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-100,0,0"
+                   TextAlignment="Center" MaxWidth="240" TextTrimming="CharacterEllipsis">
             <TextBlock.Effect>
                 <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="Black" Opacity="0.8"/>
             </TextBlock.Effect>
         </TextBlock>
 
         <!-- Contextual Quick Actions Floating Card (Inner Upper Area) -->
-        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-40,0,0"
-                Background="#EE181822" CornerRadius="10" Padding="8,5" BorderThickness="1" BorderBrush="#50588CEC"
+        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-48,0,0"
+                Background="#F015151F" CornerRadius="8" Padding="5,2" BorderThickness="1" BorderBrush="#50588CEC"
                 Visibility="Collapsed" SnapsToDevicePixels="True" Panel.ZIndex="200">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Color="Black" Opacity="0.75"/>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="1" Color="Black" Opacity="0.7"/>
             </Border.Effect>
             <StackPanel x:Name="ContextActionPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
 
         <!-- Container for radial items (Center area is empty space) -->
-        <Canvas x:Name="ItemsCanvas" Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center">
         </Canvas>
 
         <!-- Pinned Quick Actions Strip (Bottom Inner Area) -->
         <ItemsControl x:Name="QuickActionsBar" ItemsSource="{Binding QuickActions}" 
-                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,28">
+                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Orientation="Horizontal"/>
@@ -74,15 +74,15 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Width="36" Height="36" Margin="4,0" Background="#33FFFFFF" BorderThickness="1" BorderBrush="#22FFFFFF"
+                    <Button Width="32" Height="32" Margin="3,0" Background="#33FFFFFF" BorderThickness="1" BorderBrush="#22FFFFFF"
                             Command="{Binding DataContext.ExecuteQuickActionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{Binding}" Cursor="Hand" ToolTip="{Binding Name}">
                         <Button.Resources>
                             <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="18"/>
+                                <Setter Property="CornerRadius" Value="16"/>
                             </Style>
                         </Button.Resources>
-                        <TextBlock Text="{Binding IconSymbol}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding IconSymbol}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -91,12 +91,12 @@
         <!-- Search overlay -->
         <Border x:Name="SearchBorder" Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                Background="#EE1E1E24" CornerRadius="20" Padding="14,6" Margin="0,150,0,0"
+                Background="#EE1E1E24" CornerRadius="16" Padding="12,4" Margin="0,130,0,0"
                 BorderThickness="1" BorderBrush="#44588CEC">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="🔍 " FontSize="14" Foreground="#888" VerticalAlignment="Center"/>
-                <TextBlock x:Name="SearchText" Text="{Binding SearchQuery}" FontSize="14" Foreground="White" VerticalAlignment="Center" MinWidth="80"/>
-                <TextBlock Text="|" FontSize="14" Foreground="#588CEC" VerticalAlignment="Center">
+                <TextBlock Text="🔍 " FontSize="12" Foreground="#888" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SearchText" Text="{Binding SearchQuery}" FontSize="12" Foreground="White" VerticalAlignment="Center" MinWidth="70"/>
+                <TextBlock Text="|" FontSize="12" Foreground="#588CEC" VerticalAlignment="Center">
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
                             <BeginStoryboard>
@@ -111,18 +111,18 @@
         </Border>
 
         <!-- Category & Page Info Pill -->
-        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,110,0,0"
-                Background="#E015151B" CornerRadius="12" Padding="14,4" BorderThickness="1" BorderBrush="#35FFFFFF"
+        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,88,0,0"
+                Background="#E015151B" CornerRadius="10" Padding="10,3" BorderThickness="1" BorderBrush="#35FFFFFF"
                 SnapsToDevicePixels="True" Cursor="Hand" MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="1" Color="Black" Opacity="0.7"/>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="1" Color="Black" Opacity="0.65"/>
             </Border.Effect>
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                 <StackPanel x:Name="CategoryDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,2"/>
                 <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.Name, FallbackValue='Kategoriler'}" 
-                           FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF" 
-                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
-                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,3,0,1"/>
+                           FontSize="10.5" FontWeight="SemiBold" Foreground="#FFFFFF" 
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="140"/>
+                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,1"/>
             </StackPanel>
         </Border>
 

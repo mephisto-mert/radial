@@ -222,8 +222,8 @@
                 </Grid>
             </TabItem>
 
-            <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR & YEDEKLEME -->
-            <TabItem Header="⚙️ Kısayol &amp; Yerel Yedek">
+            <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR -->
+            <TabItem Header="⚙️ Kısayol &amp; Başlangıç">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="24" MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="Menüyü Tetikleme Kısayolu" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
@@ -250,29 +250,43 @@
                         <Separator Background="#22FFFFFF" Margin="0,10,0,20"/>
 
                         <TextBlock Text="Windows Başlangıcı" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <CheckBox x:Name="RunOnStartupCheck" Content="Windows açıldığında Radial Launcher'ı otomatik başlat" Foreground="White" Click="RunOnStartupCheck_Click"/>
+                        <CheckBox x:Name="RunOnStartupCheck" Content="Windows açıldığında Radial Launcher'ı otomatik başlat" Foreground="White" Margin="0,4,0,16" Click="RunOnStartupCheck_Click"/>
 
-                        <Separator Background="#22FFFFFF" Margin="0,20,0,20"/>
+                        <Separator Background="#22FFFFFF" Margin="0,10,0,20"/>
 
-                        <!-- Local Backup & Restore -->
+                        <TextBlock Text="🎯 Menü Davranışı &amp; Kapanma" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="• Otomatik Kapanma: Fare radyal menü alanından 330px uzaklaştığında menü otomatik kapanır.&#x0a;• Gezinme: Farenin orta tuşuyla sürükleyerek veya fare tekerleğiyle sayfalar/kategoriler arası geçebilirsiniz.&#x0a;• Hızlı Eylemler: Öğelerin üzerine fare ile gelindiğinde hızlı aksiyon kartı görüntülenir." FontSize="12" Foreground="#94A3B8" LineHeight="20"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 4: YEDEKLEME & VERİ YÖNETİMİ -->
+            <TabItem Header="💾 Yedekleme &amp; Veri">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24" MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="💾 Yerel Yedekleme &amp; Geri Yükleme" FontSize="15" FontWeight="Bold" Margin="0,0,0,6"/>
-                        <TextBlock Text="Tüm kısayollarınızı, kategorilerinizi ve istatistiklerinizi yerel diske otomatik veya manuel yedekleyin. Son 10 yedek güvenle korunur." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock Text="Tüm kısayollarınızı, kategorilerinizi ve istatistiklerinizi yerel diske otomatik veya manuel yedekleyin. Son 10 yedek güvenle korunur." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,14"/>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,14">
                             <Button Content="💾 Şimdi Yerel Yedekle" Padding="16,8" Margin="0,0,10,0" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CreateLocalBackup_Click"/>
                             <Button Content="📂 Yerel Yedekten Geri Yükle" Padding="16,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
                         </StackPanel>
 
+                        <Separator Background="#22FFFFFF" Margin="0,10,0,20"/>
+
+                        <TextBlock Text="📤 JSON Dışa / İçe Aktar" FontSize="15" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <TextBlock Text="Ayarlarınızı ve kısayollarınızı JSON dosyası olarak bilgisayarınıza kaydedin veya farklı bir cihazdan içe aktarın." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,14"/>
+
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="📤 Dışa Aktar (JSON)" Padding="12,6" Margin="0,0,10,0" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ExportButton_Click"/>
-                            <Button Content="📥 İçe Aktar (JSON)" Padding="12,6" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ImportButton_Click"/>
+                            <Button Content="📤 Dışa Aktar (JSON)" Padding="14,7" Margin="0,0,10,0" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ExportButton_Click"/>
+                            <Button Content="📥 İçe Aktar (JSON)" Padding="14,7" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ImportButton_Click"/>
                         </StackPanel>
                         <TextBlock x:Name="BackupStatusLabel" Text="Yedekleme konumu: %LOCALAPPDATA%\RadialLauncher\Backups\" FontSize="11" Foreground="#888"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
-            <!-- TAB 4: GÜNCELLEMELER & TANILAMA & SİSTEM -->
+            <!-- TAB 5: GÜNCELLEMELER & TANILAMA & SİSTEM -->
             <TabItem Header="ℹ️ Güncelleme &amp; Tanılama">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="24" MaxWidth="600" HorizontalAlignment="Left">

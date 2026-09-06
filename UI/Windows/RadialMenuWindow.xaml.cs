@@ -190,7 +190,7 @@ namespace RadialLauncher.UI.Windows
             if (items.Count == 0) return;
 
             bool isCompact = _viewModel.ActiveTheme.DensityMode == "Compact";
-            var placements = RadialLayoutCalculator.CalculatePlacements(items.Count, 270, 270, isCompact);
+            var placements = RadialLayoutCalculator.CalculatePlacements(items.Count, 250, 250, isCompact);
 
             var theme = _viewModel.ActiveTheme;
             var regularBorderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
@@ -243,7 +243,7 @@ namespace RadialLauncher.UI.Windows
                     btn.Content = new TextBlock
                     {
                         Text = item.Name.Length > 0 ? item.Name.Substring(0, 1).ToUpper() : "?",
-                        FontSize = 18,
+                        FontSize = 14,
                         FontWeight = FontWeights.Bold,
                         Foreground = textBrush
                     };
@@ -254,7 +254,7 @@ namespace RadialLauncher.UI.Windows
                 {
                     Width = RadialLayoutCalculator.LabelWidth,
                     Height = RadialLayoutCalculator.LabelHeight,
-                    CornerRadius = new CornerRadius(5),
+                    CornerRadius = new CornerRadius(4),
                     Background = badgeBg,
                     BorderBrush = badgeBorder,
                     BorderThickness = new Thickness(1),
@@ -268,14 +268,14 @@ namespace RadialLauncher.UI.Windows
                 var txt = new TextBlock
                 {
                     Text = item.Name,
-                    FontSize = 11,
+                    FontSize = 10.5,
                     FontWeight = FontWeights.Normal,
                     Foreground = textBrush,
                     TextAlignment = TextAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = 66
+                    MaxWidth = 58
                 };
                 lblBorder.Child = txt;
 
@@ -437,8 +437,9 @@ namespace RadialLauncher.UI.Windows
             {
                 var actionBtn = new Button
                 {
-                    Margin = new Thickness(3, 0, 3, 0),
-                    Padding = new Thickness(8, 3, 8, 3),
+                    Margin = new Thickness(2, 0, 2, 0),
+                    Padding = new Thickness(6, 2, 6, 2),
+                    Height = 22,
                     Background = btnBg,
                     BorderBrush = btnBorder,
                     BorderThickness = new Thickness(1),
@@ -449,7 +450,7 @@ namespace RadialLauncher.UI.Windows
 
                 actionBtn.Resources.Add(typeof(Border), new Style(typeof(Border))
                 {
-                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(5)) }
+                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(4)) }
                 });
 
                 var stack = new StackPanel { Orientation = Orientation.Horizontal };
@@ -458,8 +459,8 @@ namespace RadialLauncher.UI.Windows
                     stack.Children.Add(new TextBlock
                     {
                         Text = act.Icon,
-                        FontSize = 11,
-                        Margin = new Thickness(0, 0, 4, 0),
+                        FontSize = 10,
+                        Margin = new Thickness(0, 0, 3, 0),
                         VerticalAlignment = VerticalAlignment.Center,
                         Foreground = theme.AccentBrush
                     });
@@ -467,7 +468,7 @@ namespace RadialLauncher.UI.Windows
                 stack.Children.Add(new TextBlock
                 {
                     Text = act.Title,
-                    FontSize = 11,
+                    FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = textBrush
