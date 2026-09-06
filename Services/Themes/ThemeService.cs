@@ -138,28 +138,7 @@ namespace RadialLauncher.Services.Themes
 
         public List<Theme> GetAllThemes()
         {
-            var list = new List<Theme>(_builtinThemes);
-            try
-            {
-                if (Directory.Exists(CustomThemesDir))
-                {
-                    foreach (var file in Directory.GetFiles(CustomThemesDir, "*.json"))
-                    {
-                        var json = File.ReadAllText(file);
-                        var custom = JsonSerializer.Deserialize<Theme>(json);
-                        if (custom != null)
-                        {
-                            custom.IsCustom = true;
-                            list.Add(custom);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to load custom themes from {Dir}", CustomThemesDir);
-            }
-            return list;
+            return new List<Theme>(_builtinThemes);
         }
 
         public Theme GetTheme(string name)
@@ -185,8 +164,7 @@ namespace RadialLauncher.Services.Themes
             if (string.Equals(trimmed, "Dark", StringComparison.OrdinalIgnoreCase))
                 return _builtinThemes.First(t => t.Name == "Dark");
 
-            var all = GetAllThemes();
-            return all.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) ?? _builtinThemes[0];
+            return _builtinThemes.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) ?? _builtinThemes[0];
         }
 
         public Theme GetCurrentTheme()
@@ -194,31 +172,9 @@ namespace RadialLauncher.Services.Themes
             try
             {
                 var settings = LoadSettings();
-                Theme selected;
-                if (settings.FollowWindowsTheme)
-                {
-                    bool isDark = IsWindowsInDarkMode();
-                    selected = GetTheme(isDark ? "Dark" : "White");
-                }
-                else if (!string.IsNullOrEmpty(settings.ThemeName))
-                {
-                    selected = GetTheme(settings.ThemeName);
-                }
-                else
-                {
-                    selected = _builtinThemes[0];
-                }
-
-                if (settings.ExtractAccentFromWallpaper)
-                {
-                    var sysAccent = GetWindowsAccentColor();
-                    if (sysAccent.HasValue)
-                    {
-                        selected.AccentR = sysAccent.Value.R;
-                        selected.AccentG = sysAccent.Value.G;
-                        selected.AccentB = sysAccent.Value.B;
-                    }
-                }
+                Theme selected = !string.IsNullOrEmpty(settings.ThemeName)
+                    ? GetTheme(settings.ThemeName)
+                    : _builtinThemes[0];
 
                 selected.BackgroundOpacity = Math.Clamp(settings.RadialOpacity, 0.20, 1.0);
                 return selected;
@@ -384,6 +340,13 @@ namespace RadialLauncher.Services.Themes
         {
             try
             {
+                if (File.Exists(SettingsPath))
+                {
+                    string preReset = $"{SettingsPath}.prereset.{DateTime.UtcNow:yyyyMMdd_HHmmss}.bak";
+                    File.Copy(SettingsPath, preReset, true);
+                    Log.Information("Created safety backup prior to reset: {Path}", preReset);
+                }
+
                 var defaultSettings = new AppSettings();
                 SaveSettings(defaultSettings);
                 SetCurrentTheme(defaultSettings.ThemeName);
@@ -398,20 +361,6 @@ namespace RadialLauncher.Services.Themes
 
         private void ListenWindowsThemeChanges()
         {
-            try
-            {
-                SystemEvents.UserPreferenceChanged += (s, e) =>
-                {
-                    if (LoadSettings().FollowWindowsTheme || LoadSettings().ExtractAccentFromWallpaper)
-                    {
-                        OnThemeChanged?.Invoke(GetCurrentTheme());
-                    }
-                };
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to hook Windows theme events");
-            }
         }
 
         public static bool IsWindowsInDarkMode()
@@ -431,28 +380,12 @@ namespace RadialLauncher.Services.Themes
 
         public static Color? GetWindowsAccentColor()
         {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\DWM");
-                var val = key?.GetValue("ColorizationColor");
-                if (val is int intVal)
-                {
-                    byte a = (byte)((intVal >> 24) & 0xFF);
-                    byte r = (byte)((intVal >> 16) & 0xFF);
-                    byte g = (byte)((intVal >> 8) & 0xFF);
-                    byte b = (byte)(intVal & 0xFF);
-                    return Color.FromRgb(r, g, b);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "Failed querying DWM ColorizationColor registry value");
-            }
             return null;
         }
 
         private AppSettings LoadSettings()
         {
+            // 1. Try primary settings.json
             try
             {
                 if (File.Exists(SettingsPath))
@@ -464,23 +397,43 @@ namespace RadialLauncher.Services.Themes
             }
             catch (JsonException jsonEx)
             {
-                Log.Warning(jsonEx, "Corrupted settings file at {Path}. Creating backup and resetting to defaults.", SettingsPath);
+                Log.Warning(jsonEx, "Corrupted primary settings file at {Path}. Attempting backup recovery.", SettingsPath);
                 try
                 {
-                    string backupPath = $"{SettingsPath}.corrupt.{DateTime.UtcNow:yyyyMMdd_HHmmss}.bak";
-                    File.Copy(SettingsPath, backupPath, true);
-                    Log.Information("Backed up corrupted settings to {BackupPath}", backupPath);
+                    string backupCorrupt = $"{SettingsPath}.corrupt.{DateTime.UtcNow:yyyyMMdd_HHmmss}.bak";
+                    File.Copy(SettingsPath, backupCorrupt, true);
                 }
-                catch (Exception backupEx)
+                catch { }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to read primary settings from {Path}", SettingsPath);
+            }
+
+            // 2. Try settings.json.bak
+            string bakPath = $"{SettingsPath}.bak";
+            try
+            {
+                if (File.Exists(bakPath))
                 {
-                    Log.Warning(backupEx, "Failed to create backup copy of corrupted settings");
+                    var bakJson = File.ReadAllText(bakPath);
+                    var recovered = JsonSerializer.Deserialize<AppSettings>(bakJson);
+                    if (recovered != null)
+                    {
+                        Log.Information("Successfully recovered settings from {BakPath}", bakPath);
+                        SaveSettings(recovered);
+                        return recovered;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to read settings from {Path}", SettingsPath);
+                Log.Warning(ex, "Failed to recover from {BakPath}", bakPath);
             }
-            return new AppSettings();
+
+            // 3. Fallback: return default settings
+            var defaultFallback = new AppSettings();
+            return defaultFallback;
         }
 
         private void SaveSettings(AppSettings settings)
@@ -494,6 +447,10 @@ namespace RadialLauncher.Services.Themes
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(tmpPath, json);
                 File.Move(tmpPath, SettingsPath, overwrite: true);
+
+                // Mirror to .bak for crash recovery
+                string bakPath = $"{SettingsPath}.bak";
+                File.Copy(SettingsPath, bakPath, overwrite: true);
             }
             catch (Exception ex)
             {

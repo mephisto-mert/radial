@@ -52,27 +52,21 @@ namespace RadialLauncher.Tests
             }
         }
 
-        [Fact]
-        public void CreateAndSaveCustomTheme_AddsToCustomThemes()
+        [Theory]
+        [InlineData("UnknownTheme123", "Dark")]
+        [InlineData("InvalidTheme_XYZ", "Dark")]
+        [InlineData("", "Dark")]
+        [InlineData("Light", "White")]
+        [InlineData("Crimson Red", "Red")]
+        [InlineData("Midnight Blue", "Blue")]
+        [InlineData("Purple Haze", "Purple")]
+        public void GetTheme_WithLegacyOrInvalidNames_MapsOrFallsBackSafely(string input, string expected)
         {
             var themeService = ThemeService.Instance;
-            string themeName = $"Cyberpunk_{Guid.NewGuid():N}";
+            var theme = themeService.GetTheme(input);
 
-            var custom = new Theme
-            {
-                Name = themeName,
-                BgR = 20, BgG = 10, BgB = 30,
-                AccentR = 255, AccentG = 0, AccentB = 128,
-                TextR = 255, TextG = 255, TextB = 0,
-                IconBgR = 40, IconBgG = 20, IconBgB = 60,
-                IconHoverR = 60, IconHoverG = 30, IconHoverB = 90,
-                CenterR = 255, CenterG = 0, CenterB = 128
-            };
-
-            themeService.SaveCustomTheme(custom);
-
-            var all = themeService.GetAllThemes();
-            Assert.Contains(all, t => t.Name == themeName);
+            Assert.NotNull(theme);
+            Assert.Equal(expected, theme.Name);
         }
 
         [Fact]
@@ -98,6 +92,19 @@ namespace RadialLauncher.Tests
             Assert.Equal("Dark", themeService.GetCurrentTheme().Name);
             Assert.Equal("MiddleClick", themeService.GetActivationShortcut());
             Assert.True(themeService.GetAutoCheckUpdates());
+        }
+
+        [Theory]
+        [InlineData("MiddleClick", "Orta Tuş")]
+        [InlineData("XButton1", "Fare 4")]
+        [InlineData("XButton2", "Fare 5")]
+        [InlineData("Ctrl+XButton1", "Ctrl + Fare 4")]
+        [InlineData("AltSpace", "Alt + Boşluk")]
+        [InlineData("CtrlSpace", "Ctrl + Boşluk")]
+        public void ToFriendlyName_ReturnsReadableTurkishDescriptions(string code, string expectedSubstring)
+        {
+            string friendly = RadialLauncher.UI.Windows.ShortcutAssignWindow.ToFriendlyName(code);
+            Assert.Contains(expectedSubstring, friendly);
         }
     }
 }

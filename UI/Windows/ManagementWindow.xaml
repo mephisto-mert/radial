@@ -69,7 +69,7 @@
         </DockPanel>
 
         <!-- Main Tab Control -->
-        <TabControl Grid.Row="1" Background="#14141C" BorderBrush="#22FFFFFF" BorderThickness="1">
+        <TabControl x:Name="MainTabs" Grid.Row="1" Background="#14141C" BorderBrush="#22FFFFFF" BorderThickness="1">
             <!-- TAB 1: UYGULAMALAR & ÖĞELER -->
             <TabItem Header="📋 Uygulamalar &amp; Kısayollar">
                 <Grid Margin="12">

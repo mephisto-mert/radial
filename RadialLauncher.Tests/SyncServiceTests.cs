@@ -184,5 +184,36 @@ namespace RadialLauncher.Tests
             Assert.Contains("TestApp", content);
             Assert.Contains("TestCategory", content);
         }
+
+        [Fact]
+        public async Task RestoreFromLocalBackupAsync_WithValidBackup_RestoresItemsSuccessfully()
+        {
+            var mockItemRepo = new Mock<IItemRepository>();
+            var mockCatRepo = new Mock<ICategoryRepository>();
+
+            var syncService = new SyncService(mockItemRepo.Object, mockCatRepo.Object, new MockHttpClientFactory(new HttpResponseMessage(HttpStatusCode.OK)));
+
+            string tempBackup = Path.Combine(Path.GetTempPath(), $"backup_restore_test_{Guid.NewGuid():N}.json");
+            try
+            {
+                var payload = new SyncService.SyncPayload
+                {
+                    Categories = new List<Category> { new Category { Id = 1, Name = "RestoredCat" } },
+                    Items = new List<LauncherItem> { new LauncherItem { Id = 1, Name = "RestoredApp", Target = "app.exe" } }
+                };
+                string json = System.Text.Json.JsonSerializer.Serialize(payload);
+                await File.WriteAllTextAsync(tempBackup, json);
+
+                bool restored = await syncService.RestoreFromLocalBackupAsync(tempBackup);
+                Assert.True(restored);
+
+                mockCatRepo.Verify(r => r.Insert(It.Is<Category>(c => c.Name == "RestoredCat")), Times.Once);
+                mockItemRepo.Verify(r => r.Insert(It.Is<LauncherItem>(i => i.Name == "RestoredApp")), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(tempBackup)) File.Delete(tempBackup);
+            }
+        }
     }
 }

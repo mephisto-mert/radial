@@ -391,16 +391,29 @@ namespace RadialLauncher.UI.Windows
             }
 
             PageDots.Visibility = Visibility.Visible;
+            var theme = _viewModel.ActiveTheme;
             for (int i = 0; i < _viewModel.TotalPages; i++)
             {
+                int pageIndex = i;
+                bool isActive = (i == _viewModel.CurrentPageIndex);
                 var dot = new Ellipse
                 {
-                    Width = 5,
-                    Height = 5,
-                    Margin = new Thickness(2, 0, 2, 0),
-                    Fill = (i == _viewModel.CurrentPageIndex) 
-                        ? _viewModel.ActiveTheme.AccentBrush 
-                        : new SolidColorBrush(Color.FromArgb(90, 255, 255, 255))
+                    Width = isActive ? 7 : 5,
+                    Height = isActive ? 7 : 5,
+                    Margin = new Thickness(2.5, 0, 2.5, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Fill = isActive 
+                        ? theme.AccentBrush 
+                        : new SolidColorBrush(Color.FromArgb(90, theme.TextR, theme.TextG, theme.TextB)),
+                    ToolTip = $"Sayfa {i + 1} / {_viewModel.TotalPages}",
+                    Cursor = Cursors.Hand
+                };
+                System.Windows.Automation.AutomationProperties.SetName(dot, $"Sayfa {i + 1}");
+                dot.MouseLeftButtonUp += (s, e) =>
+                {
+                    e.Handled = true;
+                    _viewModel.CurrentPageIndex = pageIndex;
+                    _viewModel.RefreshPageItems();
                 };
                 PageDots.Children.Add(dot);
             }
@@ -666,6 +679,11 @@ namespace RadialLauncher.UI.Windows
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
+            if (_isCenterDragging)
+            {
+                _isCenterDragging = false;
+                try { CenterButton.ReleaseMouseCapture(); } catch { }
+            }
             ClearActiveDwmThumbnails();
             this.Hide();
         }

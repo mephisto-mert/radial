@@ -104,10 +104,12 @@ namespace RadialLauncher.UI.Windows
 
             DataContext = _viewModel;
             Loaded += ManagementWindow_Loaded;
+            _themeService.OnThemeChanged += t => Dispatcher.Invoke(() => ApplyThemeVisuals(t));
         }
 
         private void ManagementWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            ApplyThemeVisuals(_themeService.GetCurrentTheme());
             LoadCategories();
             LoadThemes();
             LoadOpacityState();
@@ -119,6 +121,68 @@ namespace RadialLauncher.UI.Windows
             if (AutoCheckUpdatesCheck != null)
             {
                 AutoCheckUpdatesCheck.IsChecked = _themeService.GetAutoCheckUpdates();
+            }
+        }
+
+        private void ApplyThemeVisuals(Theme theme)
+        {
+            if (theme == null) return;
+
+            bool isLight = (theme.BgR * 0.299 + theme.BgG * 0.587 + theme.BgB * 0.114) > 160;
+
+            var bgBrush = new SolidColorBrush(theme.BackgroundColor);
+            var panelBrush = new SolidColorBrush(theme.IconBackgroundColor);
+            var textBrush = new SolidColorBrush(theme.TextColor);
+            var borderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
+
+            this.Background = bgBrush;
+            this.Foreground = textBrush;
+
+            if (MainTabs != null)
+            {
+                MainTabs.Background = panelBrush;
+                MainTabs.BorderBrush = borderBrush;
+            }
+
+            if (ItemsGrid != null)
+            {
+                ItemsGrid.Background = bgBrush;
+                ItemsGrid.RowBackground = bgBrush;
+                byte altR = (byte)Math.Clamp(theme.BgR + (isLight ? -8 : 8), 0, 255);
+                byte altG = (byte)Math.Clamp(theme.BgG + (isLight ? -8 : 8), 0, 255);
+                byte altB = (byte)Math.Clamp(theme.BgB + (isLight ? -8 : 8), 0, 255);
+                ItemsGrid.AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(altR, altG, altB));
+                ItemsGrid.Foreground = textBrush;
+                ItemsGrid.BorderBrush = borderBrush;
+                ItemsGrid.HorizontalGridLinesBrush = new SolidColorBrush(Color.FromArgb(25, theme.TextR, theme.TextG, theme.TextB));
+            }
+
+            if (CategoryFilterCombo != null)
+            {
+                CategoryFilterCombo.Background = panelBrush;
+                CategoryFilterCombo.Foreground = textBrush;
+            }
+            if (SearchBox != null)
+            {
+                SearchBox.Background = panelBrush;
+                SearchBox.Foreground = textBrush;
+                SearchBox.BorderBrush = borderBrush;
+            }
+            if (ThemesListBox != null)
+            {
+                ThemesListBox.Background = panelBrush;
+                ThemesListBox.Foreground = textBrush;
+                ThemesListBox.BorderBrush = borderBrush;
+            }
+            if (DensityCombo != null)
+            {
+                DensityCombo.Background = panelBrush;
+                DensityCombo.Foreground = textBrush;
+            }
+            if (ShortcutCombo != null)
+            {
+                ShortcutCombo.Background = panelBrush;
+                ShortcutCombo.Foreground = textBrush;
             }
         }
 
@@ -176,7 +240,7 @@ namespace RadialLauncher.UI.Windows
 
         private void LoadShortcutState()
         {
-            string sc = _viewModel.ActivationShortcut;
+            string sc = _themeService.GetActivationShortcut();
             ShortcutCombo.SelectedIndex = sc switch
             {
                 "MiddleClick" => 0,
@@ -190,11 +254,11 @@ namespace RadialLauncher.UI.Windows
                 "CtrlSpace" => 8,
                 "F4" => 9,
                 "Tilde" => 10,
-                _ => 0
+                _ => -1
             };
             if (ActiveShortcutLabel != null)
             {
-                ActiveShortcutLabel.Text = $"Aktif Kısayol: {sc}";
+                ActiveShortcutLabel.Text = $"Aktif Kısayol: {ShortcutAssignWindow.ToFriendlyName(sc)} ({sc})";
             }
         }
 
@@ -229,7 +293,15 @@ namespace RadialLauncher.UI.Windows
 
             var items = _viewModel.Items.Select(i => new LauncherItemViewModel(i, catMap.GetValueOrDefault(i.CategoryId, "Genel"))).ToList();
             ItemsGrid.ItemsSource = items;
-            StatusText.Text = $"Toplam {items.Count} öğe listelendi.";
+
+            if (items.Count == 0)
+            {
+                StatusText.Text = "Henüz kullanılan veya listelenecek öğe bulunmuyor.";
+            }
+            else
+            {
+                StatusText.Text = $"Toplam {items.Count} öğe listelendi.";
+            }
         }
 
         private void CategoryFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshGrid();
@@ -375,35 +447,22 @@ namespace RadialLauncher.UI.Windows
                     _ => "MiddleClick"
                 };
                 _themeService.SetActivationShortcut(sc);
-                if (ActiveShortcutLabel != null)
-                {
-                    ActiveShortcutLabel.Text = $"Aktif Kısayol: {sc}";
-                }
+                LoadShortcutState();
             }
         }
 
         private void AssignCustomShortcut_Click(object sender, RoutedEventArgs e)
         {
             string current = _themeService.GetActivationShortcut();
-            var input = Microsoft.VisualBasic.Interaction.InputBox(
-                "Yeni kısayol tuş veya fare kombinasyonunu girin:\n\nÖrnekler:\n• MiddleClick (Orta Tuş)\n• XButton1 (Fare 4)\n• XButton2 (Fare 5)\n• Ctrl+MiddleClick\n• Ctrl+XButton1\n• AltSpace\n• CtrlSpace\n• F4",
-                "Yeni Kısayol Ata",
-                current);
-
-            if (!string.IsNullOrWhiteSpace(input))
+            var win = new ShortcutAssignWindow(current);
+            win.Owner = this;
+            if (win.ShowDialog() == true && !string.IsNullOrWhiteSpace(win.SelectedShortcut))
             {
-                string clean = input.Trim();
-                string lower = clean.ToLowerInvariant();
-                if (lower == "alt+f4" || lower == "ctrl+alt+del" || lower == "win+l")
-                {
-                    MessageBox.Show("Bu kısayol Windows tarafından sistem seviyesinde ayrılmıştır ve kullanılamaz.", "Geçersiz Kısayol", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
+                string clean = win.SelectedShortcut.Trim();
                 _themeService.SetActivationShortcut(clean);
                 LoadShortcutState();
-                StatusText.Text = $"Yeni kısayol atandı: {clean}";
-                MessageBox.Show($"Kısayol başarıyla güncellendi:\n{clean}", "Kısayol Kaydedildi", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = $"Yeni kısayol atandı: {ShortcutAssignWindow.ToFriendlyName(clean)} ({clean})";
+                MessageBox.Show($"Kısayol başarıyla kaydedildi:\n\n{ShortcutAssignWindow.ToFriendlyName(clean)}\n({clean})", "Kısayol Güncellendi", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
