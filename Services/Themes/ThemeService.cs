@@ -219,7 +219,7 @@ namespace RadialLauncher.Services.Themes
                 SaveSettings(settings);
 
                 var updated = GetCurrentTheme();
-                OnThemeChanged?.Invoke(updated);
+                NotifyThemeChanged(updated);
             }
             catch (Exception ex)
             {
@@ -236,7 +236,7 @@ namespace RadialLauncher.Services.Themes
                 SaveSettings(settings);
 
                 var updated = GetTheme(name);
-                OnThemeChanged?.Invoke(updated);
+                NotifyThemeChanged(updated);
             }
             catch (Exception ex)
             {
@@ -323,7 +323,7 @@ namespace RadialLauncher.Services.Themes
             var settings = LoadSettings();
             settings.FollowWindowsTheme = follow;
             SaveSettings(settings);
-            OnThemeChanged?.Invoke(GetCurrentTheme());
+            NotifyThemeChanged(GetCurrentTheme());
         }
 
         public bool GetExtractAccentFromWallpaper() => LoadSettings().ExtractAccentFromWallpaper;
@@ -333,7 +333,7 @@ namespace RadialLauncher.Services.Themes
             var settings = LoadSettings();
             settings.ExtractAccentFromWallpaper = extract;
             SaveSettings(settings);
-            OnThemeChanged?.Invoke(GetCurrentTheme());
+            NotifyThemeChanged(GetCurrentTheme());
         }
 
         public bool GetAutoCheckUpdates() => LoadSettings().AutoCheckUpdates;
@@ -474,7 +474,25 @@ namespace RadialLauncher.Services.Themes
             if (settings == null) return;
             SaveSettings(settings);
             var updated = GetTheme(settings.ThemeName);
-            OnThemeChanged?.Invoke(updated);
+            NotifyThemeChanged(updated);
+        }
+
+        private void NotifyThemeChanged(Theme updated)
+        {
+            if (OnThemeChanged != null)
+            {
+                foreach (Action<Theme> handler in OnThemeChanged.GetInvocationList())
+                {
+                    try
+                    {
+                        handler(updated);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Error notifying theme changed listener");
+                    }
+                }
+            }
         }
 
         public class AppSettings

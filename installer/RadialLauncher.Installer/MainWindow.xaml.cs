@@ -11,31 +11,101 @@ namespace RadialLauncher.Installer
 {
     public partial class MainWindow : Window
     {
+        private string _currentLang = "en";
+        private bool _isInstalling = false;
         private bool _isCompleted = false;
 
         public MainWindow()
         {
             InitializeComponent();
             TxtInstallPath.Text = InstallerService.GetDefaultInstallPath();
+
+            // Detect system culture for initial display
+            string uiLang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+            if (uiLang == "tr")
+            {
+                SetLanguage("tr");
+            }
+            else
+            {
+                SetLanguage("en");
+            }
         }
+
+        private void SetLanguage(string lang)
+        {
+            _currentLang = lang;
+            bool isTr = lang == "tr";
+
+            Title = isTr ? "Radial Launcher v1.0.0 — Kurulum Sihirbazı" : "Radial Launcher v1.0.0 — Setup Wizard";
+            TxtHeaderSub.Text = isTr ? "Windows için Profesyonel Dairesel Uygulama ve Oyun Başlatıcı" : "Professional Radial Application & Game Launcher for Windows";
+            TxtInstallDirLabel.Text = isTr ? "Kurulum Klasörü:" : "Installation Directory:";
+            BtnBrowse.Content = isTr ? "Gözat..." : "Browse...";
+            TxtOptionsLabel.Text = isTr ? "Kurulum Seçenekleri:" : "Installation Options:";
+            ChkDesktopShortcut.Content = isTr ? "Masaüstü Kısayolu Oluştur" : "Create Desktop Shortcut";
+            ChkStartMenuShortcut.Content = isTr ? "Başlat Menüsü Kısayolu Oluştur" : "Create Start Menu Shortcut";
+            ChkAutoStartup.Content = isTr ? "Windows başlangıcında otomatik çalıştır (Sistem Tepsisi)" : "Run automatically on Windows startup (Tray Mode)";
+            ChkLaunchAfter.Content = isTr ? "Kurulum bittiğinde Radial Launcher'ı başlat" : "Launch Radial Launcher when setup completes";
+            TxtCleanGuarantee.Text = isTr 
+                ? "Temiz Kurulum: Ayarlarınız ve kısayollarınız %LOCALAPPDATA%\\RadialLauncher içinde güvenle saklanır"
+                : "Clean Standalone Installation: Your settings and shortcuts will be safely stored in %LOCALAPPDATA%\\RadialLauncher";
+
+            TxtFooterInfo.Text = isTr ? "Gereksinimler: Windows 10/11 x64" : "Requirements: Windows 10/11 x64";
+            BtnCancel.Content = isTr ? "İptal" : "Cancel";
+
+            if (!_isCompleted)
+            {
+                BtnInstall.Content = isTr ? "Şimdi Kur" : "Install Now";
+            }
+            else
+            {
+                BtnInstall.Content = isTr ? "Bitir" : "Finish";
+            }
+
+            if (isTr)
+            {
+                BtnLangTr.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(99, 102, 241));
+                BtnLangEn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 38, 56));
+            }
+            else
+            {
+                BtnLangEn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(99, 102, 241));
+                BtnLangTr.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 38, 56));
+            }
+        }
+
+        private void BtnLangEn_Click(object sender, RoutedEventArgs e) => SetLanguage("en");
+        private void BtnLangTr_Click(object sender, RoutedEventArgs e) => SetLanguage("tr");
 
         private void BtnBrowse_Click(object sender, RoutedEventArgs e)
         {
             using var dialog = new FolderBrowserDialog();
-            dialog.Description = "Select installation directory for Radial Launcher:";
-            dialog.UseDescriptionForTitle = true;
+            dialog.Description = _currentLang == "tr" ? "Kurulum Klasörünü Seçin" : "Select Installation Directory";
             dialog.SelectedPath = TxtInstallPath.Text;
-
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 TxtInstallPath.Text = dialog.SelectedPath;
             }
         }
 
+        private void BtnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isInstalling) return;
+            Close();
+        }
+
         private async void BtnInstall_Click(object sender, RoutedEventArgs e)
         {
             if (_isCompleted)
             {
+                if (ChkLaunchAfter.IsChecked == true)
+                {
+                    string exePath = Path.Combine(TxtInstallPath.Text, "RadialLauncher.exe");
+                    if (File.Exists(exePath))
+                    {
+                        Process.Start(new ProcessStartInfo { FileName = exePath, UseShellExecute = true });
+                    }
+                }
                 Close();
                 return;
             }
@@ -43,94 +113,83 @@ namespace RadialLauncher.Installer
             string targetDir = TxtInstallPath.Text.Trim();
             if (string.IsNullOrWhiteSpace(targetDir))
             {
-                MessageBox.Show("Please specify a valid installation directory.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                string msg = _currentLang == "tr" ? "Lütfen geçerli bir kurulum klasörü belirtin." : "Please specify a valid installation directory.";
+                MessageBox.Show(msg, _currentLang == "tr" ? "Uyarı" : "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             try
             {
-                Path.GetFullPath(targetDir);
+                Directory.CreateDirectory(targetDir);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Invalid directory path: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                string msg = _currentLang == "tr" ? $"Geçersiz klasör yolu: {ex.Message}" : $"Invalid directory path: {ex.Message}";
+                MessageBox.Show(msg, _currentLang == "tr" ? "Hata" : "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            bool desktopIcon = ChkDesktopShortcut.IsChecked == true;
-            bool startMenu = ChkStartMenuShortcut.IsChecked == true;
-            bool autoStartup = ChkAutoStartup.IsChecked == true;
-            bool launchAfter = ChkLaunchAfter.IsChecked == true;
+            _isInstalling = true;
+            BtnInstall.IsEnabled = false;
+            BtnCancel.IsEnabled = false;
+            BtnBrowse.IsEnabled = false;
+            BtnLangEn.IsEnabled = false;
+            BtnLangTr.IsEnabled = false;
 
-            // Switch to progress view
             SetupPanel.Visibility = Visibility.Collapsed;
             ProgressPanel.Visibility = Visibility.Visible;
-            BtnCancel.IsEnabled = false;
-            BtnInstall.IsEnabled = false;
+
+            bool desktop = ChkDesktopShortcut.IsChecked == true;
+            bool startMenu = ChkStartMenuShortcut.IsChecked == true;
+            bool runStartup = ChkAutoStartup.IsChecked == true;
 
             try
             {
                 await Task.Run(() =>
                 {
-                    InstallerService.ExtractPayload(targetDir, (pct, status) =>
+                    InstallerService.ExtractPayload(targetDir, (pct, detail) =>
                     {
                         Dispatcher.Invoke(() =>
                         {
                             ProgressBar.Value = pct;
-                            TxtStatusDetail.Text = status;
+                            TxtStatusDetail.Text = detail;
                         });
                     });
 
                     Dispatcher.Invoke(() =>
                     {
                         ProgressBar.Value = 90;
-                        TxtStatusDetail.Text = "Configuring shortcuts and system settings...";
+                        TxtStatusDetail.Text = _currentLang == "tr" ? "Kısayollar ve kayıt defteri yapılandırılıyor..." : "Configuring system shortcuts and registry...";
                     });
 
-                    InstallerService.CreateShortcuts(targetDir, desktopIcon, startMenu);
-                    InstallerService.RegisterInWindows(targetDir);
-                    InstallerService.SetStartup(targetDir, autoStartup);
+                    InstallerService.CreateShortcuts(targetDir, desktop, startMenu);
+                    InstallerService.RegisterInWindows(targetDir, runStartup);
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        ProgressBar.Value = 100;
+                        TxtStatus.Text = _currentLang == "tr" ? "Kurulum başarıyla tamamlandı!" : "Installation completed successfully!";
+                        TxtStatusDetail.Text = _currentLang == "tr" ? "Radial Launcher kullanıma hazır." : "Radial Launcher is ready to use.";
+                    });
                 });
 
-                ProgressBar.Value = 100;
-                TxtStatus.Text = "🎉 Installation Completed Successfully!";
-                TxtStatusDetail.Text = $"Radial Launcher is ready: {targetDir}";
-
-                if (launchAfter)
-                {
-                    string exePath = Path.Combine(targetDir, "RadialLauncher.exe");
-                    if (File.Exists(exePath))
-                    {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = exePath,
-                            WorkingDirectory = targetDir,
-                            UseShellExecute = true
-                        });
-                    }
-                }
-
                 _isCompleted = true;
-                BtnCancel.Visibility = Visibility.Collapsed;
+                _isInstalling = false;
+                BtnInstall.Content = _currentLang == "tr" ? "Bitir" : "Finish";
                 BtnInstall.IsEnabled = true;
-                BtnInstall.Content = "Close";
-                TxtFooterInfo.Text = "Installation complete. You can access it via shortcut or system tray.";
+                BtnCancel.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
-                ProgressBar.Value = 0;
-                TxtStatus.Text = "❌ Installation Failed";
-                TxtStatusDetail.Text = ex.Message;
-                BtnCancel.IsEnabled = true;
+                _isInstalling = false;
                 BtnInstall.IsEnabled = true;
-                BtnInstall.Content = "Retry";
-                MessageBox.Show($"Installation failed:\n{ex.Message}", "Installation Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+                BtnCancel.IsEnabled = true;
+                SetupPanel.Visibility = Visibility.Visible;
+                ProgressPanel.Visibility = Visibility.Collapsed;
 
-        private void BtnCancel_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
+                string msg = _currentLang == "tr" ? $"Kurulum başarısız oldu:\n{ex.Message}" : $"Installation failed:\n{ex.Message}";
+                MessageBox.Show(msg, _currentLang == "tr" ? "Kurulum Hatası" : "Installation Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

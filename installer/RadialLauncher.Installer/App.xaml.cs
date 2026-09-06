@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 
@@ -10,63 +11,106 @@ namespace RadialLauncher.Installer
         {
             string[] args = e.Args;
 
-            if (args.Any(a => a.Equals("/uninstall", StringComparison.OrdinalIgnoreCase)))
+            // Handle Uninstaller mode
+            if (args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase) || 
+                Path.GetFileNameWithoutExtension(Environment.ProcessPath ?? "").Equals("Uninstall", StringComparison.OrdinalIgnoreCase))
             {
-                bool silent = args.Any(a => a.Equals("/silent", StringComparison.OrdinalIgnoreCase) || a.Equals("/s", StringComparison.OrdinalIgnoreCase));
-                
-                if (!silent)
-                {
-                    var result = MessageBox.Show(
-                        "Are you sure you want to uninstall Radial Launcher from your computer?",
-                        "Radial Launcher Uninstall Wizard",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-
-                    if (result != MessageBoxResult.Yes)
-                    {
-                        Shutdown();
-                        return;
-                    }
-
-                    var removeDataResult = MessageBox.Show(
-                        "Do you also want to delete your user settings, shortcuts database, and backups?\n\n(Choose 'No' if you plan to reinstall later)",
-                        "User Data",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-
-                    bool removeData = (removeDataResult == MessageBoxResult.Yes);
-
-                    InstallerService.PerformUninstall(removeData);
-
-                    MessageBox.Show(
-                        "Radial Launcher has been successfully removed from your computer.",
-                        "Uninstall Complete",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
-                else
-                {
-                    InstallerService.PerformUninstall(removeUserData: false);
-                }
-
-                Shutdown();
+                HandleUninstall(args.Contains("--silent", StringComparer.OrdinalIgnoreCase));
                 return;
             }
 
-            if (args.Any(a => a.Equals("/silent", StringComparison.OrdinalIgnoreCase) || a.Equals("/s", StringComparison.OrdinalIgnoreCase)))
+            // Handle Silent install mode
+            if (args.Contains("--silent", StringComparer.OrdinalIgnoreCase) || args.Contains("-s", StringComparer.OrdinalIgnoreCase))
             {
-                string targetDir = InstallerService.GetDefaultInstallPath();
-                InstallerService.ExtractPayload(targetDir);
-                InstallerService.CreateShortcuts(targetDir, createDesktop: true, createStartMenu: true);
-                InstallerService.RegisterInWindows(targetDir);
-                InstallerService.SetStartup(targetDir, true);
-                Shutdown();
+                HandleSilentInstall(args);
                 return;
             }
 
             // Normal Interactive GUI Setup Wizard
             var mainWindow = new MainWindow();
             mainWindow.Show();
+        }
+
+        private void HandleSilentInstall(string[] args)
+        {
+            try
+            {
+                string targetDir = InstallerService.GetDefaultInstallPath();
+                int dirIdx = Array.FindIndex(args, a => a.Equals("--dir", StringComparison.OrdinalIgnoreCase));
+                if (dirIdx >= 0 && dirIdx < args.Length - 1)
+                {
+                    targetDir = args[dirIdx + 1];
+                }
+
+                bool desktop = !args.Contains("--no-desktop", StringComparer.OrdinalIgnoreCase);
+                bool startMenu = !args.Contains("--no-start", StringComparer.OrdinalIgnoreCase);
+                bool runStartup = !args.Contains("--no-startup", StringComparer.OrdinalIgnoreCase);
+                bool launch = !args.Contains("--no-launch", StringComparer.OrdinalIgnoreCase);
+
+                InstallerService.ExtractPayload(targetDir);
+                InstallerService.CreateShortcuts(targetDir, desktop, startMenu);
+                InstallerService.RegisterInWindows(targetDir, runStartup);
+
+                if (launch)
+                {
+                    string exe = Path.Combine(targetDir, "RadialLauncher.exe");
+                    if (File.Exists(exe))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = exe, UseShellExecute = true });
+                    }
+                }
+
+                Shutdown(0);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Silent install error: {ex.Message}");
+                Shutdown(1);
+            }
+        }
+
+        private void HandleUninstall(bool silent)
+        {
+            string installDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
+
+            if (!silent)
+            {
+                string msg = "Are you sure you want to completely uninstall Radial Launcher from your system?";
+                string title = "Uninstall Radial Launcher";
+
+                var result = MessageBox.Show(msg, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result != MessageBoxResult.Yes)
+                {
+                    Shutdown(0);
+                    return;
+                }
+
+                bool removeData = false;
+                var dataResult = MessageBox.Show(
+                    "Would you also like to delete your personal settings, categories, and database?",
+                    "Remove Personal Data",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (dataResult == MessageBoxResult.Yes)
+                {
+                    removeData = true;
+                }
+
+                InstallerService.PerformUninstall(installDir, removeData);
+
+                MessageBox.Show(
+                    "Radial Launcher has been successfully uninstalled from your computer.",
+                    "Uninstall Complete",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            else
+            {
+                InstallerService.PerformUninstall(installDir, false);
+            }
+
+            Shutdown(0);
         }
     }
 }

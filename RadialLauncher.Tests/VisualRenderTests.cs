@@ -198,9 +198,18 @@ namespace RadialLauncher.Tests
                 {
                     threadEx = ex;
                 }
+                finally
+                {
+                    try
+                    {
+                        System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
+                    }
+                    catch { }
+                }
             });
 
             thread.SetApartmentState(ApartmentState.STA);
+            thread.IsBackground = true;
             thread.Start();
             thread.Join(15000);
 

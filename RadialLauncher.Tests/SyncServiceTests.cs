@@ -223,7 +223,7 @@ namespace RadialLauncher.Tests
                         RadialOpacity = 0.85,
                         ActivationShortcut = "CtrlSpace",
                         DensityMode = "Compact",
-                        Language = "de"
+                        Language = "tr"
                     },
                     Categories = new List<Category> { new Category { Id = 1, Name = "RestoredCat" } },
                     Items = new List<LauncherItem> { new LauncherItem { Id = 1, Name = "RestoredApp", Target = "app.exe" } }
@@ -240,7 +240,7 @@ namespace RadialLauncher.Tests
                 // Verify restored theme settings and language
                 var currentTheme = RadialLauncher.Services.Themes.ThemeService.Instance.GetCurrentTheme();
                 Assert.Equal("Purple", currentTheme.Name);
-                Assert.Equal("de", RadialLauncher.Services.Localization.LocalizationService.Instance.CurrentLanguage);
+                Assert.Equal("tr", RadialLauncher.Services.Localization.LocalizationService.Instance.CurrentLanguage);
 
                 // Cleanup settings
                 RadialLauncher.Services.Localization.LocalizationService.Instance.SetLanguage("en");

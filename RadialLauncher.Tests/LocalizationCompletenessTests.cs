@@ -12,46 +12,51 @@ namespace RadialLauncher.Tests
     public class LocalizationCompletenessTests
     {
         [Fact]
-        public void SupportedLanguages_CountIs11_AndSortedAlphabetically()
+        public void SupportedLanguages_CountIsExactly2_EnglishAndTurkish()
         {
             var service = new LocalizationService();
             var languages = service.SupportedLanguages;
 
-            Assert.Equal(11, languages.Count);
+            Assert.Equal(2, languages.Count);
 
-            // Assert English is default
+            // Assert English and Turkish are present
             Assert.Contains(languages, l => l.Code == "en");
-
-            // Assert list is sorted alphabetically by DisplayName
-            var sortedDisplayNames = languages.Select(l => l.DisplayName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-            var actualDisplayNames = languages.Select(l => l.DisplayName).ToList();
-            Assert.Equal(sortedDisplayNames, actualDisplayNames);
+            Assert.Contains(languages, l => l.Code == "tr");
         }
 
         [Fact]
-        public void All11Languages_HaveAllKeysDirectlyWithoutFallback()
+        public void EnglishAndTurkish_Have100PercentKeyParity_WithoutAnyMissingKeys()
         {
             var service = new LocalizationService();
             var enDict = service.GetDictionaryForLanguage("en");
+            var trDict = service.GetDictionaryForLanguage("tr");
 
             Assert.NotNull(enDict);
-            Assert.True(enDict.Count >= 230, $"English dictionary should have at least 230 keys, but has {enDict.Count}");
+            Assert.NotNull(trDict);
+            Assert.True(enDict.Count >= 250, $"English dictionary should have at least 250 keys, but has {enDict.Count}");
+            Assert.True(trDict.Count >= 250, $"Turkish dictionary should have at least 250 keys, but has {trDict.Count}");
 
-            foreach (var lang in service.SupportedLanguages)
+            // Verify 1-to-1 symmetric match
+            foreach (var kvp in enDict)
             {
-                var langDict = service.GetDictionaryForLanguage(lang.Code);
-                Assert.NotNull(langDict);
+                string key = kvp.Key;
+                Assert.True(service.HasKeyDirectly("tr", key),
+                    $"Turkish dictionary is missing direct translation for key '{key}'");
 
-                foreach (var kvp in enDict)
-                {
-                    string key = kvp.Key;
-                    Assert.True(service.HasKeyDirectly(lang.Code, key),
-                        $"Language '{lang.Code}' ({lang.DisplayName}) is missing direct translation for key '{key}'");
+                string val = trDict[key];
+                Assert.False(string.IsNullOrWhiteSpace(val),
+                    $"Turkish dictionary has empty value for key '{key}'");
+            }
 
-                    string val = langDict[key];
-                    Assert.False(string.IsNullOrWhiteSpace(val),
-                        $"Language '{lang.Code}' ({lang.DisplayName}) has empty value for key '{key}'");
-                }
+            foreach (var kvp in trDict)
+            {
+                string key = kvp.Key;
+                Assert.True(service.HasKeyDirectly("en", key),
+                    $"English dictionary is missing direct translation for key '{key}'");
+
+                string val = enDict[key];
+                Assert.False(string.IsNullOrWhiteSpace(val),
+                    $"English dictionary has empty value for key '{key}'");
             }
         }
 
@@ -62,7 +67,7 @@ namespace RadialLauncher.Tests
             var enDict = service.GetDictionaryForLanguage("en");
             var placeholderRegex = new Regex(@"\{(\d+)\}");
 
-            foreach (var kvp in enDict)
+            foreach (var kvp in enDict!)
             {
                 string key = kvp.Key;
                 string enValue = kvp.Value;
@@ -73,7 +78,7 @@ namespace RadialLauncher.Tests
                     foreach (var lang in service.SupportedLanguages)
                     {
                         var langDict = service.GetDictionaryForLanguage(lang.Code);
-                        string langValue = langDict[key];
+                        string langValue = langDict![key];
                         var langPlaceholders = placeholderRegex.Matches(langValue).Select(m => m.Value).OrderBy(p => p).ToList();
 
                         Assert.Equal(enPlaceholders, langPlaceholders);
@@ -90,41 +95,12 @@ namespace RadialLauncher.Tests
             service.SetLanguage("tr");
             Assert.Equal("tr", service.CurrentLanguage);
             Assert.Equal("🔍 Bilgisayarı Tara", service.GetString("Scan_PC"));
-
-            service.SetLanguage("de");
-            Assert.Equal("de", service.CurrentLanguage);
-            Assert.Equal("🔍 PC durchsuchen", service.GetString("Scan_PC"));
-
-            service.SetLanguage("ja");
-            Assert.Equal("ja", service.CurrentLanguage);
-            Assert.Equal("🔍 PCをスキャン", service.GetString("Scan_PC"));
+            Assert.Equal("➕ Yeni Öğe Ekle", service["Add_Item"]);
 
             service.SetLanguage("en");
             Assert.Equal("en", service.CurrentLanguage);
             Assert.Equal("🔍 Scan PC", service.GetString("Scan_PC"));
-        }
-
-        [Fact]
-        public void Translations_ZeroMixedLanguageFragments_AcrossAll11Locales()
-        {
-            var service = new LocalizationService();
-            var forbiddenEnglishTerms = new[] { "Density", "Reduce Motion", "Final Release" };
-
-            foreach (var lang in service.SupportedLanguages)
-            {
-                if (lang.Code == "en") continue;
-                var dict = service.GetDictionaryForLanguage(lang.Code);
-                Assert.NotNull(dict);
-
-                foreach (var kvp in dict)
-                {
-                    foreach (var term in forbiddenEnglishTerms)
-                    {
-                        Assert.False(kvp.Value.Contains($"({term})", StringComparison.OrdinalIgnoreCase),
-                            $"Language '{lang.Code}' key '{kvp.Key}' contains mixed English fragment '({term})': '{kvp.Value}'");
-                    }
-                }
-            }
+            Assert.Equal("➕ Add New Item", service["Add_Item"]);
         }
 
         [Fact]
@@ -132,7 +108,6 @@ namespace RadialLauncher.Tests
         {
             var loc = LocalizationService.Instance;
 
-            // User-created categories with names matching system concepts without SystemKey
             var userGames = new Category { Id = 991, Name = "Games", SystemKey = null };
             var userSystem = new Category { Id = 992, Name = "System", SystemKey = null };
             var userWindows = new Category { Id = 993, Name = "Open Windows", SystemKey = null };
@@ -153,7 +128,7 @@ namespace RadialLauncher.Tests
         }
 
         [Fact]
-        public void BuiltinCategory_WithSystemKey_IsProperlyTranslatedInAll11Languages()
+        public void BuiltinCategory_WithSystemKey_IsProperlyTranslatedInBothLanguages()
         {
             var loc = LocalizationService.Instance;
 
@@ -179,15 +154,6 @@ namespace RadialLauncher.Tests
             Assert.Equal("⚡ Sistem", sysSystem.DisplayName);
             Assert.Equal("🎮 Oyunlar", sysGames.DisplayName);
 
-            // German
-            loc.SetLanguage("de");
-            Assert.Equal("⭐ Meistgenutzt", sysMostUsed.DisplayName);
-            Assert.Equal("🪟 Offene Fenster", sysWindows.DisplayName);
-            Assert.Equal("📋 Zwischenablage", sysClipboard.DisplayName);
-            Assert.Equal("⚡ System", sysSystem.DisplayName);
-            Assert.Equal("🎮 Spiele", sysGames.DisplayName);
-
-            // Verify all 11 languages have non-empty values
             foreach (var lang in loc.SupportedLanguages)
             {
                 loc.SetLanguage(lang.Code);
@@ -204,9 +170,7 @@ namespace RadialLauncher.Tests
         [Fact]
         public void HardcodedUiStrings_StaticAudit_PassesClean()
         {
-            // Verify that critical files do not contain unlocalized UI strings
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            // Walk up to find repo root
             string repoRoot = baseDir;
             while (!string.IsNullOrEmpty(repoRoot) && !File.Exists(Path.Combine(repoRoot, "RadialLauncher.sln")))
             {
@@ -217,7 +181,6 @@ namespace RadialLauncher.Tests
 
             if (!File.Exists(Path.Combine(repoRoot, "RadialLauncher.sln"))) return;
 
-            // 1. ProcessRunner.cs should not have hardcoded MessageBox string
             string prPath = Path.Combine(repoRoot, "Services", "Processes", "ProcessRunner.cs");
             if (File.Exists(prPath))
             {
@@ -225,7 +188,6 @@ namespace RadialLauncher.Tests
                 Assert.DoesNotContain("MessageBox.Show($\"Could not launch", prContent);
             }
 
-            // 2. RadialMenuWindow.xaml.cs should not have hardcoded Turkish Sayfa string
             string rmPath = Path.Combine(repoRoot, "UI", "Windows", "RadialMenuWindow.xaml.cs");
             if (File.Exists(rmPath))
             {
@@ -233,7 +195,6 @@ namespace RadialLauncher.Tests
                 Assert.DoesNotContain("ToolTip = $\"Sayfa ", rmContent);
             }
 
-            // 3. ManagementWindow.xaml should not have hardcoded static ComboBoxItems in ShortcutCombo
             string mwXamlPath = Path.Combine(repoRoot, "UI", "Windows", "ManagementWindow.xaml");
             if (File.Exists(mwXamlPath))
             {

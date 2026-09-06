@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace RadialLauncher.Installer
@@ -19,10 +20,16 @@ namespace RadialLauncher.Installer
             return Path.Combine(localAppData, "Programs", "RadialLauncher");
         }
 
+        public static string GetUserDataPath()
+        {
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Path.Combine(localAppData, "RadialLauncher");
+        }
+
         public static void ExtractPayload(string targetDirectory, Action<int, string>? reportProgress = null)
         {
             Directory.CreateDirectory(targetDirectory);
-            reportProgress?.Invoke(10, "Preparing installation directory...");
+            reportProgress?.Invoke(10, "Preparing target directory...");
 
             var assembly = Assembly.GetExecutingAssembly();
             using var resourceStream = assembly.GetManifestResourceStream("RadialLauncher.Installer.payload.zip");
@@ -42,7 +49,7 @@ namespace RadialLauncher.Installer
                 string destinationPath = Path.GetFullPath(Path.Combine(targetDirectory, entry.FullName));
                 if (!destinationPath.StartsWith(Path.GetFullPath(targetDirectory), StringComparison.OrdinalIgnoreCase))
                 {
-                    continue; // Path traversal protection
+                    continue; // Path traversal security protection
                 }
 
                 if (string.IsNullOrEmpty(entry.Name))
@@ -56,10 +63,10 @@ namespace RadialLauncher.Installer
                 }
 
                 int pct = 10 + (int)((count / (double)Math.Max(1, totalEntries)) * 70);
-                reportProgress?.Invoke(pct, $"Extracting files: {entry.Name}");
+                reportProgress?.Invoke(pct, $"Extracting: {entry.Name}");
             }
 
-            // Copy self as uninstaller
+            // Copy self as Uninstall.exe
             try
             {
                 string currentExe = Environment.ProcessPath ?? System.AppContext.BaseDirectory;
@@ -71,10 +78,10 @@ namespace RadialLauncher.Installer
             }
             catch
             {
-                // Ignore copy errors if running in restricted mode
+                // Ignore copy errors in restricted environments
             }
 
-            reportProgress?.Invoke(85, "Installation files extracted.");
+            reportProgress?.Invoke(85, "Files extracted successfully.");
         }
 
         public static void CreateShortcuts(string targetDirectory, bool createDesktop, bool createStartMenu)
@@ -87,7 +94,7 @@ namespace RadialLauncher.Installer
             {
                 string desktopFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string shortcutPath = Path.Combine(desktopFolder, "Radial Launcher.lnk");
-                CreateShortcutFile(shortcutPath, exePath, targetDirectory, iconPath, "Radial Launcher - Ultra Fast Circular App & Game Launcher");
+                CreateShortcutFile(shortcutPath, exePath, targetDirectory, iconPath, "Radial Launcher - Circular App & Game Launcher");
             }
 
             if (createStartMenu)
@@ -121,141 +128,147 @@ namespace RadialLauncher.Installer
                     shortcut.TargetPath = targetPath;
                     shortcut.WorkingDirectory = workingDir;
                     shortcut.Description = description;
-                    shortcut.IconLocation = $"{iconLocation},0";
+                    if (File.Exists(iconLocation))
+                    {
+                        shortcut.IconLocation = iconLocation;
+                    }
                     shortcut.Save();
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Trace.WriteLine($"Shortcut creation error: {ex.Message}");
+                // Ignore shortcut creation failure in restricted test environments
             }
         }
 
-        public static void RegisterInWindows(string targetDirectory)
+        public static void RegisterInWindows(string targetDirectory, bool runOnStartup)
         {
+            string exePath = Path.Combine(targetDirectory, "RadialLauncher.exe");
+            string uninstallerExe = Path.Combine(targetDirectory, "Uninstall.exe");
+            string iconPath = Path.Combine(targetDirectory, "app.ico");
+            if (!File.Exists(iconPath)) iconPath = exePath;
+
             try
             {
                 using var key = Registry.CurrentUser.CreateSubKey(RegUninstallKey);
                 if (key != null)
                 {
-                    string exePath = Path.Combine(targetDirectory, "RadialLauncher.exe");
-                    string uninstallerPath = Path.Combine(targetDirectory, "Uninstall.exe");
-                    string iconPath = Path.Combine(targetDirectory, "app.ico");
-
-                    key.SetValue("DisplayName", AppName);
-                    key.SetValue("DisplayVersion", "1.0.0");
-                    key.SetValue("Publisher", "Radial Launcher Team");
-                    key.SetValue("DisplayIcon", iconPath);
-                    key.SetValue("InstallLocation", targetDirectory);
-                    key.SetValue("UninstallString", $"\"{uninstallerPath}\" /uninstall");
-                    key.SetValue("QuietUninstallString", $"\"{uninstallerPath}\" /uninstall /silent");
-                    key.SetValue("URLInfoAbout", "https://github.com/mephisto-mert/radial");
-                    key.SetValue("HelpLink", "https://github.com/mephisto-mert/radial/issues");
+                    key.SetValue("DisplayName", "Radial Launcher", RegistryValueKind.String);
+                    key.SetValue("DisplayVersion", "1.0.0", RegistryValueKind.String);
+                    key.SetValue("Publisher", "Radial Launcher Team", RegistryValueKind.String);
+                    key.SetValue("InstallLocation", targetDirectory, RegistryValueKind.String);
+                    key.SetValue("DisplayIcon", iconPath, RegistryValueKind.String);
+                    key.SetValue("UninstallString", $"\"{uninstallerExe}\" --uninstall", RegistryValueKind.String);
+                    key.SetValue("QuietUninstallString", $"\"{uninstallerExe}\" --uninstall --silent", RegistryValueKind.String);
                     key.SetValue("NoModify", 1, RegistryValueKind.DWord);
                     key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+
+                    long sizeKb = 0;
+                    try
+                    {
+                        var di = new DirectoryInfo(targetDirectory);
+                        foreach (var fi in di.EnumerateFiles("*", SearchOption.AllDirectories))
+                        {
+                            sizeKb += fi.Length;
+                        }
+                        key.SetValue("EstimatedSize", (int)(sizeKb / 1024), RegistryValueKind.DWord);
+                    }
+                    catch { }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Trace.WriteLine($"Registry registration error: {ex.Message}");
+                // Ignore registry access errors
             }
-        }
 
-        public static void SetStartup(string targetDirectory, bool enable)
-        {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RegRunKey, writable: true);
-                if (key != null)
+                using var runKey = Registry.CurrentUser.CreateSubKey(RegRunKey);
+                if (runKey != null)
                 {
-                    if (enable)
+                    if (runOnStartup)
                     {
-                        string exePath = Path.Combine(targetDirectory, "RadialLauncher.exe");
-                        key.SetValue("RadialLauncher", $"\"{exePath}\"");
+                        runKey.SetValue(AppName, $"\"{exePath}\"", RegistryValueKind.String);
                     }
                     else
                     {
-                        key.DeleteValue("RadialLauncher", throwOnMissingValue: false);
+                        if (runKey.GetValue(AppName) != null) runKey.DeleteValue(AppName, false);
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Trace.WriteLine($"Startup registration error: {ex.Message}");
+                // Ignore startup registration errors
             }
         }
 
-        public static void PerformUninstall(bool removeUserData)
+        public static void PerformUninstall(string targetDirectory, bool removeUserData = false)
         {
-            // 1. Kill running Radial Launcher processes
+            // 1. Terminate running instances of RadialLauncher
             try
             {
-                var processes = Process.GetProcessesByName("RadialLauncher");
-                foreach (var p in processes)
+                foreach (var proc in Process.GetProcessesByName("RadialLauncher"))
                 {
-                    p.Kill();
-                    p.WaitForExit(2000);
+                    try { proc.Kill(); proc.WaitForExit(3000); } catch { }
                 }
             }
             catch { }
 
-            // 2. Remove registry keys
+            // 2. Remove Shortcuts
             try
             {
-                using var runKey = Registry.CurrentUser.OpenSubKey(RegRunKey, writable: true);
-                runKey?.DeleteValue("RadialLauncher", throwOnMissingValue: false);
-            }
-            catch { }
-
-            try
-            {
-                Registry.CurrentUser.DeleteSubKeyTree(RegUninstallKey, throwOnMissingSubKey: false);
-            }
-            catch { }
-
-            // 3. Remove shortcuts
-            try
-            {
-                string desktopShortcut = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                    "Radial Launcher.lnk");
+                string desktopShortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Radial Launcher.lnk");
                 if (File.Exists(desktopShortcut)) File.Delete(desktopShortcut);
 
                 string startMenuFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     @"Microsoft\Windows\Start Menu\Programs\Radial Launcher");
-                if (Directory.Exists(startMenuFolder)) Directory.Delete(startMenuFolder, recursive: true);
+                if (Directory.Exists(startMenuFolder)) Directory.Delete(startMenuFolder, true);
             }
             catch { }
 
-            // 4. Optionally remove user data
+            // 3. Remove Registry keys
+            try
+            {
+                Registry.CurrentUser.DeleteSubKeyTree(RegUninstallKey, false);
+                using var runKey = Registry.CurrentUser.OpenSubKey(RegRunKey, true);
+                runKey?.DeleteValue(AppName, false);
+            }
+            catch { }
+
+            // 4. Optionally remove User Data
             if (removeUserData)
             {
                 try
                 {
-                    string localData = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "RadialLauncher");
-                    if (Directory.Exists(localData))
-                    {
-                        Directory.Delete(localData, recursive: true);
-                    }
+                    string userData = GetUserDataPath();
+                    if (Directory.Exists(userData)) Directory.Delete(userData, true);
                 }
                 catch { }
             }
 
-            // 5. Self-delete installation directory
+            // 5. Delete installation directory files (schedule self-cleanup via cmd)
             try
             {
-                string currentDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
-                string cmd = $"/c timeout /t 2 /nobreak > NUL & rmdir /s /q \"{currentDir}\"";
-                Process.Start(new ProcessStartInfo
+                if (Directory.Exists(targetDirectory))
                 {
-                    FileName = "cmd.exe",
-                    Arguments = cmd,
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                });
+                    foreach (var file in Directory.GetFiles(targetDirectory))
+                    {
+                        if (Path.GetFileName(file).Equals("Uninstall.exe", StringComparison.OrdinalIgnoreCase)) continue;
+                        try { File.Delete(file); } catch { }
+                    }
+
+                    // Delete self via background cmd
+                    string cmd = $"/c timeout /t 1 /nobreak & rmdir /s /q \"{targetDirectory}\"";
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = cmd,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    });
+                }
             }
             catch { }
         }

@@ -16,9 +16,9 @@
     <Product>Radial Launcher</Product>
     <Title>Radial Launcher</Title>
     <Company>Radial Launcher Team</Company>
-    <Authors>mephisto-mert</Authors>
+    <Authors>Radial Launcher Team</Authors>
     <Description>High-performance WPF Radial Launcher for Windows</Description>
-    <Copyright>Copyright © 2026</Copyright>
+    <Copyright>Copyright © 2026 Radial Launcher Team</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

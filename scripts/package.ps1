@@ -1,5 +1,5 @@
-﻿# Radial Launcher Automated Release Packaging Script v1.0.0
-# Builds binaries, creates standalone installer wizard, portable zip, and checksums
+# Radial Launcher Automated Release Packaging Pipeline v1.0.0
+# Builds clean production binaries, standalone setup wizard, portable zip, and verification checksums
 
 $ErrorActionPreference = "Stop"
 
@@ -15,7 +15,7 @@ Write-Host "==========================================================" -Foregro
 Write-Host "   RADIAL LAUNCHER - v1.0.0 RELEASE PACKAGING PIPELINE" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# 1. Prepare directories
+# 1. Clean output directories
 if (Test-Path $publishDir) {
     Remove-Item -Recurse -Force $publishDir
 }
@@ -27,15 +27,18 @@ if (!(Test-Path $artifactsDir)) {
 Write-Host "`n[1/5] Publishing clean Release binaries (win-x64)..." -ForegroundColor Yellow
 dotnet publish "$rootDir\RadialLauncher.csproj" -c Release -r win-x64 --self-contained false -o $publishDir
 
-if (Test-Path "$publishDir\RadialLauncher.pdb") {
-    Remove-Item "$publishDir\RadialLauncher.pdb" -Force
-}
+# Remove any PDB or debug/developer files from publish
+Get-ChildItem -Path $publishDir -Include *.pdb,*.db,*.sqlite,settings.json,*.log -Recurse | Remove-Item -Force
+
 if (Test-Path "$rootDir\README.md") {
     Copy-Item "$rootDir\README.md" "$publishDir\README.md" -Force
 }
+if (Test-Path "$rootDir\app.ico") {
+    Copy-Item "$rootDir\app.ico" "$publishDir\app.ico" -Force
+}
 
 # 3. Create Payload Zip for Installer & Standalone Portable Zip
-Write-Host "`n[2/5] Creating distribution ZIP packages..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Creating clean distribution ZIP packages..." -ForegroundColor Yellow
 if (Test-Path $payloadZip) { Remove-Item $payloadZip -Force }
 if (Test-Path $zipFile) { Remove-Item $zipFile -Force }
 

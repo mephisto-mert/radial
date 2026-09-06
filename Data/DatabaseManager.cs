@@ -22,8 +22,8 @@ namespace RadialLauncher.Data
 
         public DatabaseManager() : this(
             App.ServiceProvider != null 
-                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IGameDetector>(App.ServiceProvider) 
-                : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IGameDetector>(App.ServiceProvider) 
+                : null)
         {
         }
 

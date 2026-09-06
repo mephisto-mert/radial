@@ -129,15 +129,15 @@ namespace RadialLauncher.Tests
         }
 
         [Theory]
-        [InlineData("Dark", "Dark", "Koyu", "Dunkel")]
-        [InlineData("White", "White", "Açık / Beyaz", "Hell / Weiß")]
-        [InlineData("Red", "Crimson Red", "Kızıl Kırmızı", "Karminrot")]
-        [InlineData("Blue", "Midnight Blue", "Gece Mavisi", "Mitternachtsblau")]
-        [InlineData("Purple", "Purple Haze", "Mor Sis", "Lila Dunst")]
-        [InlineData("Forest", "Forest Emerald", "Zümrüt Ormanı", "Smaragdwald")]
-        [InlineData("AmoledBlack", "AMOLED Black", "AMOLED Siyah", "AMOLED Schwarz")]
-        [InlineData("HighContrast", "High Contrast", "Yüksek Karşıtlık", "Hoher Kontrast")]
-        public void Theme_DisplayName_TranslatesDynamicallyAcrossLanguages(string id, string enName, string trName, string deName)
+        [InlineData("Dark", "Midnight Dark", "Gece Karanlığı")]
+        [InlineData("White", "Clean Light", "Açık / Temiz")]
+        [InlineData("Red", "Sunset Amber", "Gün Batımı Kehribarı")]
+        [InlineData("Blue", "Deep Navy", "Derin Lacivert")]
+        [InlineData("Purple", "Cyberpunk Neon", "Siberpunk Neon")]
+        [InlineData("Forest", "Emerald Forest", "Zümrüt Ormanı")]
+        [InlineData("AmoledBlack", "OLED Black", "OLED Siyah")]
+        [InlineData("HighContrast", "Nordic Frost", "Kutup Ayazı")]
+        public void Theme_DisplayName_TranslatesDynamicallyAcrossLanguages(string id, string enName, string trName)
         {
             var themeService = ThemeService.Instance;
             var loc = RadialLauncher.Services.Localization.LocalizationService.Instance;
@@ -151,9 +151,6 @@ namespace RadialLauncher.Tests
 
             loc.SetLanguage("tr");
             Assert.Equal(trName, theme.DisplayName);
-
-            loc.SetLanguage("de");
-            Assert.Equal(deName, theme.DisplayName);
 
             loc.SetLanguage("en");
         }

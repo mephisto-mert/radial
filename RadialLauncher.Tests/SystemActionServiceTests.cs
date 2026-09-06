@@ -97,12 +97,14 @@ namespace RadialLauncher.Tests
             Assert.Equal("Bilgisayarı Kilitle", lockPc.DisplayName);
             Assert.Equal("Geri Dönüşüm Kutusunu Boşalt", recycle.DisplayName);
 
-            // German
-            loc.SetLanguage("de");
-            Assert.Equal("Lautstärke erhöhen (+2%)", volUp.DisplayName);
-            Assert.Equal("🍅 Fokus-Timer (25 Min.)", focus25.DisplayName);
-            Assert.Equal("PC sperren", lockPc.DisplayName);
-            Assert.Equal("Papierkorb leeren", recycle.DisplayName);
+            foreach (var lang in loc.SupportedLanguages)
+            {
+                loc.SetLanguage(lang.Code);
+                Assert.False(string.IsNullOrWhiteSpace(volUp.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(focus25.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(lockPc.DisplayName));
+                Assert.False(string.IsNullOrWhiteSpace(recycle.DisplayName));
+            }
 
             // Restore English
             loc.SetLanguage("en");
