@@ -7,6 +7,7 @@ namespace RadialLauncher.Services.Icons
         ImageSource? GetIconForFile(string filePath);
         ImageSource? GetFaviconForUrl(string url);
         ImageSource? GetBrandIcon(string name, string target);
+        ImageSource? GetActionIcon(string actionKeyOrName);
         ImageSource CreateMonogramIcon(string name, Color bgColor);
         ImageSource CreateIconFromVisual(Visual visual, int width = 64, int height = 64);
     }

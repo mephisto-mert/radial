@@ -37,6 +37,9 @@ namespace RadialLauncher.UI.Windows
                 var extractor = _iconExtractor ?? (App.ServiceProvider?.GetService(typeof(IIconExtractor)) as IIconExtractor);
                 if (extractor == null) return null;
 
+                var action = extractor.GetActionIcon(Item.Target) ?? extractor.GetActionIcon(Item.Name);
+                if (action != null) return action;
+
                 if (!string.IsNullOrEmpty(Item.IconPath) && File.Exists(Item.IconPath))
                 {
                     var f = extractor.GetIconForFile(Item.IconPath);

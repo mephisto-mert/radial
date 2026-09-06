@@ -28,98 +28,98 @@ namespace RadialLauncher.Services.Themes
             new Theme
             {
                 Name = "Dark",
-                BgR = 18, BgG = 18, BgB = 22,
-                BackgroundOpacity = 0.88,
-                IconBgR = 38, IconBgG = 38, IconBgB = 42,
-                IconHoverR = 58, IconHoverG = 58, IconHoverB = 65,
-                TextR = 230, TextG = 230, TextB = 235,
-                AccentR = 88, AccentG = 140, AccentB = 236,
-                Accent2R = 140, Accent2G = 90, Accent2B = 245,
-                CenterR = 50, CenterG = 50, CenterB = 55
+                BgR = 18, BgG = 18, BgB = 20,
+                BackgroundOpacity = 0.94,
+                IconBgR = 34, IconBgG = 34, IconBgB = 38,
+                IconHoverR = 48, IconHoverG = 48, IconHoverB = 54,
+                TextR = 244, TextG = 244, TextB = 245,
+                AccentR = 129, AccentG = 140, AccentB = 248,
+                Accent2R = 167, Accent2G = 139, Accent2B = 250,
+                CenterR = 42, CenterG = 42, CenterB = 48
             },
             new Theme
             {
                 Name = "Light",
-                BgR = 240, BgG = 240, BgB = 245,
-                BackgroundOpacity = 0.92,
+                BgR = 244, BgG = 244, BgB = 246,
+                BackgroundOpacity = 0.96,
                 IconBgR = 255, IconBgG = 255, IconBgB = 255,
-                IconHoverR = 220, IconHoverG = 225, IconHoverB = 235,
-                TextR = 30, TextG = 30, TextB = 35,
-                AccentR = 50, AccentG = 120, AccentB = 220,
-                Accent2R = 0, Accent2G = 180, Accent2B = 255,
-                CenterR = 230, CenterG = 230, CenterB = 235
+                IconHoverR = 228, IconHoverG = 228, IconHoverB = 231,
+                TextR = 17, TextG = 24, TextB = 39,
+                AccentR = 37, AccentG = 99, AccentB = 235,
+                Accent2R = 79, Accent2G = 70, Accent2B = 229,
+                CenterR = 228, CenterG = 228, CenterB = 231
             },
             new Theme
             {
                 Name = "Midnight Blue",
-                BgR = 12, BgG = 20, BgB = 40,
-                BackgroundOpacity = 0.90,
-                IconBgR = 20, IconBgG = 35, IconBgB = 60,
-                IconHoverR = 30, IconHoverG = 50, IconHoverB = 85,
-                TextR = 200, TextG = 220, TextB = 255,
-                AccentR = 0, AccentG = 180, AccentB = 255,
-                Accent2R = 100, Accent2G = 220, Accent2B = 255,
-                CenterR = 25, CenterG = 40, CenterB = 70
+                BgR = 11, BgG = 19, BgB = 43,
+                BackgroundOpacity = 0.94,
+                IconBgR = 28, IconBgG = 37, IconBgB = 65,
+                IconHoverR = 45, IconHoverG = 60, IconHoverB = 98,
+                TextR = 224, TextG = 242, TextB = 254,
+                AccentR = 0, AccentG = 229, AccentB = 255,
+                Accent2R = 59, Accent2G = 130, Accent2B = 246,
+                CenterR = 28, CenterG = 37, CenterB = 65
             },
             new Theme
             {
                 Name = "Purple Haze",
-                BgR = 25, BgG = 12, BgB = 35,
-                BackgroundOpacity = 0.88,
-                IconBgR = 45, IconBgG = 25, IconBgB = 55,
-                IconHoverR = 65, IconHoverG = 35, IconHoverB = 80,
-                TextR = 230, TextG = 210, TextB = 255,
-                AccentR = 200, AccentG = 80, AccentB = 255,
-                Accent2R = 255, Accent2G = 105, Accent2B = 180,
-                CenterR = 50, CenterG = 30, CenterB = 65
+                BgR = 24, BgG = 11, BgB = 38,
+                BackgroundOpacity = 0.94,
+                IconBgR = 50, IconBgG = 22, IconBgB = 80,
+                IconHoverR = 72, IconHoverG = 32, IconHoverB = 115,
+                TextR = 253, TextG = 244, TextB = 255,
+                AccentR = 217, AccentG = 70, AccentB = 239,
+                Accent2R = 192, Accent2G = 132, Accent2B = 252,
+                CenterR = 50, CenterG = 22, CenterB = 80
             },
             new Theme
             {
                 Name = "Forest",
-                BgR = 12, BgG = 28, BgB = 18,
-                BackgroundOpacity = 0.88,
-                IconBgR = 25, IconBgG = 48, IconBgB = 32,
-                IconHoverR = 35, IconHoverG = 68, IconHoverB = 45,
-                TextR = 210, TextG = 245, TextB = 220,
-                AccentR = 80, AccentG = 220, AccentB = 100,
-                Accent2R = 34, Accent2G = 197, Accent2B = 94,
-                CenterR = 30, CenterG = 55, CenterB = 38
+                BgR = 9, BgG = 31, BgB = 20,
+                BackgroundOpacity = 0.94,
+                IconBgR = 19, IconBgG = 62, IconBgB = 40,
+                IconHoverR = 28, IconHoverG = 90, IconHoverB = 58,
+                TextR = 236, TextG = 253, TextB = 245,
+                AccentR = 16, AccentG = 185, AccentB = 129,
+                Accent2R = 52, Accent2G = 211, Accent2B = 153,
+                CenterR = 19, CenterG = 62, CenterB = 40
             },
             new Theme
             {
                 Name = "Cyberpunk",
-                BgR = 10, BgG = 10, BgB = 16,
-                BackgroundOpacity = 0.90,
-                IconBgR = 28, IconBgG = 24, IconBgB = 40,
-                IconHoverR = 48, IconHoverG = 38, IconHoverB = 65,
-                TextR = 255, TextG = 245, TextB = 180,
+                BgR = 10, BgG = 9, BgB = 21,
+                BackgroundOpacity = 0.95,
+                IconBgR = 30, IconBgG = 27, IconBgB = 56,
+                IconHoverR = 47, IconHoverG = 42, IconHoverB = 88,
+                TextR = 254, TextG = 240, TextB = 138,
                 AccentR = 255, AccentG = 230, AccentB = 0,
-                Accent2R = 255, Accent2G = 0, Accent2B = 128,
-                CenterR = 35, CenterG = 30, CenterB = 50
+                Accent2R = 255, Accent2G = 0, Accent2B = 127,
+                CenterR = 30, CenterG = 27, CenterB = 56
             },
             new Theme
             {
                 Name = "Crimson Red",
-                BgR = 20, BgG = 10, BgB = 12,
-                BackgroundOpacity = 0.90,
-                IconBgR = 42, IconBgG = 22, IconBgB = 26,
-                IconHoverR = 65, IconHoverG = 30, IconHoverB = 35,
-                TextR = 255, TextG = 230, TextB = 235,
-                AccentR = 255, AccentG = 59, AccentB = 48,
-                Accent2R = 255, Accent2G = 149, Accent2B = 0,
-                CenterR = 50, CenterG = 25, CenterB = 30
+                BgR = 31, BgG = 10, BgB = 13,
+                BackgroundOpacity = 0.94,
+                IconBgR = 64, IconBgG = 20, IconBgB = 26,
+                IconHoverR = 92, IconHoverG = 29, IconHoverB = 38,
+                TextR = 255, TextG = 241, TextB = 242,
+                AccentR = 239, AccentG = 68, AccentB = 68,
+                Accent2R = 249, Accent2G = 115, Accent2B = 22,
+                CenterR = 64, CenterG = 20, CenterB = 26
             },
             new Theme
             {
                 Name = "AMOLED Black",
                 BgR = 0, BgG = 0, BgB = 0,
-                BackgroundOpacity = 0.95,
-                IconBgR = 22, IconBgG = 22, IconBgB = 26,
-                IconHoverR = 38, IconHoverG = 38, IconHoverB = 44,
+                BackgroundOpacity = 0.98,
+                IconBgR = 20, IconBgG = 20, IconBgB = 20,
+                IconHoverR = 38, IconHoverG = 38, IconHoverB = 38,
                 TextR = 255, TextG = 255, TextB = 255,
                 AccentR = 168, AccentG = 85, AccentB = 247,
                 Accent2R = 59, Accent2G = 130, Accent2B = 246,
-                CenterR = 28, CenterG = 28, CenterB = 32
+                CenterR = 24, CenterG = 24, CenterB = 24
             },
             new Theme
             {

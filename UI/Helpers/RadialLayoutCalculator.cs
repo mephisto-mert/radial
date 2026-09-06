@@ -55,13 +55,9 @@ namespace RadialLauncher.UI.Helpers
                 double btnX = centerCanvasX + (baseRadius * Math.Cos(angle)) - (circleSize / 2.0);
                 double btnY = centerCanvasY + (baseRadius * Math.Sin(angle)) - (circleSize / 2.0);
 
-                // Math-derived dynamic label distance to guarantee zero overlap
-                double labelDist = (circleSize / 2.0) + 12.0 +
-                                   (LabelWidth / 2.0 * Math.Abs(Math.Cos(angle))) +
-                                   (LabelHeight / 2.0 * Math.Abs(Math.Sin(angle)));
-
-                double lblX = centerCanvasX + ((baseRadius + labelDist) * Math.Cos(angle)) - (LabelWidth / 2.0);
-                double lblY = centerCanvasY + ((baseRadius + labelDist) * Math.Sin(angle)) - (LabelHeight / 2.0);
+                // Place label badge centered directly below the icon button
+                double lblX = btnX + (circleSize - LabelWidth) / 2.0;
+                double lblY = btnY + circleSize + 2.0;
 
                 result.Add(new RadialItemPlacement
                 {

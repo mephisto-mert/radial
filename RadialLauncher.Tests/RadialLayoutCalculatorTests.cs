@@ -30,6 +30,12 @@ namespace RadialLauncher.Tests
                 Assert.True(p.CircleSize > 0);
                 Assert.True(p.IconSize > 0);
                 Assert.True(p.ButtonX != 0 || p.ButtonY != 0);
+
+                // Verify label is centered beneath the button
+                double expectedLabelX = p.ButtonX + (p.CircleSize - RadialLayoutCalculator.LabelWidth) / 2.0;
+                double expectedLabelY = p.ButtonY + p.CircleSize + 2.0;
+                Assert.Equal(expectedLabelX, p.LabelX, 3);
+                Assert.Equal(expectedLabelY, p.LabelY, 3);
             }
         }
 

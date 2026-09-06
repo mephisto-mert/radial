@@ -57,7 +57,7 @@ namespace RadialLauncher.UI.Controls
                     Width = 20,
                     Height = 20,
                     Fill = new SolidColorBrush(t.IconBackgroundColor),
-                    Stroke = (i == 0) ? t.AccentBrush : new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                    Stroke = (i == 0) ? t.AccentBrush : new SolidColorBrush(Color.FromArgb(60, t.TextR, t.TextG, t.TextB)),
                     StrokeThickness = 1.2
                 };
                 Canvas.SetLeft(bubble, bx);

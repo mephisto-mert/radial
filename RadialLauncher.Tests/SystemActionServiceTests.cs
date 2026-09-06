@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using RadialLauncher.Services.Actions;
 using Xunit;
 
@@ -45,6 +45,25 @@ namespace RadialLauncher.Tests
             Assert.Equal("🔇", service.GetIconForAction("VOLUME_MUTE"));
             Assert.Equal("🍅", service.GetIconForAction("FOCUS_25"));
             Assert.Equal("⚡", service.GetIconForAction("NON_EXISTENT_KEY"));
+        }
+
+        [Theory]
+        [InlineData("VOLUME_UP")]
+        [InlineData("VOLUME_DOWN")]
+        [InlineData("VOLUME_MUTE")]
+        [InlineData("MEDIA_PLAY_PAUSE")]
+        [InlineData("MEDIA_NEXT")]
+        [InlineData("MEDIA_PREV")]
+        [InlineData("SNIP_TOOL")]
+        [InlineData("TASK_MANAGER")]
+        [InlineData("LOCK_PC")]
+        [InlineData("EMPTY_RECYCLE_BIN")]
+        [InlineData("SHOW_DESKTOP")]
+        [InlineData("FOCUS_25")]
+        public void VectorIconFactory_GetActionIcon_ReturnsNonNullImageSource(string actionKey)
+        {
+            var icon = RadialLauncher.Services.Icons.VectorIconFactory.GetActionIcon(actionKey);
+            Assert.NotNull(icon);
         }
     }
 }

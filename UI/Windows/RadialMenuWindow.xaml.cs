@@ -103,9 +103,9 @@ namespace RadialLauncher.UI.Windows
             BaseFill.Color = Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B);
 
             var stroke = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.0));
-            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(25, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.5));
-            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(80, theme.Accent2Color.R, theme.Accent2Color.G, theme.Accent2Color.B), 1.0));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(90, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.0));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(30, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.5));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(90, theme.Accent2Color.R, theme.Accent2Color.G, theme.Accent2Color.B), 1.0));
             BaseCircle.Stroke = stroke;
 
             var glow = new RadialGradientBrush();
@@ -114,11 +114,17 @@ namespace RadialLauncher.UI.Windows
             GlowEllipse.Fill = glow;
 
             CenterButton.Background = new SolidColorBrush(theme.CenterButtonColor);
+            CenterButton.BorderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
             CenterText.Foreground = new SolidColorBrush(theme.TextColor);
             HoverInfoText.Foreground = new SolidColorBrush(theme.TextColor);
 
-            CategoryPill.Background = new SolidColorBrush(Color.FromArgb(225, 18, 18, 24));
+            CategoryPill.Background = new SolidColorBrush(Color.FromArgb(220, theme.IconBgR, theme.IconBgG, theme.IconBgB));
             CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            CategoryTitleText.Foreground = new SolidColorBrush(theme.TextColor);
+
+            SearchBorder.Background = new SolidColorBrush(Color.FromArgb(235, theme.IconBgR, theme.IconBgG, theme.IconBgB));
+            SearchBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(120, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            SearchText.Foreground = new SolidColorBrush(theme.TextColor);
         }
 
         private void RenderLayout()
@@ -142,6 +148,10 @@ namespace RadialLauncher.UI.Windows
             var placements = RadialLayoutCalculator.CalculatePlacements(items.Count, 270, 270, isCompact);
 
             var theme = _viewModel.ActiveTheme;
+            var regularBorderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
+            var badgeBg = new SolidColorBrush(Color.FromArgb(215, theme.IconBgR, theme.IconBgG, theme.IconBgB));
+            var badgeBorder = new SolidColorBrush(Color.FromArgb(70, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            var textBrush = new SolidColorBrush(theme.TextColor);
 
             for (int i = 0; i < placements.Count; i++)
             {
@@ -155,7 +165,7 @@ namespace RadialLauncher.UI.Windows
                     Height = p.CircleSize,
                     Tag = item,
                     BorderThickness = new Thickness(1.5),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
+                    BorderBrush = regularBorderBrush,
                     Background = new SolidColorBrush(theme.IconBackgroundColor),
                     Cursor = Cursors.Hand,
                     RenderTransformOrigin = new Point(0.5, 0.5)
@@ -190,7 +200,7 @@ namespace RadialLauncher.UI.Windows
                         Text = item.Name.Length > 0 ? item.Name.Substring(0, 1).ToUpper() : "?",
                         FontSize = 18,
                         FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.White
+                        Foreground = textBrush
                     };
                 }
 
@@ -200,8 +210,8 @@ namespace RadialLauncher.UI.Windows
                     Width = RadialLayoutCalculator.LabelWidth,
                     Height = RadialLayoutCalculator.LabelHeight,
                     CornerRadius = new CornerRadius(5),
-                    Background = new SolidColorBrush(Color.FromArgb(200, 16, 16, 20)),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(60, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B)),
+                    Background = badgeBg,
+                    BorderBrush = badgeBorder,
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
                     RenderTransformOrigin = new Point(0.5, 0.5)
@@ -215,7 +225,7 @@ namespace RadialLauncher.UI.Windows
                     Text = item.Name,
                     FontSize = 11,
                     FontWeight = FontWeights.Normal,
-                    Foreground = Brushes.White,
+                    Foreground = textBrush,
                     TextAlignment = TextAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -328,8 +338,8 @@ namespace RadialLauncher.UI.Windows
                 {
                     Panel.SetZIndex(btn, 15);
                     Panel.SetZIndex(lblBorder, 25);
-                    btn.BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
-                    txt.Foreground = Brushes.White;
+                    btn.BorderBrush = regularBorderBrush;
+                    txt.Foreground = textBrush;
                     txt.FontWeight = FontWeights.Normal;
                     _viewModel.HoveredItemTitle = string.Empty;
                     RadialMotionSystem.AnimateHover(btn, lblBorder, false, theme.ReduceMotion);
@@ -370,6 +380,10 @@ namespace RadialLauncher.UI.Windows
                     return winIcon;
                 return _iconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(155, 89, 182));
             }
+
+            // Dedicated vector artwork for system actions & media controls
+            var actionIcon = _iconExtractor.GetActionIcon(item.Target) ?? _iconExtractor.GetActionIcon(item.Name);
+            if (actionIcon != null) return actionIcon;
 
             if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
             {
@@ -513,14 +527,23 @@ namespace RadialLauncher.UI.Windows
 
         private void HighlightKeyboardFocused()
         {
+            var regularBorder = new SolidColorBrush(Color.FromArgb(50, _viewModel.ActiveTheme.TextR, _viewModel.ActiveTheme.TextG, _viewModel.ActiveTheme.TextB));
+            var textBrush = new SolidColorBrush(_viewModel.ActiveTheme.TextColor);
+
             for (int i = 0; i < _visibleButtons.Count; i++)
             {
                 var (btn, lbl, item) = _visibleButtons[i];
+                var txt = lbl.Child as TextBlock;
                 if (i == _keyboardFocusIndex)
                 {
                     Panel.SetZIndex(btn, 100);
                     Panel.SetZIndex(lbl, 101);
                     btn.BorderBrush = _viewModel.ActiveTheme.AccentBrush;
+                    if (txt != null)
+                    {
+                        txt.Foreground = _viewModel.ActiveTheme.AccentBrush;
+                        txt.FontWeight = FontWeights.Bold;
+                    }
                     _viewModel.HoveredItemTitle = item.Name;
                     RadialMotionSystem.AnimateHover(btn, lbl, true, _viewModel.ActiveTheme.ReduceMotion);
                 }
@@ -528,7 +551,12 @@ namespace RadialLauncher.UI.Windows
                 {
                     Panel.SetZIndex(btn, 15);
                     Panel.SetZIndex(lbl, 25);
-                    btn.BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
+                    btn.BorderBrush = regularBorder;
+                    if (txt != null)
+                    {
+                        txt.Foreground = textBrush;
+                        txt.FontWeight = FontWeights.Normal;
+                    }
                     RadialMotionSystem.AnimateHover(btn, lbl, false, _viewModel.ActiveTheme.ReduceMotion);
                 }
             }
