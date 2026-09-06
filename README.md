@@ -13,12 +13,13 @@
 
 * **🪟 Live Window Switcher & DWM Previews:** Instant enumeration of all top-level desktop windows with real-time thumbnail previews and virtual desktop migration.
 * **⚡ System & Media Actions:** Hardware-level volume control, media keys, Windows screenshot (`Win+Shift+S`), Pomodoro focus timer (25 min), lock screen, and system actions.
-* **📂 Hierarchical Submenus & Layers:** Infinite-depth nested submenus with fluid morphing center back button and keyboard shortcut navigation.
+* **📂 Hierarchical Submenus & Layers:** Infinite-depth nested submenus with keyboard shortcut navigation (`Esc` / `Backspace`).
 * **🎮 Steam & Epic Games Detection:** Automated background scanning of Steam libraries and Epic Games manifests with official game art extraction.
 * **📋 Clipboard History Manager:** Low-latency thread-safe clipboard listener with 20-item rolling history, Unicode support, and 500KB text truncation memory guard.
-* **🎨 8 Curated Visual Themes:** 8 meticulously tuned contrast-safe themes (`Dark`, `White`, `Red`, `Blue`, `Purple`, `Forest`, `AMOLED Black`, `High Contrast`) with live preview and complete radial coloring.
+* **🎨 8 Curated Visual Themes:** 8 meticulously tuned contrast-safe themes (`Dark`, `White`, `Red`, `Blue`, `Purple`, `Forest`, `AMOLED Black`, `High Contrast`) with WCAG-compliant automatic luminance contrast calculations.
 * **🪞 Radial Transparency / Opacity Slider:** Real-time adjustable radial overlay background opacity (20% – 100%) while preserving 100% crisp foreground text and icon clarity.
-* **🔄 Seamless Page Navigation & Page Dots:** Drag the center button horizontally (threshold ~35px) or scroll mouse wheel to smoothly switch pages with dynamic page indicators.
+* **🔄 Seamless Page & Category Navigation:** Drag middle-mouse horizontally (threshold ~35px) or scroll mouse wheel to smoothly cycle through pages and categories.
+* **⚡ Contextual Quick Actions:** Hover over any item to reveal immediate context actions (Steam play/store, Epic launch, web URL open/copy, EXE run-as-admin/open directory, system actions).
 * **⭐ Most Used (En Çok Kullanılanlar) Synchronization:** Smart recency and frequency-weighted ranking algorithm synchronized between the live radial menu and management settings.
 * **💾 Local AppData Backup & Rotation:** Safe, atomic local JSON backups stored in `%LOCALAPPDATA%\RadialLauncher\Backups\` with automated 10-backup rotation and one-click restore.
 * **🎯 Advanced Mouse & Keyboard Shortcuts:** Support for single keys, combinations (`Ctrl`, `Shift`, `Alt`, `Win`), and all mouse buttons (`MiddleClick`, `Mouse 4`/`XButton1`, `Mouse 5`/`XButton2`, `Ctrl+Mouse 4`, `Alt+RightClick`, etc.) with interactive assignment.
@@ -32,17 +33,19 @@
 | Action | Input / Shortcut |
 | :--- | :--- |
 | **Open Menu** | Middle Mouse Button (Wheel Click) / Mouse 4 / Mouse 5 / Ctrl+Space / Alt+Space / Custom |
+| **Close Menu** | Move mouse outside radial area (>330px) / Escape / Click outside |
 | **Launch Item** | Left Click / Enter |
-| **Page Navigation (Drag)** | Hold & Drag Center Button Left / Right (35px) |
-| **Page Navigation (Wheel)** | Scroll Mouse Wheel Up / Down |
+| **Quick Actions** | Hover mouse on any item to view contextual action card |
+| **Page / Category Navigation (Drag)** | Hold & Drag Middle Mouse Left / Right (>35px) |
+| **Page / Category Navigation (Wheel)** | Scroll Mouse Wheel Up / Down |
 | **Direct Page Select** | Click on Page Dot indicators under Category Pill |
 | **Close Window Item** | Middle Click on Window item |
 | **Move Window to Virtual Desktop** | Right Click on Window item |
 | **Open Submenu** | Left Click on Submenu item |
-| **Back to Parent Menu** | Center ← Button / Escape / Backspace |
+| **Back to Parent Menu** | Escape / Backspace |
 | **Change Category** | Click Category Pill / Number Keys (1-9) |
 | **Instant Search** | Type directly on keyboard while overlay is visible |
-| **Open Management & Settings** | Right Click on Center Button or Tray Icon Menu |
+| **Open Management & Settings** | Tray Icon Menu (or Ctrl+,) |
 
 ---
 

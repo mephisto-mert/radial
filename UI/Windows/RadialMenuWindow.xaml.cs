@@ -7,7 +7,9 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Icons;
 using RadialLauncher.UI.Animations;
 using RadialLauncher.UI.Helpers;
@@ -20,12 +22,19 @@ namespace RadialLauncher.UI.Windows
     {
         private readonly RadialMenuViewModel _viewModel;
         private readonly IIconExtractor _iconExtractor;
+        private readonly IContextualActionService _contextualActionService;
         private readonly List<(Button btn, Border labelBorder, LauncherItem item)> _visibleButtons = new();
         private readonly List<IntPtr> _activeDwmThumbs = new();
         private int _keyboardFocusIndex = -1;
-        private Point _centerDragStartPoint;
-        private bool _isCenterDragging = false;
-        private bool _hasPageNavigated = false;
+
+        // Middle & Left Mouse Drag Navigation
+        private Point _dragStartPoint;
+        private bool _isDragNavigating = false;
+        private bool _hasNavigatedInCurrentDrag = false;
+
+        // Auto-close on mouse leave
+        private readonly DispatcherTimer _autoCloseGraceTimer;
+        private bool _isInteractingWithQuickActions = false;
 
         public RadialMenuViewModel ViewModel => _viewModel;
 
@@ -35,37 +44,62 @@ namespace RadialLauncher.UI.Windows
                 : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
             App.ServiceProvider != null 
                 ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IIconExtractor>(App.ServiceProvider) 
+                : throw new InvalidOperationException("App.ServiceProvider is not initialized."),
+            App.ServiceProvider != null 
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IContextualActionService>(App.ServiceProvider) 
                 : throw new InvalidOperationException("App.ServiceProvider is not initialized."))
         {
         }
 
-        public RadialMenuWindow(RadialMenuViewModel viewModel, IIconExtractor iconExtractor)
+        public RadialMenuWindow(RadialMenuViewModel viewModel, IIconExtractor iconExtractor, IContextualActionService contextualActionService)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _iconExtractor = iconExtractor ?? throw new ArgumentNullException(nameof(iconExtractor));
+            _contextualActionService = contextualActionService ?? throw new ArgumentNullException(nameof(contextualActionService));
 
             InitializeComponent();
 
             DataContext = _viewModel;
 
+            _autoCloseGraceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(320)
+            };
+            _autoCloseGraceTimer.Tick += AutoCloseGraceTimer_Tick;
+
             _viewModel.RequestClose += () => 
             {
+                _autoCloseGraceTimer.Stop();
                 ClearActiveDwmThumbnails();
                 Dispatcher.Invoke(this.Hide);
             };
             _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
 
-            CenterButton.PreviewMouseDown += CenterButton_PreviewMouseDown;
-            CenterButton.PreviewMouseMove += CenterButton_PreviewMouseMove;
-            CenterButton.PreviewMouseUp += CenterButton_PreviewMouseUp;
+            this.PreviewMouseDown += Window_PreviewMouseDown;
+            this.PreviewMouseMove += Window_PreviewMouseMove;
+            this.PreviewMouseUp += Window_PreviewMouseUp;
+            this.MouseRightButtonUp += Window_MouseRightButtonUp;
+            this.MouseLeave += Window_MouseLeave;
+            this.MouseEnter += Window_MouseEnter;
 
-            MouseMove += Window_MouseMove;
-            Closed += (s, e) => ClearActiveDwmThumbnails();
+            if (ContextActionCard != null)
+            {
+                ContextActionCard.MouseEnter += (s, e) => { _isInteractingWithQuickActions = true; _autoCloseGraceTimer.Stop(); };
+                ContextActionCard.MouseLeave += (s, e) => { _isInteractingWithQuickActions = false; };
+            }
+
+            Closed += (s, e) => 
+            {
+                _autoCloseGraceTimer.Stop();
+                ClearActiveDwmThumbnails();
+            };
             IsVisibleChanged += (s, e) =>
             {
                 if (!IsVisible)
                 {
+                    _autoCloseGraceTimer.Stop();
                     ClearActiveDwmThumbnails();
+                    HideContextActionCard();
                 }
             };
         }
@@ -74,6 +108,11 @@ namespace RadialLauncher.UI.Windows
         {
             try
             {
+                _autoCloseGraceTimer.Stop();
+                _isDragNavigating = false;
+                _hasNavigatedInCurrentDrag = false;
+                _isInteractingWithQuickActions = false;
+
                 var source = PresentationSource.FromVisual(this);
                 double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
                 double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
@@ -90,6 +129,7 @@ namespace RadialLauncher.UI.Windows
 
                 ApplyThemeVisuals(_viewModel.ActiveTheme);
                 RenderLayout();
+                HideContextActionCard();
 
                 this.Opacity = 1;
                 this.Show();
@@ -120,14 +160,17 @@ namespace RadialLauncher.UI.Windows
             glow.GradientStops.Add(new GradientStop(Color.FromArgb(45, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
             GlowEllipse.Fill = glow;
 
-            CenterButton.Background = new SolidColorBrush(theme.CenterButtonColor);
-            CenterButton.BorderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
-            CenterText.Foreground = new SolidColorBrush(theme.TextColor);
             HoverInfoText.Foreground = new SolidColorBrush(theme.TextColor);
 
             CategoryPill.Background = new SolidColorBrush(Color.FromArgb(220, theme.IconBgR, theme.IconBgG, theme.IconBgB));
             CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
             CategoryTitleText.Foreground = new SolidColorBrush(theme.TextColor);
+
+            if (ContextActionCard != null)
+            {
+                ContextActionCard.Background = new SolidColorBrush(Color.FromArgb(240, theme.IconBgR, theme.IconBgG, theme.IconBgB));
+                ContextActionCard.BorderBrush = new SolidColorBrush(Color.FromArgb(100, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            }
 
             SearchBorder.Background = new SolidColorBrush(Color.FromArgb(235, theme.IconBgR, theme.IconBgG, theme.IconBgB));
             SearchBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(120, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
@@ -138,14 +181,9 @@ namespace RadialLauncher.UI.Windows
         {
             ApplyThemeVisuals(_viewModel.ActiveTheme);
             ClearActiveDwmThumbnails();
+            HideContextActionCard();
 
-            // Clear previous buttons from canvas except CenterButton
-            var toRemove = new List<UIElement>();
-            foreach (UIElement child in ItemsCanvas.Children)
-            {
-                if (child != CenterButton) toRemove.Add(child);
-            }
-            foreach (var el in toRemove) ItemsCanvas.Children.Remove(el);
+            ItemsCanvas.Children.Clear();
             _visibleButtons.Clear();
 
             var items = _viewModel.CurrentPageItems;
@@ -293,6 +331,8 @@ namespace RadialLauncher.UI.Windows
                     _viewModel.HoveredItemTitle = item.Name;
                     RadialMotionSystem.AnimateHover(btn, lblBorder, true, theme.ReduceMotion);
 
+                    ShowContextActions(item);
+
                     if (item.Type == "WINDOW" && long.TryParse(item.Target, out long targetHwnd) && targetHwnd != 0)
                     {
                         try
@@ -372,12 +412,85 @@ namespace RadialLauncher.UI.Windows
                 RadialMotionSystem.AnimateItemBloom(lblBorder, i, theme.ReduceMotion);
             }
 
-            // Update Center Button Morph
-            CenterText.Text = _viewModel.IsSubmenu ? "←" : "✕";
-            RadialMotionSystem.AnimateCenterMorph(CenterButton, _viewModel.IsSubmenu, theme.ReduceMotion);
-
             RenderCategoryDots();
             RenderPageDots();
+        }
+
+        private void ShowContextActions(LauncherItem item)
+        {
+            if (ContextActionCard == null || ContextActionPanel == null) return;
+            ContextActionPanel.Children.Clear();
+
+            var actions = _contextualActionService.GetItemQuickActions(item);
+            if (actions.Count == 0)
+            {
+                HideContextActionCard();
+                return;
+            }
+
+            var theme = _viewModel.ActiveTheme;
+            var textBrush = new SolidColorBrush(theme.TextColor);
+            var btnBg = new SolidColorBrush(Color.FromArgb(190, theme.IconBgR, theme.IconBgG, theme.IconBgB));
+            var btnBorder = new SolidColorBrush(Color.FromArgb(90, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+
+            foreach (var act in actions)
+            {
+                var actionBtn = new Button
+                {
+                    Margin = new Thickness(3, 0, 3, 0),
+                    Padding = new Thickness(8, 3, 8, 3),
+                    Background = btnBg,
+                    BorderBrush = btnBorder,
+                    BorderThickness = new Thickness(1),
+                    Cursor = Cursors.Hand,
+                    ToolTip = act.Title,
+                    SnapsToDevicePixels = true
+                };
+
+                actionBtn.Resources.Add(typeof(Border), new Style(typeof(Border))
+                {
+                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(5)) }
+                });
+
+                var stack = new StackPanel { Orientation = Orientation.Horizontal };
+                if (!string.IsNullOrEmpty(act.Icon))
+                {
+                    stack.Children.Add(new TextBlock
+                    {
+                        Text = act.Icon,
+                        FontSize = 11,
+                        Margin = new Thickness(0, 0, 4, 0),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Foreground = theme.AccentBrush
+                    });
+                }
+                stack.Children.Add(new TextBlock
+                {
+                    Text = act.Title,
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = textBrush
+                });
+
+                actionBtn.Content = stack;
+                actionBtn.Click += (s, e) =>
+                {
+                    e.Handled = true;
+                    _contextualActionService.ExecuteItemQuickAction(item, act);
+                    this.Hide();
+                };
+
+                ContextActionPanel.Children.Add(actionBtn);
+            }
+
+            RadialMotionSystem.AnimateQuickActionCard(ContextActionCard, true, theme.ReduceMotion);
+        }
+
+        private void HideContextActionCard()
+        {
+            if (ContextActionCard == null) return;
+            RadialMotionSystem.AnimateQuickActionCard(ContextActionCard, false, _viewModel?.ActiveTheme?.ReduceMotion ?? false);
         }
 
         private void RenderPageDots()
@@ -412,8 +525,10 @@ namespace RadialLauncher.UI.Windows
                 dot.MouseLeftButtonUp += (s, e) =>
                 {
                     e.Handled = true;
+                    int dir = pageIndex > _viewModel.CurrentPageIndex ? 1 : -1;
                     _viewModel.CurrentPageIndex = pageIndex;
                     _viewModel.RefreshPageItems();
+                    RadialMotionSystem.AnimatePageTransition(ItemsCanvas, dir, _viewModel.ActiveTheme.ReduceMotion);
                 };
                 PageDots.Children.Add(dot);
             }
@@ -428,7 +543,6 @@ namespace RadialLauncher.UI.Windows
                 return _iconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(155, 89, 182));
             }
 
-            // Dedicated vector artwork for system actions & media controls
             var actionIcon = _iconExtractor.GetActionIcon(item.Target) ?? _iconExtractor.GetActionIcon(item.Name);
             if (actionIcon != null) return actionIcon;
 
@@ -472,15 +586,61 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
-        private void Window_MouseMove(object sender, MouseEventArgs e)
+        private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Magnetic snap subtle pull towards nearest hovered item
-            var pos = e.GetPosition(ItemsCanvas);
+            if (e.MiddleButton == MouseButtonState.Pressed || e.LeftButton == MouseButtonState.Pressed)
+            {
+                _dragStartPoint = e.GetPosition(this);
+                _isDragNavigating = true;
+                _hasNavigatedInCurrentDrag = false;
+            }
+        }
+
+        private void Window_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            var pos = e.GetPosition(this);
+            double centerX = this.Width / 2.0;
+            double centerY = this.Height / 2.0;
+            double distFromCenter = Math.Sqrt(Math.Pow(pos.X - centerX, 2) + Math.Pow(pos.Y - centerY, 2));
+
+            if (distFromCenter > 330.0 && !_isInteractingWithQuickActions)
+            {
+                if (!_autoCloseGraceTimer.IsEnabled)
+                {
+                    _autoCloseGraceTimer.Start();
+                }
+            }
+            else
+            {
+                _autoCloseGraceTimer.Stop();
+            }
+
+            if (_isDragNavigating && (e.MiddleButton == MouseButtonState.Pressed || e.LeftButton == MouseButtonState.Pressed))
+            {
+                double dx = pos.X - _dragStartPoint.X;
+                if (!_hasNavigatedInCurrentDrag && Math.Abs(dx) > 35)
+                {
+                    if (dx > 35)
+                    {
+                        _viewModel.NavigateNextGlobal();
+                        RadialMotionSystem.AnimatePageTransition(ItemsCanvas, 1, _viewModel.ActiveTheme.ReduceMotion);
+                    }
+                    else if (dx < -35)
+                    {
+                        _viewModel.NavigatePrevGlobal();
+                        RadialMotionSystem.AnimatePageTransition(ItemsCanvas, -1, _viewModel.ActiveTheme.ReduceMotion);
+                    }
+                    _hasNavigatedInCurrentDrag = true;
+                    _dragStartPoint = pos;
+                }
+            }
+
+            var canvasPos = e.GetPosition(ItemsCanvas);
             foreach (var (btn, _, _) in _visibleButtons)
             {
                 double bx = Canvas.GetLeft(btn) + (btn.Width / 2.0);
                 double by = Canvas.GetTop(btn) + (btn.Height / 2.0);
-                var offset = RadialLayoutCalculator.CalculateMagneticHoverOffset(new Point(bx, by), pos, 6.0);
+                var offset = RadialLayoutCalculator.CalculateMagneticHoverOffset(new Point(bx, by), canvasPos, 6.0);
                 if (btn.RenderTransform is TransformGroup group)
                 {
                     var translate = group.Children.Count > 1 ? group.Children[1] as TranslateTransform : null;
@@ -495,10 +655,62 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
+        private void Window_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDragNavigating)
+            {
+                _isDragNavigating = false;
+                if (_hasNavigatedInCurrentDrag)
+                {
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource == RootGrid || e.OriginalSource == BaseCircle || e.OriginalSource == GlowEllipse || e.OriginalSource == ItemsCanvas)
+            {
+                this.Hide();
+                ((App)Application.Current).OpenSettings();
+            }
+        }
+
+        private void Window_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (!_isInteractingWithQuickActions && !_autoCloseGraceTimer.IsEnabled)
+            {
+                _autoCloseGraceTimer.Start();
+            }
+        }
+
+        private void Window_MouseEnter(object sender, MouseEventArgs e)
+        {
+            _autoCloseGraceTimer.Stop();
+        }
+
+        private void AutoCloseGraceTimer_Tick(object? sender, EventArgs e)
+        {
+            _autoCloseGraceTimer.Stop();
+            if (this.IsVisible && !_isDragNavigating && !_isInteractingWithQuickActions)
+            {
+                ClearActiveDwmThumbnails();
+                this.Hide();
+            }
+        }
+
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (e.Delta > 0) _viewModel.PrevPage();
-            else if (e.Delta < 0) _viewModel.NextPage();
+            if (e.Delta > 0)
+            {
+                _viewModel.NavigatePrevGlobal();
+                RadialMotionSystem.AnimatePageTransition(ItemsCanvas, -1, _viewModel.ActiveTheme.ReduceMotion);
+            }
+            else if (e.Delta < 0)
+            {
+                _viewModel.NavigateNextGlobal();
+                RadialMotionSystem.AnimatePageTransition(ItemsCanvas, 1, _viewModel.ActiveTheme.ReduceMotion);
+            }
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -593,6 +805,7 @@ namespace RadialLauncher.UI.Windows
                     }
                     _viewModel.HoveredItemTitle = item.Name;
                     RadialMotionSystem.AnimateHover(btn, lbl, true, _viewModel.ActiveTheme.ReduceMotion);
+                    ShowContextActions(item);
                 }
                 else
                 {
@@ -619,71 +832,17 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
-        private void CenterButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
-            {
-                _centerDragStartPoint = e.GetPosition(this);
-                _isCenterDragging = true;
-                _hasPageNavigated = false;
-                CenterButton.CaptureMouse();
-            }
-        }
-
-        private void CenterButton_PreviewMouseMove(object sender, MouseEventArgs e)
-        {
-            if (_isCenterDragging && e.LeftButton == MouseButtonState.Pressed)
-            {
-                var current = e.GetPosition(this);
-                double dx = current.X - _centerDragStartPoint.X;
-                if (!_hasPageNavigated && Math.Abs(dx) > 35)
-                {
-                    if (dx > 35)
-                    {
-                        _viewModel.NextPage();
-                    }
-                    else if (dx < -35)
-                    {
-                        _viewModel.PrevPage();
-                    }
-                    _hasPageNavigated = true;
-                    _centerDragStartPoint = current;
-                }
-            }
-        }
-
-        private void CenterButton_PreviewMouseUp(object sender, MouseButtonEventArgs e)
-        {
-            if (_isCenterDragging)
-            {
-                _isCenterDragging = false;
-                CenterButton.ReleaseMouseCapture();
-                if (_hasPageNavigated)
-                {
-                    e.Handled = true;
-                }
-            }
-        }
-
-        private void CenterButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            this.Hide();
-            ((App)Application.Current).OpenSettings();
-        }
-
         private void CategoryPill_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             int nextCat = (_viewModel.CurrentCategoryIndex + 1) % Math.Max(1, _viewModel.Categories.Count);
             _viewModel.SwitchCategory(nextCat);
+            RadialMotionSystem.AnimatePageTransition(ItemsCanvas, 1, _viewModel.ActiveTheme.ReduceMotion);
         }
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
-            if (_isCenterDragging)
-            {
-                _isCenterDragging = false;
-                try { CenterButton.ReleaseMouseCapture(); } catch { }
-            }
+            _autoCloseGraceTimer.Stop();
+            _isDragNavigating = false;
             ClearActiveDwmThumbnails();
             this.Hide();
         }

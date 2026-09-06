@@ -14,6 +14,7 @@ using RadialLauncher.Services.Sync;
 using RadialLauncher.Services.Themes;
 using RadialLauncher.Services.Updates;
 using RadialLauncher.Services.Windows;
+using RadialLauncher.UI.Helpers;
 using RadialLauncher.UI.ViewModels;
 using Serilog;
 
@@ -128,12 +129,12 @@ namespace RadialLauncher.UI.Windows
         {
             if (theme == null) return;
 
-            bool isLight = (theme.BgR * 0.299 + theme.BgG * 0.587 + theme.BgB * 0.114) > 160;
+            bool isLight = ThemeContrastHelper.IsLightColor(theme.BackgroundColor);
+            var textBrush = ThemeContrastHelper.GetContrastTextBrush(theme.BackgroundColor);
+            var borderBrush = ThemeContrastHelper.GetContrastBorderBrush(theme.BackgroundColor, 40, 50);
 
             var bgBrush = new SolidColorBrush(theme.BackgroundColor);
             var panelBrush = new SolidColorBrush(theme.IconBackgroundColor);
-            var textBrush = new SolidColorBrush(theme.TextColor);
-            var borderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
 
             this.Background = bgBrush;
             this.Foreground = textBrush;
@@ -148,13 +149,13 @@ namespace RadialLauncher.UI.Windows
             {
                 ItemsGrid.Background = bgBrush;
                 ItemsGrid.RowBackground = bgBrush;
-                byte altR = (byte)Math.Clamp(theme.BgR + (isLight ? -8 : 8), 0, 255);
-                byte altG = (byte)Math.Clamp(theme.BgG + (isLight ? -8 : 8), 0, 255);
-                byte altB = (byte)Math.Clamp(theme.BgB + (isLight ? -8 : 8), 0, 255);
+                byte altR = (byte)Math.Clamp(theme.BgR + (isLight ? -10 : 10), 0, 255);
+                byte altG = (byte)Math.Clamp(theme.BgG + (isLight ? -10 : 10), 0, 255);
+                byte altB = (byte)Math.Clamp(theme.BgB + (isLight ? -10 : 10), 0, 255);
                 ItemsGrid.AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(altR, altG, altB));
                 ItemsGrid.Foreground = textBrush;
                 ItemsGrid.BorderBrush = borderBrush;
-                ItemsGrid.HorizontalGridLinesBrush = new SolidColorBrush(Color.FromArgb(25, theme.TextR, theme.TextG, theme.TextB));
+                ItemsGrid.HorizontalGridLinesBrush = new SolidColorBrush(Color.FromArgb(20, theme.TextR, theme.TextG, theme.TextB));
             }
 
             if (CategoryFilterCombo != null)
@@ -667,7 +668,7 @@ namespace RadialLauncher.UI.Windows
             {
                 var diag = new System.Text.StringBuilder();
                 diag.AppendLine("=== Radial Launcher Diagnostics ===");
-                diag.AppendLine($"App Version: 1.0.0-rc1");
+                diag.AppendLine($"App Version: 1.0.0");
                 diag.AppendLine($"OS: {Environment.OSVersion}");
                 diag.AppendLine($"64-Bit OS: {Environment.Is64BitOperatingSystem}");
                 diag.AppendLine($"64-Bit Process: {Environment.Is64BitProcess}");
@@ -694,7 +695,7 @@ namespace RadialLauncher.UI.Windows
         private void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
         {
             var res = MessageBox.Show(
-                "Tüm tema, kısayol ve görsel ayarlarınız fabrika varsayılanlarına sıfırlanacaktır.\nDevam etmek istiyor musunuz?",
+                "Tüm tema, kısayol ve görsel ayarlarınız varsayılan fabrika değerlerine sıfırlanacaktır.\n(Kullanıcı öğeleri, kısayollar ve kullanım sayaçları KORUNUR)\n\nDevam etmek istiyor musunuz?",
                 "Ayarları Sıfırla",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);

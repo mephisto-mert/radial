@@ -7,20 +7,25 @@ namespace RadialLauncher.UI.Animations
 {
     public static class RadialMotionSystem
     {
-        // Spring-based easing definitions
-        public static readonly IEasingFunction SpringOut = new BackEase
-        {
-            Amplitude = 0.35,
-            EasingMode = EasingMode.EaseOut
-        };
-
-        public static readonly IEasingFunction SmoothCubic = new CubicEase
+        // Premium soft easing definitions
+        public static readonly IEasingFunction SoftCubic = new CubicEase
         {
             EasingMode = EasingMode.EaseOut
         };
 
-        public static readonly IEasingFunction SnappyQuintic = new QuinticEase
+        public static readonly IEasingFunction SoftQuartic = new QuarticEase
         {
+            EasingMode = EasingMode.EaseOut
+        };
+
+        public static readonly IEasingFunction GentleSine = new SineEase
+        {
+            EasingMode = EasingMode.EaseInOut
+        };
+
+        public static readonly IEasingFunction SubtleSpring = new BackEase
+        {
+            Amplitude = 0.18,
             EasingMode = EasingMode.EaseOut
         };
 
@@ -29,7 +34,7 @@ namespace RadialLauncher.UI.Animations
             if (velocityPxPerMs <= 0.2) return 1.0;
             if (velocityPxPerMs >= 2.0) return 0.4;
             
-            // Subtle 2.5x range (0.4 to 1.0)
+            // 2.5x range (0.4 to 1.0)
             double t = (velocityPxPerMs - 0.2) / (2.0 - 0.2);
             return 1.0 - (t * 0.6);
         }
@@ -43,21 +48,18 @@ namespace RadialLauncher.UI.Animations
             }
 
             double speedScale = CalculateDurationScale(cursorVelocity);
-            int scaleDuration = Math.Max(70, (int)(240 * speedScale));
-            int opacityDuration = Math.Max(50, (int)(180 * speedScale));
+            int scaleDuration = Math.Max(120, (int)(280 * speedScale));
+            int opacityDuration = Math.Max(90, (int)(220 * speedScale));
 
             var transformGroup = new TransformGroup();
-            var scale = new ScaleTransform(0.75, 0.75);
+            var scale = new ScaleTransform(0.85, 0.85);
             transformGroup.Children.Add(scale);
             windowRoot.RenderTransform = transformGroup;
             windowRoot.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            IEasingFunction scaleEasing = speedScale < 0.6 ? SnappyQuintic : SpringOut;
-            IEasingFunction opacityEasing = speedScale < 0.6 ? SnappyQuintic : SmoothCubic;
-
-            var opacityAnim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(opacityDuration)) { EasingFunction = opacityEasing };
-            var scaleXAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(scaleDuration)) { EasingFunction = scaleEasing };
-            var scaleYAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(scaleDuration)) { EasingFunction = scaleEasing };
+            var opacityAnim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(opacityDuration)) { EasingFunction = SoftQuartic };
+            var scaleXAnim = new DoubleAnimation(0.85, 1.0, TimeSpan.FromMilliseconds(scaleDuration)) { EasingFunction = SubtleSpring };
+            var scaleYAnim = new DoubleAnimation(0.85, 1.0, TimeSpan.FromMilliseconds(scaleDuration)) { EasingFunction = SubtleSpring };
 
             windowRoot.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleXAnim);
@@ -73,29 +75,30 @@ namespace RadialLauncher.UI.Animations
             }
 
             var transformGroup = element.RenderTransform as TransformGroup ?? new TransformGroup();
-            var scale = new ScaleTransform(0.3, 0.3);
+            var scale = new ScaleTransform(0.5, 0.5);
+            transformGroup.Children.Clear();
             transformGroup.Children.Add(scale);
             element.RenderTransform = transformGroup;
             element.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            int delayMs = Math.Min(index * 22, 350); // Staggered entrance bloom
+            int delayMs = Math.Min(index * 16, 260); // Staggered gentle entrance
 
             var opacityAnim = new DoubleAnimation
             {
                 From = 0.0,
                 To = 1.0,
                 BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                Duration = TimeSpan.FromMilliseconds(180),
-                EasingFunction = SmoothCubic
+                Duration = TimeSpan.FromMilliseconds(220),
+                EasingFunction = SoftQuartic
             };
 
             var scaleAnim = new DoubleAnimation
             {
-                From = 0.3,
+                From = 0.5,
                 To = 1.0,
                 BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                Duration = TimeSpan.FromMilliseconds(220),
-                EasingFunction = SpringOut
+                Duration = TimeSpan.FromMilliseconds(260),
+                EasingFunction = SubtleSpring
             };
 
             element.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
@@ -105,21 +108,29 @@ namespace RadialLauncher.UI.Animations
 
         public static void AnimateHover(FrameworkElement button, FrameworkElement? label, bool isHovered, bool reduceMotion = false)
         {
-            double targetScaleBtn = isHovered ? 1.22 : 1.0;
-            double targetScaleLbl = isHovered ? 1.15 : 1.0;
-            var duration = TimeSpan.FromMilliseconds(reduceMotion ? 1 : 140);
-            var easing = isHovered ? SpringOut : SmoothCubic;
+            double targetScaleBtn = isHovered ? 1.10 : 1.0;
+            double targetScaleLbl = isHovered ? 1.06 : 1.0;
+            var duration = TimeSpan.FromMilliseconds(reduceMotion ? 1 : 180);
+            var easing = isHovered ? SubtleSpring : SoftCubic;
 
             if (button.RenderTransform is TransformGroup group)
             {
+                ScaleTransform? st = null;
                 foreach (var child in group.Children)
                 {
-                    if (child is ScaleTransform st)
+                    if (child is ScaleTransform scale)
                     {
-                        st.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(targetScaleBtn, duration) { EasingFunction = easing });
-                        st.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(targetScaleBtn, duration) { EasingFunction = easing });
+                        st = scale;
+                        break;
                     }
                 }
+                if (st == null)
+                {
+                    st = new ScaleTransform(1.0, 1.0);
+                    group.Children.Add(st);
+                }
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(targetScaleBtn, duration) { EasingFunction = easing });
+                st.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(targetScaleBtn, duration) { EasingFunction = easing });
             }
             else
             {
@@ -148,23 +159,80 @@ namespace RadialLauncher.UI.Animations
             }
         }
 
-        public static void AnimateCenterMorph(FrameworkElement centerElement, bool isSubmenu, bool reduceMotion = false)
+        public static void AnimatePageTransition(FrameworkElement container, int direction, bool reduceMotion = false)
         {
-            if (reduceMotion) return;
+            if (reduceMotion)
+            {
+                container.Opacity = 1.0;
+                return;
+            }
 
-            var group = centerElement.RenderTransform as TransformGroup ?? new TransformGroup();
-            var rotate = new RotateTransform(0);
-            var scale = new ScaleTransform(1.0, 1.0);
-            group.Children.Clear();
-            group.Children.Add(rotate);
-            group.Children.Add(scale);
-            centerElement.RenderTransform = group;
-            centerElement.RenderTransformOrigin = new Point(0.5, 0.5);
+            double offsetDistance = direction >= 0 ? 32.0 : -32.0;
 
-            double targetAngle = isSubmenu ? 180.0 : 0.0;
-            rotate.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(targetAngle, TimeSpan.FromMilliseconds(260)) { EasingFunction = SpringOut });
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.8, 1.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = SpringOut });
-            scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.8, 1.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = SpringOut });
+            var transformGroup = container.RenderTransform as TransformGroup ?? new TransformGroup();
+            TranslateTransform? translate = null;
+            foreach (var child in transformGroup.Children)
+            {
+                if (child is TranslateTransform tt)
+                {
+                    translate = tt;
+                    break;
+                }
+            }
+            if (translate == null)
+            {
+                translate = new TranslateTransform();
+                transformGroup.Children.Add(translate);
+            }
+            container.RenderTransform = transformGroup;
+
+            translate.BeginAnimation(TranslateTransform.XProperty, null);
+            container.BeginAnimation(UIElement.OpacityProperty, null);
+
+            var translateAnim = new DoubleAnimation
+            {
+                From = offsetDistance,
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(220),
+                EasingFunction = SoftQuartic
+            };
+
+            var opacityAnim = new DoubleAnimation
+            {
+                From = 0.3,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = SoftCubic
+            };
+
+            translate.BeginAnimation(TranslateTransform.XProperty, translateAnim);
+            container.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+        }
+
+        public static void AnimateQuickActionCard(FrameworkElement card, bool isVisible, bool reduceMotion = false)
+        {
+            if (reduceMotion)
+            {
+                card.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+                card.Opacity = isVisible ? 1.0 : 0.0;
+                return;
+            }
+
+            if (isVisible)
+            {
+                card.Visibility = Visibility.Visible;
+                var opacityAnim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(160)) { EasingFunction = SoftQuartic };
+                card.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+            }
+            else
+            {
+                var opacityAnim = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(120)) { EasingFunction = SoftCubic };
+                opacityAnim.Completed += (s, e) =>
+                {
+                    if (card.Opacity <= 0.05) card.Visibility = Visibility.Collapsed;
+                };
+                card.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+            }
         }
     }
 }

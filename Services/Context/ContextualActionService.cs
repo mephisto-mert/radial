@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -152,6 +153,306 @@ namespace RadialLauncher.Services.Context
             }
 
             return results;
+        }
+
+        public List<ItemContextAction> GetItemQuickActions(LauncherItem item)
+        {
+            var actions = new List<ItemContextAction>();
+            if (item == null) return actions;
+
+            string type = (item.Type ?? "EXE").ToUpperInvariant();
+            string target = item.Target ?? string.Empty;
+            string name = item.Name ?? string.Empty;
+
+            // 1. Steam Game (e.g. steam://rungameid/730)
+            if (target.StartsWith("steam://rungameid/", StringComparison.OrdinalIgnoreCase))
+            {
+                string appId = target.Substring("steam://rungameid/".Length).Trim();
+                actions.Add(new ItemContextAction
+                {
+                    Id = "STEAM_PLAY",
+                    Title = "Oyunu Oyna",
+                    Icon = "▶",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+                if (!string.IsNullOrEmpty(appId))
+                {
+                    actions.Add(new ItemContextAction
+                    {
+                        Id = "STEAM_STORE",
+                        Title = "Mağaza Sayfası",
+                        Icon = "🛒",
+                        ActionType = "URI",
+                        Payload = $"https://store.steampowered.com/app/{appId}"
+                    });
+                    actions.Add(new ItemContextAction
+                    {
+                        Id = "STEAM_COMMUNITY",
+                        Title = "Topluluk & Rehber",
+                        Icon = "👥",
+                        ActionType = "URI",
+                        Payload = $"https://steamcommunity.com/app/{appId}"
+                    });
+                }
+                return actions;
+            }
+
+            // 2. Steam App itself
+            if (name.Contains("Steam", StringComparison.OrdinalIgnoreCase) || target.EndsWith("steam.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                actions.Add(new ItemContextAction
+                {
+                    Id = "STEAM_OPEN",
+                    Title = "Steam'i Aç",
+                    Icon = "🚀",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+                actions.Add(new ItemContextAction
+                {
+                    Id = "STEAM_LIBRARY",
+                    Title = "Oyun Kütüphanesi",
+                    Icon = "🎮",
+                    ActionType = "URI",
+                    Payload = "steam://open/games"
+                });
+                actions.Add(new ItemContextAction
+                {
+                    Id = "STEAM_STORE_MAIN",
+                    Title = "Steam Mağazası",
+                    Icon = "🛒",
+                    ActionType = "URI",
+                    Payload = "steam://open/store"
+                });
+                return actions;
+            }
+
+            // 3. Epic Games
+            if (target.StartsWith("com.epicgames.launcher://", StringComparison.OrdinalIgnoreCase) || name.Contains("Epic Games", StringComparison.OrdinalIgnoreCase))
+            {
+                actions.Add(new ItemContextAction
+                {
+                    Id = "EPIC_PLAY",
+                    Title = "Başlat",
+                    Icon = "▶",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+                actions.Add(new ItemContextAction
+                {
+                    Id = "EPIC_STORE",
+                    Title = "Epic Mağaza",
+                    Icon = "🛒",
+                    ActionType = "URI",
+                    Payload = "https://store.epicgames.com"
+                });
+                return actions;
+            }
+
+            // 4. URL / Website
+            if (type == "URL" || target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || target.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                actions.Add(new ItemContextAction
+                {
+                    Id = "URL_OPEN",
+                    Title = "Tarayıcıda Aç",
+                    Icon = "🌐",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+                actions.Add(new ItemContextAction
+                {
+                    Id = "URL_COPY",
+                    Title = "Linki Kopyala",
+                    Icon = "📋",
+                    ActionType = "COPY_URL",
+                    Payload = target
+                });
+                return actions;
+            }
+
+            // 5. Folder
+            if (type == "FOLDER" || (Directory.Exists(target) && !File.Exists(target)))
+            {
+                actions.Add(new ItemContextAction
+                {
+                    Id = "FOLDER_OPEN",
+                    Title = "Klasörü Aç",
+                    Icon = "📂",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+                actions.Add(new ItemContextAction
+                {
+                    Id = "FOLDER_CMD",
+                    Title = "Terminal Aç",
+                    Icon = "⚡",
+                    ActionType = "TERMINAL",
+                    Payload = target
+                });
+                return actions;
+            }
+
+            // 6. File
+            if (type == "FILE")
+            {
+                actions.Add(new ItemContextAction
+                {
+                    Id = "FILE_OPEN",
+                    Title = "Dosyayı Aç",
+                    Icon = "📄",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+                if (File.Exists(target))
+                {
+                    actions.Add(new ItemContextAction
+                    {
+                        Id = "FILE_SHOW",
+                        Title = "Klasörde Göster",
+                        Icon = "📁",
+                        ActionType = "EXPLORE",
+                        Payload = target
+                    });
+                }
+                return actions;
+            }
+
+            // 7. Normal Windows Application / EXE
+            if (type == "EXE" || type == "APP" || type == "SHORTCUT")
+            {
+                actions.Add(new ItemContextAction
+                {
+                    Id = "APP_LAUNCH",
+                    Title = "Başlat",
+                    Icon = "▶",
+                    ActionType = "LAUNCH",
+                    Payload = target
+                });
+
+                if (File.Exists(target) || File.Exists(item.IconPath))
+                {
+                    string fileToLocate = File.Exists(target) ? target : item.IconPath;
+                    actions.Add(new ItemContextAction
+                    {
+                        Id = "APP_EXPLORE",
+                        Title = "Dosya Konumu",
+                        Icon = "📁",
+                        ActionType = "EXPLORE",
+                        Payload = fileToLocate
+                    });
+
+                    actions.Add(new ItemContextAction
+                    {
+                        Id = "APP_ADMIN",
+                        Title = "Yönetici Olarak",
+                        Icon = "⚡",
+                        ActionType = "RUNAS_ADMIN",
+                        Payload = target
+                    });
+                }
+                return actions;
+            }
+
+            // 8. Default fallback for actions / system / plugins
+            actions.Add(new ItemContextAction
+            {
+                Id = "DEFAULT_LAUNCH",
+                Title = "Başlat",
+                Icon = "▶",
+                ActionType = "LAUNCH",
+                Payload = target
+            });
+
+            return actions;
+        }
+
+        public bool ExecuteItemQuickAction(LauncherItem item, ItemContextAction action)
+        {
+            if (item == null || action == null) return false;
+
+            try
+            {
+                switch (action.ActionType.ToUpperInvariant())
+                {
+                    case "LAUNCH":
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = !string.IsNullOrEmpty(action.Payload) ? action.Payload : item.Target,
+                            Arguments = item.Arguments ?? "",
+                            WorkingDirectory = !string.IsNullOrEmpty(item.WorkingDirectory) ? item.WorkingDirectory : "",
+                            UseShellExecute = true
+                        });
+                        return true;
+
+                    case "URI":
+                        if (!string.IsNullOrEmpty(action.Payload))
+                        {
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = action.Payload,
+                                UseShellExecute = true
+                            });
+                            return true;
+                        }
+                        break;
+
+                    case "COPY_URL":
+                        string textToCopy = !string.IsNullOrEmpty(action.Payload) ? action.Payload : item.Target;
+                        if (!string.IsNullOrEmpty(textToCopy))
+                        {
+                            System.Windows.Clipboard.SetText(textToCopy);
+                            return true;
+                        }
+                        break;
+
+                    case "EXPLORE":
+                        string exploreTarget = !string.IsNullOrEmpty(action.Payload) ? action.Payload : item.Target;
+                        if (File.Exists(exploreTarget))
+                        {
+                            Process.Start("explorer.exe", $"/select,\"{exploreTarget}\"");
+                            return true;
+                        }
+                        else if (Directory.Exists(exploreTarget))
+                        {
+                            Process.Start("explorer.exe", $"\"{exploreTarget}\"");
+                            return true;
+                        }
+                        break;
+
+                    case "RUNAS_ADMIN":
+                        string adminTarget = !string.IsNullOrEmpty(action.Payload) ? action.Payload : item.Target;
+                        if (!string.IsNullOrEmpty(adminTarget))
+                        {
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = adminTarget,
+                                Arguments = item.Arguments ?? "",
+                                UseShellExecute = true,
+                                Verb = "runas"
+                            });
+                            return true;
+                        }
+                        break;
+
+                    case "TERMINAL":
+                        string termDir = !string.IsNullOrEmpty(action.Payload) ? action.Payload : item.Target;
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "cmd.exe",
+                            WorkingDirectory = Directory.Exists(termDir) ? termDir : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                            UseShellExecute = true
+                        });
+                        return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to execute ItemContextAction {Id} ({Type}) on {Target}", action.Id, action.ActionType, item.Target);
+            }
+
+            return false;
         }
     }
 }

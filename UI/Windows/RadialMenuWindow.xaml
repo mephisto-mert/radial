@@ -1,4 +1,4 @@
-<Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
+﻿<Window x:Class="RadialLauncher.UI.Windows.RadialMenuWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
@@ -43,33 +43,25 @@
 
         <!-- Hover Info Header in Upper Center -->
         <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-100,0,0"
-                   TextAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis">
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-120,0,0"
+                   TextAlignment="Center" MaxWidth="280" TextTrimming="CharacterEllipsis">
             <TextBlock.Effect>
                 <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="Black" Opacity="0.8"/>
             </TextBlock.Effect>
         </TextBlock>
 
-        <!-- Container for radial items -->
+        <!-- Contextual Quick Actions Floating Card (Inner Upper Area) -->
+        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-40,0,0"
+                Background="#EE181822" CornerRadius="10" Padding="8,5" BorderThickness="1" BorderBrush="#50588CEC"
+                Visibility="Collapsed" SnapsToDevicePixels="True" Panel.ZIndex="200">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Color="Black" Opacity="0.75"/>
+            </Border.Effect>
+            <StackPanel x:Name="ContextActionPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- Container for radial items (Center area is empty space) -->
         <Canvas x:Name="ItemsCanvas" Width="540" Height="540" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <!-- Center Button (Morphing Back/Close) -->
-            <Button x:Name="CenterButton" Width="58" Height="58" FontSize="16"
-                    Canvas.Left="241" Canvas.Top="241" 
-                    Foreground="#AAAAAA" BorderThickness="0"
-                    Command="{Binding CenterButtonClickCommand}"
-                    MouseRightButtonUp="CenterButton_MouseRightButtonUp"
-                    ToolTip="Sol Tık: Geri/Kapat | Sağ Tık: Ayarlar" Cursor="Hand"
-                    automation:AutomationProperties.Name="Merkez Buton"
-                    RenderTransformOrigin="0.5,0.5">
-                <Button.Content>
-                    <TextBlock x:Name="CenterText" Text="✕" FontSize="16" FontWeight="Bold"/>
-                </Button.Content>
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="29"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
         </Canvas>
 
         <!-- Pinned Quick Actions Strip (Bottom Inner Area) -->
@@ -119,7 +111,7 @@
         </Border>
 
         <!-- Category & Page Info Pill -->
-        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,100,0,0"
+        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,110,0,0"
                 Background="#E015151B" CornerRadius="12" Padding="14,4" BorderThickness="1" BorderBrush="#35FFFFFF"
                 SnapsToDevicePixels="True" Cursor="Hand" MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
             <Border.Effect>
@@ -139,7 +131,7 @@
                 Background="#F0101014" CornerRadius="24" Margin="60" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel HorizontalAlignment="Center">
                 <TextBlock Text="🚀 Radial Launcher'a Hoş Geldiniz!" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
-                <TextBlock Text="• Orta Fare Tuşu: Menüyü açar / kapatır\n• Çemberdeki bir öğeye tıklayın: Başlatır\n• Fare tekerleği: Sayfalar arası geçiş yapar\n• Klavye: Herhangi bir şey yazarak anında arayın" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
+                <TextBlock Text="• Orta Fare Tuşu: Menüyü açar / kapatır&#x0a;• Çemberdeki bir öğeye tıklayın: Başlatır&#x0a;• Fare sürükleme / Tekerlek: Sayfalar arası geçiş yapar&#x0a;• Klavye: Herhangi bir şey yazarak anında arayın" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
                 <Button Content="Anladım, Başla!" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
                         HorizontalAlignment="Center" Cursor="Hand" Command="{Binding DismissTutorialCommand}">
                     <Button.Resources>

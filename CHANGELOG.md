@@ -2,6 +2,18 @@
 
 All notable changes to Radial Launcher are documented in this file.
 
+## [1.0.0] - 2026-09-06
+
+### Final Release Polish & UX Enhancements
+- **Centralized WCAG Luminance Contrast**: Universal contrast engine (`ThemeContrastHelper`) ensuring pristine readability across all 8 themes and custom themes, preventing white-on-white and dark-on-dark UI elements.
+- **Sleek Minimal Scrollbar**: Redesigned modern WPF scrollbars with soft rounded thumbs, transparent track, and theme-adaptive hover styling.
+- **Empty Radial Center Design**: Removed center close button in favor of an elegant, intentional empty radial core; ESC or outer click dismisses.
+- **Intelligent Auto-Close**: Closes overlay smoothly when the mouse leaves interaction boundaries (>330px) with a 320ms grace timer.
+- **Universal Page & Category Navigation**: Global middle-mouse drag swipe (>35px threshold) and scroll wheel support to transition fluidly between pages and categories.
+- **Contextual Quick Actions Floating Panel**: Instant hover action card offering tailored actions (Steam Play/Store, Epic Launch, Web Open/Copy, Run as Admin, Open Containing Folder, System tools).
+- **Premium Soft Motion System**: Upgraded easing engine (`SoftQuartic`, `SoftCubic`, `SubtleSpring`) for velvety page transitions and hover dynamics.
+- **Modern Dark Glass Management & Dialogs**: Refreshed ManagementWindow, AddItemWindow, and EditItemWindow with clean tab structure, header contrast, and v1.0.0 branding.
+
 ## [1.0.0-rc1] - 2026-09-06
 
 ### Added

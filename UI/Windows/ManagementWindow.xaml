@@ -2,52 +2,55 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:RadialLauncher.UI.Controls"
-        Title="Radial Launcher — Yönetim &amp; Ayarlar" Height="700" Width="980"
+        Title="Radial Launcher — Yönetim &amp; Ayarlar" Height="700" Width="1000"
         WindowStartupLocation="CenterScreen" Background="#0F0F14" Foreground="#ECECF1"
         WindowStyle="SingleBorderWindow">
     <Window.Resources>
-        <Style TargetType="TabItem">
+        <!-- Modern Tab Control & Tab Item Styles -->
+        <Style TargetType="{x:Type TabControl}">
+            <Setter Property="Background" Value="#14141E"/>
+            <Setter Property="BorderBrush" Value="#25FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style TargetType="{x:Type TabItem}">
             <Setter Property="Padding" Value="18,10"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#AAA"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Foreground" Value="#588CEC"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="ComboBox">
-            <Setter Property="Foreground" Value="#ECECF1"/>
-            <Setter Property="Background" Value="#1C1C26"/>
-            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="#ECECF1"/>
-            <Setter Property="Background" Value="#1C1C26"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Style.Triggers>
-                <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#2C2C3E"/>
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#3B82F6"/>
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <Border x:Name="TabBorder" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}" Margin="0,0,4,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="#15FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#588CEC"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#588CEC"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="#1A588CEC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="16">
+    <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -57,43 +60,46 @@
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="⚙️" FontSize="22" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBlock Text="⚙️" FontSize="24" Margin="0,0,10,0" VerticalAlignment="Center"/>
                 <TextBlock Text="Radial Launcher" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                <TextBlock Text="PRO ARCHITECTURE v2.0" FontSize="11" FontWeight="Bold" Foreground="#588CEC" Margin="10,0,0,0" VerticalAlignment="Center" Background="#22588CEC" Padding="6,2"/>
+                <Border Background="#22588CEC" CornerRadius="6" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="v1.0.0" FontSize="11" FontWeight="Bold" Foreground="#588CEC"/>
+                </Border>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="🔍 Bilgisayarı Tara" Padding="14,6" Margin="4,0" Background="#22222E" Foreground="White" BorderBrush="#35FFFFFF" Click="ScanButton_Click"/>
-                <Button Content="💾 Yerel Yedekle" Padding="14,6" Margin="4,0" Background="#22222E" Foreground="White" BorderBrush="#35FFFFFF" Click="CreateLocalBackup_Click"/>
-                <Button Content="📂 Yedekten Yükle" Padding="14,6" Margin="4,0" Background="#22222E" Foreground="White" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
+                <Button Content="🔍 Bilgisayarı Tara" Padding="14,7" Margin="4,0" Background="#20202C" Foreground="White" BorderBrush="#35FFFFFF" Click="ScanButton_Click"/>
+                <Button Content="💾 Yerel Yedekle" Padding="14,7" Margin="4,0" Background="#20202C" Foreground="White" BorderBrush="#35FFFFFF" Click="CreateLocalBackup_Click"/>
+                <Button Content="📂 Yedekten Yükle" Padding="14,7" Margin="4,0" Background="#20202C" Foreground="White" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
             </StackPanel>
         </DockPanel>
 
         <!-- Main Tab Control -->
-        <TabControl x:Name="MainTabs" Grid.Row="1" Background="#14141C" BorderBrush="#22FFFFFF" BorderThickness="1">
+        <TabControl x:Name="MainTabs" Grid.Row="1" Background="#14141C" BorderBrush="#25FFFFFF" BorderThickness="1">
             <!-- TAB 1: UYGULAMALAR & ÖĞELER -->
             <TabItem Header="📋 Uygulamalar &amp; Kısayollar">
-                <Grid Margin="12">
+                <Grid Margin="14">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
                     <!-- Top Bar: Filter & Add -->
-                    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                    <DockPanel Grid.Row="0" Margin="0,0,0,14">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Kategori:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#AAA"/>
-                            <ComboBox x:Name="CategoryFilterCombo" Width="180" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C24" Foreground="White"/>
-                            <TextBox x:Name="SearchBox" Width="200" Margin="16,0,0,0" Padding="6,4" Background="#1C1C24" Foreground="White" BorderBrush="#33FFFFFF" TextChanged="SearchBox_TextChanged"/>
+                            <TextBlock Text="Kategori:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                            <ComboBox x:Name="CategoryFilterCombo" Width="190" SelectionChanged="CategoryFilterCombo_SelectionChanged" Background="#1C1C26" Foreground="White"/>
+                            <TextBlock Text="Ara:" VerticalAlignment="Center" Margin="16,0,8,0" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                            <TextBox x:Name="SearchBox" Width="210" Padding="8,5" Background="#1C1C26" Foreground="White" BorderBrush="#35FFFFFF" TextChanged="SearchBox_TextChanged"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="➕ Yeni Öğe Ekle" Padding="14,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="AddItemButton_Click"/>
+                            <Button Content="➕ Yeni Öğe Ekle" Padding="16,7" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="AddItemButton_Click"/>
                         </StackPanel>
                     </DockPanel>
 
                     <!-- Items DataGrid -->
                     <DataGrid x:Name="ItemsGrid" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False"
-                              Background="#121218" Foreground="White" RowBackground="#161620" AlternatingRowBackground="#1B1B26"
-                              BorderBrush="#25FFFFFF" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1FFFFFFF"
+                              Background="#121218" Foreground="White" RowBackground="#161620" AlternatingRowBackground="#1A1A26"
+                              BorderBrush="#25FFFFFF" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1AFFFFFF"
                               HeadersVisibility="Column" SelectionMode="Single">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="⭐" Binding="{Binding IsFavoriteText}" Width="40"/>
@@ -114,9 +120,9 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <Button Content="⭐" Padding="6,2" Margin="2,0" Background="#282835" Foreground="Gold" Click="ToggleFavorite_Click"/>
-                                            <Button Content="✏️" Padding="6,2" Margin="2,0" Background="#282835" Foreground="White" Click="EditItem_Click"/>
-                                            <Button Content="🗑️" Padding="6,2" Margin="2,0" Background="#3D1A1A" Foreground="#FF6B6B" Click="DeleteItem_Click"/>
+                                            <Button Content="⭐" Padding="6,2" Margin="2,0" Background="#282835" Foreground="Gold" ToolTip="Favori Yap" Click="ToggleFavorite_Click"/>
+                                            <Button Content="✏️" Padding="6,2" Margin="2,0" Background="#282835" Foreground="White" ToolTip="Düzenle" Click="EditItem_Click"/>
+                                            <Button Content="🗑️" Padding="6,2" Margin="2,0" Background="#3D1A1A" Foreground="#FF6B6B" ToolTip="Sil" Click="DeleteItem_Click"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -130,17 +136,17 @@
             <TabItem Header="🎨 Temalar &amp; Görsellik">
                 <Grid Margin="16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="280"/>
+                        <ColumnDefinition Width="290"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Left: Theme Selector & Live Radial Preview -->
-                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
                         <TextBlock Text="Hazır Temalar (8 Seçkin Tema)" FontSize="14" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <ListBox x:Name="ThemesListBox" Height="200" Background="#161622" Foreground="White" BorderBrush="#33FFFFFF" SelectionChanged="ThemesListBox_SelectionChanged"/>
+                        <ListBox x:Name="ThemesListBox" Height="200" Background="#161622" Foreground="White" BorderBrush="#35FFFFFF" SelectionChanged="ThemesListBox_SelectionChanged"/>
 
                         <TextBlock Text="Canlı Önizleme" FontSize="14" FontWeight="Bold" Margin="0,16,0,8"/>
-                        <Border Background="#0C0C10" CornerRadius="12" Padding="10" BorderBrush="#22FFFFFF" BorderThickness="1" HorizontalAlignment="Center">
+                        <Border Background="#0C0C10" CornerRadius="12" Padding="10" BorderBrush="#25FFFFFF" BorderThickness="1" HorizontalAlignment="Center">
                             <controls:RadialPreviewControl x:Name="LivePreviewControl"/>
                         </Border>
                     </StackPanel>
@@ -170,7 +176,7 @@
                             <!-- Density -->
                             <TextBlock Text="Halka Yoğunluğu (Density)" FontWeight="SemiBold" Foreground="#DDD" Margin="0,0,0,4"/>
                             <TextBlock Text="Tek bir halka sayfasında kaç öğe yerleştirileceğini belirler." FontSize="11" Foreground="#888" Margin="0,0,0,8"/>
-                            <ComboBox x:Name="DensityCombo" Width="220" HorizontalAlignment="Left" Background="#1C1C24" Foreground="White" Margin="0,0,0,16" SelectionChanged="DensityCombo_SelectionChanged">
+                            <ComboBox x:Name="DensityCombo" Width="240" HorizontalAlignment="Left" Background="#1C1C26" Foreground="White" Margin="0,0,0,16" SelectionChanged="DensityCombo_SelectionChanged">
                                 <ComboBoxItem Content="Geniş (15 Öğeli)"/>
                                 <ComboBoxItem Content="Kompakt (18 Öğeli)"/>
                             </ComboBox>
@@ -186,25 +192,25 @@
                             <!-- Palette Information -->
                             <TextBlock Text="Seçili Tema Renk Paleti" FontWeight="SemiBold" Foreground="#DDD" Margin="0,0,0,10"/>
                             <WrapPanel x:Name="PalettePreviewPanel" Margin="0,0,0,10">
-                                <Border Background="#1C1C24" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                     <StackPanel Orientation="Horizontal">
                                         <Rectangle x:Name="SwatchAccent1" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#588CEC"/>
                                         <TextBlock Text="Birincil Vurgu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="#1C1C24" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                     <StackPanel Orientation="Horizontal">
                                         <Rectangle x:Name="SwatchAccent2" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#8C5AF5"/>
                                         <TextBlock Text="İkincil Vurgu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="#1C1C24" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                     <StackPanel Orientation="Horizontal">
                                         <Rectangle x:Name="SwatchBackground" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#121216"/>
                                         <TextBlock Text="Arkaplan" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="#1C1C24" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                <Border Background="#1C1C26" CornerRadius="8" Padding="10,6" Margin="0,0,8,8" BorderBrush="#35FFFFFF" BorderThickness="1">
                                     <StackPanel Orientation="Horizontal">
                                         <Rectangle x:Name="SwatchCard" Width="18" Height="18" RadiusX="4" RadiusY="4" Margin="0,0,8,0" Fill="#26262E"/>
                                         <TextBlock Text="İkon Baloncuğu" FontSize="11" VerticalAlignment="Center" Foreground="#AAA"/>
@@ -219,12 +225,12 @@
             <!-- TAB 3: GENEL AYARLAR & KISAYOLLAR & YEDEKLEME -->
             <TabItem Header="⚙️ Kısayol &amp; Yerel Yedek">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24" MaxWidth="620" HorizontalAlignment="Left">
+                    <StackPanel Margin="24" MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="Menüyü Tetikleme Kısayolu" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="Radial Launcher'ı ekranda açmak için farenizden veya klavyenizden bir kısayol seçin." FontSize="12" Foreground="#AAA" Margin="0,0,0,12"/>
+                        <TextBlock Text="Radial Launcher'ı ekranda açmak için farenizden veya klavyenizden bir kısayol seçin." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
                         
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <ComboBox x:Name="ShortcutCombo" Width="280" Background="#1C1C24" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
+                            <ComboBox x:Name="ShortcutCombo" Width="300" Background="#1C1C26" Foreground="White" SelectionChanged="ShortcutCombo_SelectionChanged">
                                 <ComboBoxItem Content="Orta Tuş (Fare Tekerleği)"/>
                                 <ComboBoxItem Content="Fare 4 (Geri Tuşu - XButton1)"/>
                                 <ComboBoxItem Content="Fare 5 (İleri Tuşu - XButton2)"/>
@@ -237,9 +243,9 @@
                                 <ComboBoxItem Content="F4 Tuşu"/>
                                 <ComboBoxItem Content="~ (Tilde Tuşu)"/>
                             </ComboBox>
-                            <Button Content="🎯 Yeni Kısayol Ata" Margin="10,0,0,0" Padding="12,6" Background="#282835" Foreground="White" BorderBrush="#35FFFFFF" Click="AssignCustomShortcut_Click"/>
+                            <Button Content="🎯 Yeni Kısayol Ata" Margin="10,0,0,0" Padding="14,6" Background="#282835" Foreground="White" BorderBrush="#35FFFFFF" Click="AssignCustomShortcut_Click"/>
                         </StackPanel>
-                        <TextBlock x:Name="ActiveShortcutLabel" Text="Aktif Kısayol: MiddleClick" FontSize="11" Foreground="#588CEC" Margin="0,0,0,16"/>
+                        <TextBlock x:Name="ActiveShortcutLabel" Text="Aktif Kısayol: MiddleClick" FontSize="12" Foreground="#588CEC" FontWeight="SemiBold" Margin="0,0,0,16"/>
 
                         <Separator Background="#22FFFFFF" Margin="0,10,0,20"/>
 
@@ -250,16 +256,16 @@
 
                         <!-- Local Backup & Restore -->
                         <TextBlock Text="💾 Yerel Yedekleme &amp; Geri Yükleme" FontSize="15" FontWeight="Bold" Margin="0,0,0,6"/>
-                        <TextBlock Text="Tüm kısayollarınızı, kategorilerinizi ve istatistiklerinizi yerel diske otomatik veya manuel yedekleyin. Son 10 yedek güvenle korunur." FontSize="12" Foreground="#AAA" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock Text="Tüm kısayollarınızı, kategorilerinizi ve istatistiklerinizi yerel diske otomatik veya manuel yedekleyin. Son 10 yedek güvenle korunur." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
-                            <Button Content="💾 Şimdi Yerel Yedekle" Padding="14,8" Margin="0,0,10,0" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CreateLocalBackup_Click"/>
-                            <Button Content="📂 Yerel Yedekten Geri Yükle" Padding="14,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
+                            <Button Content="💾 Şimdi Yerel Yedekle" Padding="16,8" Margin="0,0,10,0" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CreateLocalBackup_Click"/>
+                            <Button Content="📂 Yerel Yedekten Geri Yükle" Padding="16,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="RestoreLocalBackup_Click"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="📤 Dışa Aktar (JSON)" Padding="12,6" Margin="0,0,10,0" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#33FFFFFF" Click="ExportButton_Click"/>
-                            <Button Content="📥 İçe Aktar (JSON)" Padding="12,6" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#33FFFFFF" Click="ImportButton_Click"/>
+                            <Button Content="📤 Dışa Aktar (JSON)" Padding="12,6" Margin="0,0,10,0" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ExportButton_Click"/>
+                            <Button Content="📥 İçe Aktar (JSON)" Padding="12,6" Background="#22222E" Foreground="#DDD" BorderThickness="1" BorderBrush="#35FFFFFF" Click="ImportButton_Click"/>
                         </StackPanel>
                         <TextBlock x:Name="BackupStatusLabel" Text="Yedekleme konumu: %LOCALAPPDATA%\RadialLauncher\Backups\" FontSize="11" Foreground="#888"/>
                     </StackPanel>
@@ -269,20 +275,20 @@
             <!-- TAB 4: GÜNCELLEMELER & TANILAMA & SİSTEM -->
             <TabItem Header="ℹ️ Güncelleme &amp; Tanılama">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24" MaxWidth="580" HorizontalAlignment="Left">
+                    <StackPanel Margin="24" MaxWidth="600" HorizontalAlignment="Left">
                         <TextBlock Text="🚀 Yazılım Güncellemeleri" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock x:Name="CurrentVersionText" Text="Yüklü Sürüm: v1.0.0 (Release Candidate)" FontSize="13" Foreground="#AAA" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="CurrentVersionText" Text="Yüklü Sürüm: v1.0.0 (Final Release)" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,10"/>
                         <CheckBox x:Name="AutoCheckUpdatesCheck" Content="Açılışta güncellemeleri otomatik kontrol et" Foreground="White" Margin="0,0,0,12" Click="AutoCheckUpdatesCheck_Click"/>
                         
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button x:Name="CheckUpdatesNowBtn" Content="🔄 Güncellemeleri Şimdi Kontrol Et" Padding="14,8" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CheckUpdatesNowBtn_Click"/>
+                            <Button x:Name="CheckUpdatesNowBtn" Content="🔄 Güncellemeleri Şimdi Kontrol Et" Padding="16,8" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0" Click="CheckUpdatesNowBtn_Click"/>
                         </StackPanel>
-                        <TextBlock x:Name="UpdateCheckStatusLabel" Text="" FontSize="12" Foreground="#AAA" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock x:Name="UpdateCheckStatusLabel" Text="" FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                         <Separator Background="#22FFFFFF" Margin="0,16,0,20"/>
 
                         <TextBlock Text="🩺 Tanılama &amp; Log Kayıtları" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="Uygulama log dosyaları ve sistem tanılama bilgileri." FontSize="12" Foreground="#AAA" Margin="0,0,0,12"/>
+                        <TextBlock Text="Uygulama log dosyaları ve sistem tanılama bilgileri." FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                             <Button Content="📁 Log Klasörünü Aç" Padding="14,8" Margin="0,0,10,0" Background="#282835" Foreground="White" BorderThickness="1" BorderBrush="#35FFFFFF" Click="OpenLogsFolderBtn_Click"/>
@@ -292,15 +298,15 @@
                         <Separator Background="#22FFFFFF" Margin="0,16,0,20"/>
 
                         <TextBlock Text="⚠️ Fabrika Ayarlarına Sıfırla" FontSize="15" FontWeight="Bold" Foreground="#FF6B6B" Margin="0,0,0,8"/>
-                        <TextBlock Text="Tüm tema, kısayol ve görsel ayarları varsayılan fabrika değerlerine geri döndürür." FontSize="12" Foreground="#AAA" Margin="0,0,0,12"/>
-                        <Button Content="Fabrika Ayarlarına Sıfırla" Padding="14,8" Background="#3D1A1A" Foreground="#FF6B6B" FontWeight="Bold" BorderThickness="1" BorderBrush="#66FF6B6B" HorizontalAlignment="Left" Click="ResetSettingsBtn_Click"/>
+                        <TextBlock Text="Tüm tema, kısayol ve görsel ayarları varsayılan fabrika değerlerine geri döndürür. (Kullanıcı öğeleri ve veritabanı korunur)" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,12"/>
+                        <Button Content="Fabrika Ayarlarına Sıfırla" Padding="16,8" Background="#3D1A1A" Foreground="#FF6B6B" FontWeight="Bold" BorderThickness="1" BorderBrush="#66FF6B6B" HorizontalAlignment="Left" Click="ResetSettingsBtn_Click"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
 
         <!-- Status Bar -->
-        <StatusBar Grid.Row="2" Background="#0C0C10" Foreground="#888" Margin="0,10,0,0">
+        <StatusBar Grid.Row="2" Background="#0C0C10" Foreground="#94A3B8" Margin="0,10,0,0">
             <TextBlock x:Name="StatusText" Text="Hazır."/>
         </StatusBar>
     </Grid>

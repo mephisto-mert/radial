@@ -36,6 +36,7 @@ namespace RadialLauncher.UI.ViewModels
         private List<LauncherItem> _contextualItems = new();
 
         public IVirtualDesktopService DesktopService => _desktopService;
+        public IContextualActionService ContextualActionService => _contextualActionService;
 
         private readonly Stack<(int parentId, string title)> _navStack = new();
         private List<LauncherItem> _allItems = new();
@@ -247,11 +248,11 @@ namespace RadialLauncher.UI.ViewModels
                 }
                 else if (cat.Id == -99 || cat.Name.Contains("Açık Pencereler", StringComparison.OrdinalIgnoreCase))
                 {
-                    var openWins = _windowSwitcher.GetOpenWindows();
-                    WindowIcons.Clear();
+                    var openWins = _windowSwitcher?.GetOpenWindows() ?? new List<WindowInfo>();
+                    WindowIcons?.Clear();
                     foreach (var w in openWins)
                     {
-                        if (w.Icon != null) WindowIcons[w.Handle.ToString()] = w.Icon;
+                        if (w.Icon != null && WindowIcons != null) WindowIcons[w.Handle.ToString()] = w.Icon;
                     }
                     filtered = openWins.Select((w, idx) => new LauncherItem
                     {
@@ -430,6 +431,51 @@ namespace RadialLauncher.UI.ViewModels
         }
 
         [RelayCommand]
+        public void NavigateNextGlobal()
+        {
+            if (TotalPages > 1 && CurrentPageIndex < TotalPages - 1)
+            {
+                CurrentPageIndex++;
+                RefreshPageItems();
+            }
+            else if (Categories.Count > 1)
+            {
+                int nextCat = (CurrentCategoryIndex + 1) % Categories.Count;
+                SwitchCategory(nextCat);
+            }
+            else if (TotalPages > 1)
+            {
+                CurrentPageIndex = 0;
+                RefreshPageItems();
+            }
+        }
+
+        [RelayCommand]
+        public void NavigatePrevGlobal()
+        {
+            if (TotalPages > 1 && CurrentPageIndex > 0)
+            {
+                CurrentPageIndex--;
+                RefreshPageItems();
+            }
+            else if (Categories.Count > 1)
+            {
+                int prevCat = (CurrentCategoryIndex - 1 + Categories.Count) % Categories.Count;
+                SwitchCategory(prevCat);
+                if (TotalPages > 1)
+                {
+                    CurrentPageIndex = TotalPages - 1;
+                    RefreshPageItems();
+                }
+            }
+            else if (TotalPages > 1)
+            {
+                CurrentPageIndex = TotalPages - 1;
+                RefreshPageItems();
+            }
+        }
+
+        [RelayCommand]
         public void SwitchCategory(int index)
         {
             if (index >= 0 && index < Categories.Count)
@@ -455,8 +501,8 @@ namespace RadialLauncher.UI.ViewModels
         [RelayCommand]
         public void SwitchDesktop(string direction)
         {
-            if (direction == "next") _desktopService.SwitchToNextDesktop();
-            else if (direction == "prev") _desktopService.SwitchToPreviousDesktop();
+            if (direction == "next") _desktopService?.SwitchToNextDesktop();
+            else if (direction == "prev") _desktopService?.SwitchToPreviousDesktop();
         }
 
         [RelayCommand]
