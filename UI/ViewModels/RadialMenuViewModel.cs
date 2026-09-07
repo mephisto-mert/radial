@@ -308,18 +308,9 @@ namespace RadialLauncher.UI.ViewModels
                 }
                 else if (cat.SystemKey == "Cat_MostUsed" || cat.Id == 1)
                 {
-                    // Recency/frequency-aware weighted ranking:
-                    DateTime now = DateTime.UtcNow;
-                    filtered = _allItems.Where(i => i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite || i.UseCount > 0 || i.LaunchCount > 0)
-                                        .Where(i => i.ParentId == 0)
-                                        .OrderByDescending(i => CalculateUsageScore(i, now))
-                                        .ThenBy(i => i.Position)
+                    filtered = _allItems.Where(i => (i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite) && i.ParentId == 0)
+                                        .OrderBy(i => i.Position)
                                         .ToList();
-
-                    if (_contextualItems != null && _contextualItems.Count > 0)
-                    {
-                        filtered.InsertRange(0, _contextualItems);
-                    }
                 }
                 else
                 {
@@ -346,67 +337,43 @@ namespace RadialLauncher.UI.ViewModels
                 sourceIndex == targetIndex)
                 return;
 
-            var sourceItem = CurrentPageItems[sourceIndex];
-            var targetItem = CurrentPageItems[targetIndex];
+            int pageSize = ActiveTheme.DensityMode == "Compact" ? 18 : 15;
+            int baseOffset = CurrentPageIndex * pageSize;
 
+            List<LauncherItem> activeList;
             if (IsSubmenu && _navStack.Count > 0)
             {
                 int currentParentId = _navStack.Peek().parentId;
-                var subItems = _allItems.Where(i => i.ParentId == currentParentId).OrderBy(i => i.Position).ToList();
-                int oldIdx = subItems.FindIndex(i => i.Id == sourceItem.Id);
-                int newIdx = subItems.FindIndex(i => i.Id == targetItem.Id);
-                if (oldIdx >= 0 && newIdx >= 0)
+                activeList = _allItems.Where(i => i.ParentId == currentParentId).OrderBy(i => i.Position).ToList();
+            }
+            else
+            {
+                var cat = (Categories.Count > CurrentCategoryIndex) ? Categories[CurrentCategoryIndex] : null;
+                if (cat != null && cat.Id > 1)
                 {
-                    var itemToMove = subItems[oldIdx];
-                    subItems.RemoveAt(oldIdx);
-                    subItems.Insert(newIdx, itemToMove);
-                    for (int p = 0; p < subItems.Count; p++)
-                    {
-                        subItems[p].Position = p + 1;
-                    }
-                    _itemRepo.UpdatePositions(subItems);
+                    activeList = _allItems.Where(i => i.CategoryId == cat.Id && i.ParentId == 0).OrderBy(i => i.Position).ToList();
+                }
+                else
+                {
+                    activeList = _allItems.Where(i => (i.CategoryId <= 1 || i.IsFavorite || i.IsUserAdded) && i.ParentId == 0).OrderBy(i => i.Position).ToList();
                 }
             }
-            else if (sourceItem.CategoryId > 1 && sourceItem.CategoryId == targetItem.CategoryId)
+
+            int globalSource = baseOffset + sourceIndex;
+            int globalTarget = baseOffset + targetIndex;
+
+            if (globalSource >= 0 && globalSource < activeList.Count && globalTarget >= 0 && globalTarget < activeList.Count)
             {
-                int catId = sourceItem.CategoryId;
-                var itemsInCat = _allItems.Where(i => i.CategoryId == catId && i.ParentId == 0).OrderBy(i => i.Position).ToList();
-                int oldDbIdx = itemsInCat.FindIndex(i => i.Id == sourceItem.Id);
-                int newDbIdx = itemsInCat.FindIndex(i => i.Id == targetItem.Id);
+                var moved = activeList[globalSource];
+                activeList.RemoveAt(globalSource);
+                activeList.Insert(globalTarget, moved);
 
-                if (oldDbIdx >= 0 && newDbIdx >= 0)
+                for (int p = 0; p < activeList.Count; p++)
                 {
-                    var itemToMove = itemsInCat[oldDbIdx];
-                    itemsInCat.RemoveAt(oldDbIdx);
-                    itemsInCat.Insert(newDbIdx, itemToMove);
-
-                    for (int p = 0; p < itemsInCat.Count; p++)
-                    {
-                        itemsInCat[p].Position = p + 1;
-                    }
-
-                    _itemRepo.UpdatePositions(itemsInCat);
+                    activeList[p].Position = p + 1;
                 }
-            }
-            else if (sourceItem.Id > 0 && targetItem.Id > 0)
-            {
-                var allRoots = _allItems.Where(i => i.ParentId == 0).OrderBy(i => i.Position).ToList();
-                int oldDbIdx = allRoots.FindIndex(i => i.Id == sourceItem.Id);
-                int newDbIdx = allRoots.FindIndex(i => i.Id == targetItem.Id);
 
-                if (oldDbIdx >= 0 && newDbIdx >= 0)
-                {
-                    var itemToMove = allRoots[oldDbIdx];
-                    allRoots.RemoveAt(oldDbIdx);
-                    allRoots.Insert(newDbIdx, itemToMove);
-
-                    for (int p = 0; p < allRoots.Count; p++)
-                    {
-                        allRoots[p].Position = p + 1;
-                    }
-
-                    _itemRepo.UpdatePositions(allRoots);
-                }
+                _itemRepo.UpdatePositions(activeList);
             }
 
             _allItems = _itemRepo.GetAll();

@@ -83,7 +83,7 @@ namespace RadialLauncher.UI.Windows
                 ClearActiveDwmThumbnails();
                 Dispatcher.Invoke(this.Hide);
             };
-            _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(RenderLayout);
+            _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(() => RenderLayout(false));
 
             this.PreviewMouseDown += Window_PreviewMouseDown;
             this.PreviewMouseMove += Window_PreviewMouseMove;
@@ -161,7 +161,7 @@ namespace RadialLauncher.UI.Windows
                 _viewModel.InitializeForDisplay();
 
                 ApplyThemeVisuals(_viewModel.ActiveTheme);
-                RenderLayout();
+                RenderLayout(true);
                 HideContextActionCard();
 
                 this.Opacity = 1;
@@ -210,7 +210,7 @@ namespace RadialLauncher.UI.Windows
             SearchText.Foreground = new SolidColorBrush(theme.TextColor);
         }
 
-        public void RenderLayout()
+        public void RenderLayout(bool animateBloom = false)
         {
             ApplyThemeVisuals(_viewModel.ActiveTheme);
             ClearActiveDwmThumbnails();
@@ -477,8 +477,11 @@ namespace RadialLauncher.UI.Windows
                 ItemsCanvas.Children.Add(lblBorder);
                 _visibleButtons.Add((btn, lblBorder, item));
 
-                RadialMotionSystem.AnimateItemBloom(btn, i, theme.ReduceMotion);
-                RadialMotionSystem.AnimateItemBloom(lblBorder, i, theme.ReduceMotion);
+                if (animateBloom)
+                {
+                    RadialMotionSystem.AnimateItemBloom(btn, i, theme.ReduceMotion);
+                    RadialMotionSystem.AnimateItemBloom(lblBorder, i, theme.ReduceMotion);
+                }
             }
 
             RenderCategoryDots();

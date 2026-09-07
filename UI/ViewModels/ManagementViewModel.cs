@@ -111,17 +111,13 @@ namespace RadialLauncher.UI.ViewModels
         public void RefreshItems()
         {
             var all = _itemRepo.GetAll();
-            if (SelectedCategory != null && SelectedCategory.SystemKey == "Cat_MostUsed")
+            if (SelectedCategory != null && (SelectedCategory.SystemKey == "Cat_MostUsed" || SelectedCategory.Id == 1))
             {
-                // Exact same recency/frequency weighted calculation as RadialMenuViewModel
-                DateTime now = DateTime.UtcNow;
-                all = all.Where(i => i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite || i.UseCount > 0 || i.LaunchCount > 0)
-                         .Where(i => i.ParentId == 0)
-                         .OrderByDescending(i => RadialMenuViewModel.CalculateUsageScore(i, now))
-                         .ThenBy(i => i.Position)
+                all = all.Where(i => (i.CategoryId <= 1 || i.IsUserAdded || i.IsFavorite) && i.ParentId == 0)
+                         .OrderBy(i => i.Position)
                          .ToList();
             }
-            else if (SelectedCategory != null && SelectedCategory.SystemKey != "Cat_MostUsed")
+            else if (SelectedCategory != null && SelectedCategory.Id > 1)
             {
                 all = all.Where(i => i.CategoryId == SelectedCategory.Id && i.ParentId == 0)
                          .OrderBy(i => i.Position)
@@ -130,8 +126,7 @@ namespace RadialLauncher.UI.ViewModels
             else
             {
                 all = all.Where(i => i.ParentId == 0)
-                         .OrderBy(i => i.CategoryId)
-                         .ThenBy(i => i.Position)
+                         .OrderBy(i => i.Position)
                          .ToList();
             }
 
