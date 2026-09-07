@@ -196,7 +196,7 @@
                     </Border>
 
                     <!-- Items DataGrid -->
-                    <DataGrid x:Name="ItemsGrid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False"
+                    <DataGrid x:Name="ItemsGrid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                               Background="#121218" Foreground="White" RowBackground="#13131C" AlternatingRowBackground="#171724"
                               BorderBrush="#25FFFFFF" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1AFFFFFF"
                               HeadersVisibility="Column" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
