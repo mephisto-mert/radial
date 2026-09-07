@@ -18,5 +18,6 @@ namespace RadialLauncher.Data.Repositories
         void IncrementLaunchCount(int id);
         void UpdatePositions(IEnumerable<LauncherItem> items);
         int DeleteScannedItems();
+        event System.Action? OnItemsChanged;
     }
 }

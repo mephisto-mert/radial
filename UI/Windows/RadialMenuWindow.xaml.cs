@@ -33,6 +33,15 @@ namespace RadialLauncher.UI.Windows
         private bool _isDragNavigating = false;
         private bool _hasNavigatedInCurrentDrag = false;
 
+        // Circular Bubble Drag & Drop Reordering
+        private Button? _draggedBubbleButton = null;
+        private Border? _draggedBubbleLabel = null;
+        private int _draggedBubbleIndex = -1;
+        private LauncherItem? _draggedBubbleItem = null;
+        private Point _bubbleDragStartPoint;
+        private bool _isDraggingBubble = false;
+        private bool _isPotentialBubbleDrag = false;
+
         // Auto-close on mouse leave
         private readonly DispatcherTimer _autoCloseGraceTimer;
         private bool _isInteractingWithQuickActions = false;
@@ -130,6 +139,12 @@ namespace RadialLauncher.UI.Windows
                 _isDragNavigating = false;
                 _hasNavigatedInCurrentDrag = false;
                 _isInteractingWithQuickActions = false;
+                _isDraggingBubble = false;
+                _isPotentialBubbleDrag = false;
+                _draggedBubbleButton = null;
+                _draggedBubbleLabel = null;
+                _draggedBubbleIndex = -1;
+                _draggedBubbleItem = null;
 
                 var source = PresentationSource.FromVisual(this);
                 double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
@@ -299,8 +314,44 @@ namespace RadialLauncher.UI.Windows
 
                 // Wire interactions
                 int localIndex = i;
-                btn.Click += (s, e) => _viewModel.LaunchItem(item);
-                lblBorder.MouseLeftButtonUp += (s, e) => _viewModel.LaunchItem(item);
+
+                btn.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    _isPotentialBubbleDrag = true;
+                    _isDraggingBubble = false;
+                    _draggedBubbleButton = btn;
+                    _draggedBubbleLabel = lblBorder;
+                    _draggedBubbleIndex = localIndex;
+                    _draggedBubbleItem = item;
+                    _bubbleDragStartPoint = e.GetPosition(ItemsCanvas);
+                };
+
+                lblBorder.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    _isPotentialBubbleDrag = true;
+                    _isDraggingBubble = false;
+                    _draggedBubbleButton = btn;
+                    _draggedBubbleLabel = lblBorder;
+                    _draggedBubbleIndex = localIndex;
+                    _draggedBubbleItem = item;
+                    _bubbleDragStartPoint = e.GetPosition(ItemsCanvas);
+                };
+
+                btn.Click += (s, e) =>
+                {
+                    if (!_isDraggingBubble)
+                    {
+                        _viewModel.LaunchItem(item);
+                    }
+                };
+
+                lblBorder.MouseLeftButtonUp += (s, e) =>
+                {
+                    if (!_isDraggingBubble)
+                    {
+                        _viewModel.LaunchItem(item);
+                    }
+                };
 
                 if (item.Type == "WINDOW" && long.TryParse(item.Target, out long hWndVal))
                 {
@@ -607,11 +658,20 @@ namespace RadialLauncher.UI.Windows
 
         private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.MiddleButton == MouseButtonState.Pressed || e.LeftButton == MouseButtonState.Pressed)
+            if (e.MiddleButton == MouseButtonState.Pressed)
             {
                 _dragStartPoint = e.GetPosition(this);
                 _isDragNavigating = true;
                 _hasNavigatedInCurrentDrag = false;
+            }
+            else if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                if (!_isPotentialBubbleDrag && !_isDraggingBubble)
+                {
+                    _dragStartPoint = e.GetPosition(this);
+                    _isDragNavigating = true;
+                    _hasNavigatedInCurrentDrag = false;
+                }
             }
         }
 
@@ -622,7 +682,7 @@ namespace RadialLauncher.UI.Windows
             double centerY = this.Height / 2.0;
             double distFromCenter = Math.Sqrt(Math.Pow(pos.X - centerX, 2) + Math.Pow(pos.Y - centerY, 2));
 
-            if (distFromCenter > 330.0 && !_isInteractingWithQuickActions)
+            if (distFromCenter > 330.0 && !_isInteractingWithQuickActions && !_isDraggingBubble)
             {
                 if (!_autoCloseGraceTimer.IsEnabled)
                 {
@@ -634,7 +694,38 @@ namespace RadialLauncher.UI.Windows
                 _autoCloseGraceTimer.Stop();
             }
 
-            if (_isDragNavigating && (e.MiddleButton == MouseButtonState.Pressed || e.LeftButton == MouseButtonState.Pressed))
+            var canvasPos = e.GetPosition(ItemsCanvas);
+
+            // 1. Bubble Drag & Drop
+            if (_isPotentialBubbleDrag && _draggedBubbleButton != null && e.LeftButton == MouseButtonState.Pressed)
+            {
+                double dragDist = Math.Sqrt(Math.Pow(canvasPos.X - _bubbleDragStartPoint.X, 2) + Math.Pow(canvasPos.Y - _bubbleDragStartPoint.Y, 2));
+                if (dragDist > 6.0)
+                {
+                    _isDraggingBubble = true;
+                    _isDragNavigating = false;
+                    _hasNavigatedInCurrentDrag = false;
+
+                    Panel.SetZIndex(_draggedBubbleButton, 500);
+                    if (_draggedBubbleLabel != null) Panel.SetZIndex(_draggedBubbleLabel, 501);
+
+                    double btnW = _draggedBubbleButton.Width;
+                    double btnH = _draggedBubbleButton.Height;
+                    Canvas.SetLeft(_draggedBubbleButton, canvasPos.X - (btnW / 2.0));
+                    Canvas.SetTop(_draggedBubbleButton, canvasPos.Y - (btnH / 2.0));
+
+                    if (_draggedBubbleLabel != null)
+                    {
+                        double lblW = _draggedBubbleLabel.Width;
+                        Canvas.SetLeft(_draggedBubbleLabel, canvasPos.X - (lblW / 2.0));
+                        Canvas.SetTop(_draggedBubbleLabel, canvasPos.Y + (btnH / 2.0) + 2.0);
+                    }
+                    return;
+                }
+            }
+
+            // 2. Global Swipe Navigation
+            if (_isDragNavigating && !_isDraggingBubble && (e.MiddleButton == MouseButtonState.Pressed || e.LeftButton == MouseButtonState.Pressed))
             {
                 double dx = pos.X - _dragStartPoint.X;
                 if (!_hasNavigatedInCurrentDrag && Math.Abs(dx) > 35)
@@ -654,28 +745,64 @@ namespace RadialLauncher.UI.Windows
                 }
             }
 
-            var canvasPos = e.GetPosition(ItemsCanvas);
-            foreach (var (btn, _, _) in _visibleButtons)
+            // 3. Magnetic Hover (only if not dragging a bubble)
+            if (!_isDraggingBubble)
             {
-                double bx = Canvas.GetLeft(btn) + (btn.Width / 2.0);
-                double by = Canvas.GetTop(btn) + (btn.Height / 2.0);
-                var offset = RadialLayoutCalculator.CalculateMagneticHoverOffset(new Point(bx, by), canvasPos, 6.0);
-                if (btn.RenderTransform is TransformGroup group)
+                foreach (var (btn, _, _) in _visibleButtons)
                 {
-                    var translate = group.Children.Count > 1 ? group.Children[1] as TranslateTransform : null;
-                    if (translate == null)
+                    double bx = Canvas.GetLeft(btn) + (btn.Width / 2.0);
+                    double by = Canvas.GetTop(btn) + (btn.Height / 2.0);
+                    var offset = RadialLayoutCalculator.CalculateMagneticHoverOffset(new Point(bx, by), canvasPos, 6.0);
+                    if (btn.RenderTransform is TransformGroup group)
                     {
-                        translate = new TranslateTransform();
-                        group.Children.Add(translate);
+                        var translate = group.Children.Count > 1 ? group.Children[1] as TranslateTransform : null;
+                        if (translate == null)
+                        {
+                            translate = new TranslateTransform();
+                            group.Children.Add(translate);
+                        }
+                        translate.X = offset.X;
+                        translate.Y = offset.Y;
                     }
-                    translate.X = offset.X;
-                    translate.Y = offset.Y;
                 }
             }
         }
 
         private void Window_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
+            if (_isDraggingBubble)
+            {
+                var canvasPos = e.GetPosition(ItemsCanvas);
+                int count = _viewModel.CurrentPageItems.Count;
+                int targetSlot = RadialLayoutCalculator.CalculateNearestSlot(canvasPos, count, 250, 250);
+                int sourceIdx = _draggedBubbleIndex;
+
+                _isDraggingBubble = false;
+                _isPotentialBubbleDrag = false;
+                _draggedBubbleButton = null;
+                _draggedBubbleLabel = null;
+                _draggedBubbleIndex = -1;
+                _draggedBubbleItem = null;
+
+                if (sourceIdx >= 0 && targetSlot >= 0 && sourceIdx != targetSlot && targetSlot < count)
+                {
+                    _viewModel.ReorderCurrentPageItems(sourceIdx, targetSlot);
+                }
+                else
+                {
+                    RenderLayout();
+                }
+
+                e.Handled = true;
+                return;
+            }
+
+            _isPotentialBubbleDrag = false;
+            _draggedBubbleButton = null;
+            _draggedBubbleLabel = null;
+            _draggedBubbleIndex = -1;
+            _draggedBubbleItem = null;
+
             if (_isDragNavigating)
             {
                 _isDragNavigating = false;
@@ -862,6 +989,12 @@ namespace RadialLauncher.UI.Windows
         {
             _autoCloseGraceTimer.Stop();
             _isDragNavigating = false;
+            _isDraggingBubble = false;
+            _isPotentialBubbleDrag = false;
+            _draggedBubbleButton = null;
+            _draggedBubbleLabel = null;
+            _draggedBubbleIndex = -1;
+            _draggedBubbleItem = null;
             ClearActiveDwmThumbnails();
             this.Hide();
         }

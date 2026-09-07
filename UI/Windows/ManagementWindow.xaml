@@ -199,7 +199,12 @@
                     <DataGrid x:Name="ItemsGrid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False"
                               Background="#121218" Foreground="White" RowBackground="#13131C" AlternatingRowBackground="#171724"
                               BorderBrush="#25FFFFFF" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1AFFFFFF"
-                              HeadersVisibility="Column" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                              HeadersVisibility="Column" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              AllowDrop="True"
+                              PreviewMouseLeftButtonDown="ItemsGrid_PreviewMouseLeftButtonDown"
+                              MouseMove="ItemsGrid_MouseMove"
+                              DragOver="ItemsGrid_DragOver"
+                              Drop="ItemsGrid_Drop">
                         <DataGrid.Columns>
                             <DataGridTextColumn x:Name="ColStar" Header="⭐" Binding="{Binding IsFavoriteText}" Width="32"/>
                             <DataGridTextColumn x:Name="ColOrder" Header="Order" Binding="{Binding Position}" Width="36"/>

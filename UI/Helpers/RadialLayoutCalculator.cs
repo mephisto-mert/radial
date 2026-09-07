@@ -87,5 +87,25 @@ namespace RadialLauncher.UI.Helpers
             double factor = (1.0 - (dist / 60.0)) * maxPullDistance;
             return new Point((dx / dist) * factor, (dy / dist) * factor);
         }
+
+        public static int CalculateNearestSlot(Point mousePos, int itemCount, double centerCanvasX = 250.0, double centerCanvasY = 250.0)
+        {
+            if (itemCount <= 1) return 0;
+
+            double dx = mousePos.X - centerCanvasX;
+            double dy = mousePos.Y - centerCanvasY;
+            double currentAngle = Math.Atan2(dy, dx);
+
+            // Start angle is -PI / 2.0 (12 o'clock)
+            double diff = currentAngle - (-Math.PI / 2.0);
+            while (diff < 0) diff += 2 * Math.PI;
+            while (diff >= 2 * Math.PI) diff -= 2 * Math.PI;
+
+            double angleStep = (2 * Math.PI) / itemCount;
+            int slot = (int)Math.Round(diff / angleStep) % itemCount;
+            if (slot < 0) slot += itemCount;
+
+            return slot;
+        }
     }
 }

@@ -88,5 +88,23 @@ namespace RadialLauncher.Tests
             Assert.Equal(0, offset.X);
             Assert.Equal(0, offset.Y);
         }
+
+        [Theory]
+        [InlineData(250.0, 50.0, 4, 0)]  // Top (12 o'clock)
+        [InlineData(450.0, 250.0, 4, 1)] // Right (3 o'clock)
+        [InlineData(250.0, 450.0, 4, 2)] // Bottom (6 o'clock)
+        [InlineData(50.0, 250.0, 4, 3)]  // Left (9 o'clock)
+        public void CalculateNearestSlot_4Items_ReturnsExpectedSlot(double mouseX, double mouseY, int count, int expectedSlot)
+        {
+            int slot = RadialLayoutCalculator.CalculateNearestSlot(new Point(mouseX, mouseY), count, 250.0, 250.0);
+            Assert.Equal(expectedSlot, slot);
+        }
+
+        [Fact]
+        public void CalculateNearestSlot_SingleOrZeroItems_ReturnsZero()
+        {
+            Assert.Equal(0, RadialLayoutCalculator.CalculateNearestSlot(new Point(100, 100), 1, 250.0, 250.0));
+            Assert.Equal(0, RadialLayoutCalculator.CalculateNearestSlot(new Point(100, 100), 0, 250.0, 250.0));
+        }
     }
 }

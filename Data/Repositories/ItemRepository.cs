@@ -13,6 +13,7 @@ namespace RadialLauncher.Data.Repositories
     public class ItemRepository : IItemRepository
     {
         private readonly IDatabaseManager _dbManager;
+        public event Action? OnItemsChanged;
 
         public ItemRepository(IDatabaseManager dbManager)
         {
@@ -113,6 +114,10 @@ namespace RadialLauncher.Data.Repositories
                     SELECT last_insert_rowid();";
                 int id = conn.ExecuteScalar<int>(sql, item);
                 item.Id = id;
+                if (id > 0)
+                {
+                    OnItemsChanged?.Invoke();
+                }
                 return id;
             }
             catch (Exception ex)
@@ -147,7 +152,12 @@ namespace RadialLauncher.Data.Repositories
                         LastUsedAt = @LastUsedAt,
                         Tags = @Tags
                     WHERE Id = @Id;";
-                return conn.Execute(sql, item) > 0;
+                bool ok = conn.Execute(sql, item) > 0;
+                if (ok)
+                {
+                    OnItemsChanged?.Invoke();
+                }
+                return ok;
             }
             catch (Exception ex)
             {
@@ -162,7 +172,12 @@ namespace RadialLauncher.Data.Repositories
             {
                 using var conn = CreateConnection();
                 conn.Open();
-                return conn.Execute("DELETE FROM Items WHERE Id = @id OR ParentId = @id", new { id }) > 0;
+                bool ok = conn.Execute("DELETE FROM Items WHERE Id = @id OR ParentId = @id", new { id }) > 0;
+                if (ok)
+                {
+                    OnItemsChanged?.Invoke();
+                }
+                return ok;
             }
             catch (Exception ex)
             {
@@ -178,6 +193,7 @@ namespace RadialLauncher.Data.Repositories
                 using var conn = CreateConnection();
                 conn.Open();
                 conn.Execute("UPDATE Items SET IsFavorite = CASE WHEN IsFavorite = 1 THEN 0 ELSE 1 END WHERE Id = @id", new { id });
+                OnItemsChanged?.Invoke();
             }
             catch (Exception ex)
             {
@@ -218,6 +234,7 @@ namespace RadialLauncher.Data.Repositories
                     conn.Execute("UPDATE Items SET Position = @Position WHERE Id = @Id", new { item.Position, item.Id }, trans);
                 }
                 trans.Commit();
+                OnItemsChanged?.Invoke();
             }
             catch (Exception ex)
             {
@@ -231,7 +248,12 @@ namespace RadialLauncher.Data.Repositories
             {
                 using var conn = CreateConnection();
                 conn.Open();
-                return conn.Execute("DELETE FROM Items WHERE IsUserAdded = 0");
+                int deleted = conn.Execute("DELETE FROM Items WHERE IsUserAdded = 0");
+                if (deleted > 0)
+                {
+                    OnItemsChanged?.Invoke();
+                }
+                return deleted;
             }
             catch (Exception ex)
             {

@@ -132,6 +132,12 @@ namespace RadialLauncher.UI.ViewModels
                 RequestLayoutUpdate?.Invoke();
             };
 
+            _itemRepo.OnItemsChanged += () =>
+            {
+                _allItems = _itemRepo.GetAll();
+                RefreshPageItems();
+            };
+
             LoadDefaultQuickActions();
         }
 
@@ -331,6 +337,80 @@ namespace RadialLauncher.UI.ViewModels
             CurrentPageItems = new ObservableCollection<LauncherItem>(pageItems);
 
             RequestLayoutUpdate?.Invoke();
+        }
+
+        public void ReorderCurrentPageItems(int sourceIndex, int targetIndex)
+        {
+            if (sourceIndex < 0 || sourceIndex >= CurrentPageItems.Count ||
+                targetIndex < 0 || targetIndex >= CurrentPageItems.Count ||
+                sourceIndex == targetIndex)
+                return;
+
+            var sourceItem = CurrentPageItems[sourceIndex];
+            var targetItem = CurrentPageItems[targetIndex];
+
+            if (IsSubmenu && _navStack.Count > 0)
+            {
+                int currentParentId = _navStack.Peek().parentId;
+                var subItems = _allItems.Where(i => i.ParentId == currentParentId).OrderBy(i => i.Position).ToList();
+                int oldIdx = subItems.FindIndex(i => i.Id == sourceItem.Id);
+                int newIdx = subItems.FindIndex(i => i.Id == targetItem.Id);
+                if (oldIdx >= 0 && newIdx >= 0)
+                {
+                    var itemToMove = subItems[oldIdx];
+                    subItems.RemoveAt(oldIdx);
+                    subItems.Insert(newIdx, itemToMove);
+                    for (int p = 0; p < subItems.Count; p++)
+                    {
+                        subItems[p].Position = p + 1;
+                    }
+                    _itemRepo.UpdatePositions(subItems);
+                }
+            }
+            else if (sourceItem.CategoryId > 1 && sourceItem.CategoryId == targetItem.CategoryId)
+            {
+                int catId = sourceItem.CategoryId;
+                var itemsInCat = _allItems.Where(i => i.CategoryId == catId && i.ParentId == 0).OrderBy(i => i.Position).ToList();
+                int oldDbIdx = itemsInCat.FindIndex(i => i.Id == sourceItem.Id);
+                int newDbIdx = itemsInCat.FindIndex(i => i.Id == targetItem.Id);
+
+                if (oldDbIdx >= 0 && newDbIdx >= 0)
+                {
+                    var itemToMove = itemsInCat[oldDbIdx];
+                    itemsInCat.RemoveAt(oldDbIdx);
+                    itemsInCat.Insert(newDbIdx, itemToMove);
+
+                    for (int p = 0; p < itemsInCat.Count; p++)
+                    {
+                        itemsInCat[p].Position = p + 1;
+                    }
+
+                    _itemRepo.UpdatePositions(itemsInCat);
+                }
+            }
+            else if (sourceItem.Id > 0 && targetItem.Id > 0)
+            {
+                var allRoots = _allItems.Where(i => i.ParentId == 0).OrderBy(i => i.Position).ToList();
+                int oldDbIdx = allRoots.FindIndex(i => i.Id == sourceItem.Id);
+                int newDbIdx = allRoots.FindIndex(i => i.Id == targetItem.Id);
+
+                if (oldDbIdx >= 0 && newDbIdx >= 0)
+                {
+                    var itemToMove = allRoots[oldDbIdx];
+                    allRoots.RemoveAt(oldDbIdx);
+                    allRoots.Insert(newDbIdx, itemToMove);
+
+                    for (int p = 0; p < allRoots.Count; p++)
+                    {
+                        allRoots[p].Position = p + 1;
+                    }
+
+                    _itemRepo.UpdatePositions(allRoots);
+                }
+            }
+
+            _allItems = _itemRepo.GetAll();
+            RefreshPageItems();
         }
 
         [RelayCommand]

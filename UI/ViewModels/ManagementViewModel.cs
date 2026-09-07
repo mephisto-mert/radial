@@ -72,7 +72,26 @@ namespace RadialLauncher.UI.ViewModels
             _syncService = syncService;
             _db = db;
 
+            _itemRepo.OnItemsChanged += () => RefreshItems();
+
             LoadInitialData();
+        }
+
+        public void ReorderItems(int oldIndex, int newIndex)
+        {
+            if (oldIndex < 0 || oldIndex >= Items.Count || newIndex < 0 || newIndex >= Items.Count || oldIndex == newIndex)
+                return;
+
+            var item = Items[oldIndex];
+            Items.RemoveAt(oldIndex);
+            Items.Insert(newIndex, item);
+
+            for (int i = 0; i < Items.Count; i++)
+            {
+                Items[i].Position = i + 1;
+            }
+
+            _itemRepo.UpdatePositions(Items);
         }
 
         public void LoadInitialData()

@@ -84,6 +84,10 @@ namespace RadialLauncher.UI.Windows
         private readonly ICommandPaletteService? _commandPaletteService;
         private bool _isUpdatingShortcutCombo = false;
 
+        private Point _dgDragStartPoint;
+        private LauncherItemViewModel? _dgDraggedItem;
+        private bool _isDraggingDataGridRow = false;
+
         public string ActionFavoriteToolTip => LocalizationService.Instance.GetString("Action_Favorite", "Favorite");
         public string ActionEditToolTip => LocalizationService.Instance.GetString("Action_Edit", "Edit");
         public string ActionDeleteToolTip => LocalizationService.Instance.GetString("Action_Delete", "Delete");
@@ -480,6 +484,118 @@ namespace RadialLauncher.UI.Windows
                         e.Handled = true;
                     }
                 }
+            }
+        }
+
+        private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
+        {
+            while (child != null)
+            {
+                if (child is T parent) return parent;
+                child = VisualTreeHelper.GetParent(child);
+            }
+            return null;
+        }
+
+        private void ItemsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (FindVisualParent<Button>(e.OriginalSource as DependencyObject) != null)
+            {
+                _dgDraggedItem = null;
+                return;
+            }
+
+            var row = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject);
+            if (row != null && row.Item is LauncherItemViewModel lvm)
+            {
+                _dgDragStartPoint = e.GetPosition(ItemsGrid);
+                _dgDraggedItem = lvm;
+                _isDraggingDataGridRow = false;
+            }
+            else
+            {
+                _dgDraggedItem = null;
+            }
+        }
+
+        private void ItemsGrid_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed && _dgDraggedItem != null && !_isDraggingDataGridRow)
+            {
+                Point curPos = e.GetPosition(ItemsGrid);
+                Vector diff = _dgDragStartPoint - curPos;
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    _isDraggingDataGridRow = true;
+                    try
+                    {
+                        var data = new DataObject("RadialLauncherItemRow", _dgDraggedItem);
+                        DragDrop.DoDragDrop(ItemsGrid, data, DragDropEffects.Move);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "DataGrid DragDrop exception");
+                    }
+                    finally
+                    {
+                        _isDraggingDataGridRow = false;
+                        _dgDraggedItem = null;
+                    }
+                }
+            }
+        }
+
+        private void ItemsGrid_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("RadialLauncherItemRow"))
+            {
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+            }
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void ItemsGrid_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("RadialLauncherItemRow"))
+            {
+                e.Handled = true;
+                var sourceLvm = e.Data.GetData("RadialLauncherItemRow") as LauncherItemViewModel;
+                if (sourceLvm == null) return;
+
+                var targetRow = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject);
+                if (targetRow != null && targetRow.Item is LauncherItemViewModel targetLvm)
+                {
+                    int oldIndex = -1;
+                    int newIndex = -1;
+
+                    for (int i = 0; i < _viewModel.Items.Count; i++)
+                    {
+                        if (_viewModel.Items[i].Id == sourceLvm.Item.Id) oldIndex = i;
+                        if (_viewModel.Items[i].Id == targetLvm.Item.Id) newIndex = i;
+                    }
+
+                    if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+                    {
+                        _viewModel.ReorderItems(oldIndex, newIndex);
+                        RefreshGrid();
+                        var loc = LocalizationService.Instance;
+                        StatusText.Text = string.Format(loc.GetString("MsgItemReordered", "Moved '{0}' to position {1}."), sourceLvm.Name, newIndex + 1);
+                    }
+                }
+            }
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                ManagementWindow_Drop(sender, e);
             }
         }
 

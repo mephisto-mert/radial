@@ -147,5 +147,35 @@ namespace RadialLauncher.Tests
             Assert.Equal("YouTube Music", afterUpdate!.Name);
             Assert.Equal("https://music.youtube.com", afterUpdate.Target);
         }
+
+        [Fact]
+        public void UpdatePositions_UpdatesPositionsAndTriggersOnItemsChanged()
+        {
+            int id1 = _repo.Insert(new LauncherItem { Name = "App1", Target = "app1.exe", Position = 1, CategoryId = 9999 });
+            int id2 = _repo.Insert(new LauncherItem { Name = "App2", Target = "app2.exe", Position = 2, CategoryId = 9999 });
+
+            bool eventFired = false;
+            _repo.OnItemsChanged += () => eventFired = true;
+
+            var items = _repo.GetByCategoryId(9999);
+            Assert.Equal(2, items.Count);
+
+            // Swap positions
+            var item1 = items.Find(i => i.Id == id1)!;
+            var item2 = items.Find(i => i.Id == id2)!;
+            item1.Position = 2;
+            item2.Position = 1;
+
+            _repo.UpdatePositions(items);
+
+            Assert.True(eventFired);
+
+            var reordered = _repo.GetByCategoryId(9999);
+            var app1 = reordered.Find(i => i.Id == id1);
+            var app2 = reordered.Find(i => i.Id == id2);
+
+            Assert.Equal(2, app1!.Position);
+            Assert.Equal(1, app2!.Position);
+        }
     }
 }
