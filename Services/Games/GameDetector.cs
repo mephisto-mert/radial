@@ -140,6 +140,12 @@ namespace RadialLauncher.Services.Games
                                     if (appKey != null)
                                     {
                                         string? displayName = appKey.GetValue("DisplayName") as string;
+                                        string? installLoc = appKey.GetValue("InstallLocation") as string;
+                                        if (string.IsNullOrWhiteSpace(installLoc) || !Directory.Exists(installLoc))
+                                        {
+                                            continue;
+                                        }
+
                                         string? displayIcon = appKey.GetValue("DisplayIcon") as string;
                                         string cleanIcon = "";
                                         if (!string.IsNullOrEmpty(displayIcon))

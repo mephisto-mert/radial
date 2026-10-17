@@ -261,5 +261,47 @@ namespace RadialLauncher.Data.Repositories
                 return 0;
             }
         }
+
+        public int PruneUninstalledItems()
+        {
+            try
+            {
+                var allItems = GetAll();
+                if (allItems.Count == 0) return 0;
+
+                var steamIds = RadialLauncher.Services.Apps.InstalledTargetValidator.GetInstalledSteamAppIds();
+                var epicNames = RadialLauncher.Services.Apps.InstalledTargetValidator.GetInstalledEpicAppNames();
+
+                var missingIds = new List<int>();
+                foreach (var item in allItems)
+                {
+                    if (!RadialLauncher.Services.Apps.InstalledTargetValidator.IsItemStillInstalled(item, steamIds, epicNames))
+                    {
+                        missingIds.Add(item.Id);
+                        Log.Information("Pruning uninstalled item from database: [{Id}] {Name} -> {Target}", item.Id, item.Name, item.Target);
+                    }
+                }
+
+                if (missingIds.Count > 0)
+                {
+                    using var conn = CreateConnection();
+                    conn.Open();
+                    using var trans = conn.BeginTransaction();
+                    foreach (var id in missingIds)
+                    {
+                        conn.Execute("DELETE FROM Items WHERE Id = @id OR ParentId = @id", new { id }, trans);
+                    }
+                    trans.Commit();
+                    OnItemsChanged?.Invoke();
+                }
+
+                return missingIds.Count;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to prune uninstalled items");
+                return 0;
+            }
+        }
     }
 }

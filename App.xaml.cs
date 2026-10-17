@@ -94,6 +94,12 @@ namespace RadialLauncher
                 // 2. Initialize Database and Repositories
                 var dbManager = ServiceProvider.GetRequiredService<IDatabaseManager>();
                 dbManager.InitializeDatabase();
+                var itemRepo = ServiceProvider.GetRequiredService<RadialLauncher.Data.Repositories.IItemRepository>();
+                int prunedCount = itemRepo.PruneUninstalledItems();
+                if (prunedCount > 0)
+                {
+                    Log.Information("Automatically pruned {Count} uninstalled applications/games from database on startup", prunedCount);
+                }
 
                 // 2b. Initialize Plugin System
                 var pluginService = ServiceProvider.GetRequiredService<IPluginService>();

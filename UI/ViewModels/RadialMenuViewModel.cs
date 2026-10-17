@@ -167,6 +167,9 @@ namespace RadialLauncher.UI.ViewModels
                 _contextualItems = new List<LauncherItem>();
             }
 
+            // Automatically remove uninstalled apps/games before loading menu
+            _itemRepo.PruneUninstalledItems();
+
             // Load data
             _allItems = _itemRepo.GetAll();
             var allDbCats = _categoryRepo.GetAll();

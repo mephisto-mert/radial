@@ -177,5 +177,35 @@ namespace RadialLauncher.Tests
             Assert.Equal(2, app1!.Position);
             Assert.Equal(1, app2!.Position);
         }
+
+        [Fact]
+        public void PruneUninstalledItems_RemovesMissingRootedPaths_AndPreservesValidItems()
+        {
+            string existingFile = Path.Combine(Path.GetTempPath(), $"existing_app_{Guid.NewGuid():N}.exe");
+            File.WriteAllText(existingFile, "dummy");
+            string missingFile = Path.Combine(Path.GetTempPath(), $"deleted_app_{Guid.NewGuid():N}.exe");
+
+            try
+            {
+                int idExisting = _repo.Insert(new LauncherItem { Name = "InstalledApp", Target = existingFile, Type = "EXE", CategoryId = 1 });
+                int idMissing = _repo.Insert(new LauncherItem { Name = "UninstalledGame", Target = missingFile, Type = "EXE", CategoryId = 1 });
+                int idUrl = _repo.Insert(new LauncherItem { Name = "GitHub", Target = "https://github.com", Type = "URL", CategoryId = 1 });
+                int idAction = _repo.Insert(new LauncherItem { Name = "Mute", Target = "VOLUME_MUTE", Type = "ACTION", CategoryId = 1 });
+                int idRelative = _repo.Insert(new LauncherItem { Name = "Notepad", Target = "notepad.exe", Type = "EXE", CategoryId = 1 });
+
+                int pruned = _repo.PruneUninstalledItems();
+
+                Assert.Equal(1, pruned);
+                Assert.NotNull(_repo.GetById(idExisting));
+                Assert.Null(_repo.GetById(idMissing));
+                Assert.NotNull(_repo.GetById(idUrl));
+                Assert.NotNull(_repo.GetById(idAction));
+                Assert.NotNull(_repo.GetById(idRelative));
+            }
+            finally
+            {
+                if (File.Exists(existingFile)) File.Delete(existingFile);
+            }
+        }
     }
 }

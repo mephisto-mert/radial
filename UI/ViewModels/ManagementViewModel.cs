@@ -96,6 +96,8 @@ namespace RadialLauncher.UI.ViewModels
 
         public void LoadInitialData()
         {
+            _itemRepo.PruneUninstalledItems();
+
             Categories = new ObservableCollection<Category>(_categoryRepo.GetAll());
             SelectedCategory = Categories.FirstOrDefault();
 
