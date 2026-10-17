@@ -67,7 +67,7 @@ namespace RadialLauncher.Services.Data
                 string portableMarkerTxt = Path.Combine(baseDir, "portable.txt");
                 string portableDataDir = Path.Combine(baseDir, "data");
 
-                if (Directory.Exists(portableDataDir) || File.Exists(portableMarker) || File.Exists(portableMarkerTxt))
+                if (File.Exists(portableMarker) || File.Exists(portableMarkerTxt))
                 {
                     if (!Directory.Exists(portableDataDir)) Directory.CreateDirectory(portableDataDir);
                     return portableDataDir;

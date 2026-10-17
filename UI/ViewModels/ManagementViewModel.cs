@@ -217,18 +217,23 @@ namespace RadialLauncher.UI.ViewModels
             StatusMessage = LocalizationService.Instance.GetString("MsgScanningPc", "Scanning computer...");
             int pruned = 0;
             int added = 0;
+            int updated = 0;
+            int discovered = 0;
             await Task.Run(() =>
             {
                 pruned = _itemRepo.PruneUninstalledItems();
                 var scanned = _scannerService.ScanAllApps();
                 var summary = _scannerService.SaveScannedApps(scanned, _db);
                 added = summary.TotalAdded;
+                updated = summary.TotalUpdated;
+                discovered = summary.TotalDiscovered;
             });
 
             Categories = new ObservableCollection<Category>(_categoryRepo.GetAll());
             RefreshItems();
-            StatusMessage = $"{LocalizationService.Instance.GetString("MsgScanCompleted", "Scan completed:")} +{added} {LocalizationService.Instance.GetString("MsgAppsAdded", "new apps added.")}" +
-                            (pruned > 0 ? $" (-{pruned} silinen kaldırıldı)" : "");
+            StatusMessage = $"{LocalizationService.Instance.GetString("MsgScanCompleted", "Scan completed:")} {discovered} bulundu, +{added} yeni eklendi" +
+                            (updated > 0 ? $", {updated} güncellendi" : "") +
+                            (pruned > 0 ? $", -{pruned} silinen kaldırıldı" : "") + ".";
         }
 
         [RelayCommand]

@@ -23,6 +23,7 @@ namespace RadialLauncher.Services.Games
             var games = new List<DetectedGame>();
             games.AddRange(DetectSteam());
             games.AddRange(DetectEpic());
+            games.AddRange(DetectInstalledGameDirectories());
             return games;
         }
 
@@ -81,22 +82,26 @@ namespace RadialLauncher.Services.Games
                                 if (name.Contains("Steamworks") || name.Contains("Proton") || name.Contains("Redistribut"))
                                     continue;
 
+                                string? bestGameExe = null;
+                                if (!string.IsNullOrEmpty(installdir))
+                                {
+                                    string gameDir = Path.Combine(appsDir, "common", installdir);
+                                    if (Directory.Exists(gameDir))
+                                    {
+                                        bestGameExe = FindBestGameExecutable(gameDir, installdir);
+                                    }
+                                    if (string.IsNullOrEmpty(bestGameExe))
+                                        continue;
+                                }
+
                                 string iconPath = "";
                                 if (shortcutIcons.TryGetValue(appId, out var scIcon) && File.Exists(scIcon))
                                 {
                                     iconPath = scIcon;
                                 }
-                                else if (!string.IsNullOrEmpty(installdir))
+                                else if (!string.IsNullOrEmpty(bestGameExe))
                                 {
-                                    string gameDir = Path.Combine(appsDir, "common", installdir);
-                                    if (Directory.Exists(gameDir))
-                                    {
-                                        var exes = Directory.GetFiles(gameDir, "*.exe", SearchOption.TopDirectoryOnly);
-                                        if (exes.Length > 0)
-                                        {
-                                            iconPath = exes[0];
-                                        }
-                                    }
+                                    iconPath = bestGameExe;
                                 }
 
                                 games.Add(new DetectedGame
@@ -346,6 +351,138 @@ namespace RadialLauncher.Services.Games
             return games;
         }
 
+        public List<DetectedGame> DetectInstalledGameDirectories()
+        {
+            var games = new List<DetectedGame>();
+            try
+            {
+                var gameParentRoots = new List<(string Path, string Platform)>
+                {
+                    (@"C:\Program Files\EA Games", "EA Games"),
+                    (@"C:\Program Files (x86)\EA Games", "EA Games"),
+                    (@"C:\XboxGames", "Xbox"),
+                    (@"C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games", "Ubisoft"),
+                    (@"C:\Program Files\Ubisoft\Ubisoft Game Launcher\games", "Ubisoft"),
+                    (@"C:\Games", "PC Game"),
+                    (@"D:\Games", "PC Game")
+                };
+
+                string docsDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                if (Directory.Exists(docsDir))
+                {
+                    foreach (var sub in Directory.GetDirectories(docsDir))
+                    {
+                        string folderName = Path.GetFileName(sub);
+                        if (folderName.Contains("Oyunindir", StringComparison.OrdinalIgnoreCase) ||
+                            folderName.Contains("Worldbox", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? exe = FindBestGameExecutable(sub, folderName);
+                            if (!string.IsNullOrEmpty(exe))
+                            {
+                                string cleanName = folderName.Split('_', '-')[0].Trim();
+                                if (cleanName.Equals("Worldbox", StringComparison.OrdinalIgnoreCase))
+                                    cleanName = "WorldBox";
+                                games.Add(new DetectedGame
+                                {
+                                    Name = cleanName,
+                                    ExePath = exe,
+                                    Platform = "PC Game",
+                                    IconPath = exe
+                                });
+                            }
+                        }
+                    }
+                }
+
+                var ignoreFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "GameSave", "Shaders", "__Installer", "Support", "DirectX", "Redist"
+                };
+
+                foreach (var (rootPath, platform) in gameParentRoots)
+                {
+                    if (!Directory.Exists(rootPath)) continue;
+                    foreach (var gameDir in Directory.GetDirectories(rootPath))
+                    {
+                        string folderName = Path.GetFileName(gameDir);
+                        if (ignoreFolders.Contains(folderName)) continue;
+
+                        string? bestExe = FindBestGameExecutable(gameDir, folderName);
+                        if (!string.IsNullOrEmpty(bestExe))
+                        {
+                            string displayName = folderName;
+                            if (folderName.Equals("Battlefield 2042", StringComparison.OrdinalIgnoreCase))
+                                displayName = "Battlefield™ 2042";
+                            else if (folderName.Equals("Jedi Fallen Order", StringComparison.OrdinalIgnoreCase))
+                                displayName = "STAR WARS Jedi - Fallen Order™";
+
+                            games.Add(new DetectedGame
+                            {
+                                Name = displayName,
+                                ExePath = bestExe,
+                                Platform = platform,
+                                IconPath = bestExe
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed scanning installed game directories");
+            }
+            return games;
+        }
+
+        private static string? FindBestGameExecutable(string gameDir, string folderName)
+        {
+            try
+            {
+                var ignoreExeSubstrings = new[]
+                {
+                    "cleanup", "touchup", "unins", "redist", "vcredist", "dxsetup",
+                    "crash", "crs-", "eaanticheat", "activationui", "helper", "installer",
+                    "setup", "updater", "unitycrashhandler", "easyanticheat", "bootstrapper"
+                };
+
+                var allExes = Directory.EnumerateFiles(gameDir, "*.exe", new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    MaxRecursionDepth = 4,
+                    IgnoreInaccessible = true
+                })
+                .Where(e =>
+                {
+                    string fn = Path.GetFileNameWithoutExtension(e).ToLowerInvariant();
+                    return !ignoreExeSubstrings.Any(ig => fn.Contains(ig.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                           !e.Contains(@"\__Installer\", StringComparison.OrdinalIgnoreCase);
+                })
+                .ToList();
+
+                if (allExes.Count == 0) return null;
+
+                string compactFolder = folderName.Replace(" ", "").ToLowerInvariant();
+                var exactMatch = allExes.FirstOrDefault(e =>
+                {
+                    string fn = Path.GetFileNameWithoutExtension(e).Replace(" ", "").ToLowerInvariant();
+                    return fn == compactFolder || fn.Contains(compactFolder) ||
+                           (compactFolder.Contains("battlefield2042") && fn == "bf2042");
+                });
+
+                if (exactMatch != null) return exactMatch;
+
+                // Pick largest executable (main game binary) excluding trial executables when full game exe exists
+                return allExes
+                    .OrderBy(e => Path.GetFileNameWithoutExtension(e).EndsWith("_trial", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                    .ThenByDescending(e => new FileInfo(e).Length)
+                    .FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static string? ExtractVdfValue(string content, string key)
         {
             string searchKey = $"\"{key}\"";
@@ -360,7 +497,8 @@ namespace RadialLauncher.Services.Games
             int valueEnd = content.IndexOf('"', valueStart);
             if (valueEnd < 0) return null;
 
-            return content.Substring(valueStart, valueEnd - valueStart);
+            string raw = content.Substring(valueStart, valueEnd - valueStart);
+            return raw.Replace("Â®", "®").Replace("Â™", "™");
         }
     }
 }

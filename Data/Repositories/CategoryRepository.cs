@@ -176,21 +176,59 @@ namespace RadialLauncher.Data.Repositories
         {
             try
             {
+                string? systemKey = ResolveCanonicalSystemKey(name);
                 using var conn = CreateConnection();
                 conn.Open();
-                var existing = conn.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE LOWER(TRIM(Name)) = LOWER(TRIM(@name))", new { name });
-                if (existing != null) return existing.Id;
+
+                Category? existing = null;
+                if (!string.IsNullOrEmpty(systemKey))
+                {
+                    existing = conn.QueryFirstOrDefault<Category>(
+                        "SELECT * FROM Categories WHERE SystemKey = @systemKey ORDER BY Id ASC LIMIT 1",
+                        new { systemKey });
+                }
+
+                if (existing == null)
+                {
+                    existing = conn.QueryFirstOrDefault<Category>(
+                        "SELECT * FROM Categories WHERE LOWER(TRIM(Name)) = LOWER(TRIM(@name)) ORDER BY Id ASC LIMIT 1",
+                        new { name });
+                }
+
+                if (existing != null)
+                {
+                    if (string.IsNullOrEmpty(existing.SystemKey) && !string.IsNullOrEmpty(systemKey))
+                    {
+                        conn.Execute("UPDATE Categories SET SystemKey = @systemKey WHERE Id = @Id", new { systemKey, existing.Id });
+                    }
+                    return existing.Id;
+                }
 
                 int nextPos = conn.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
                 return conn.ExecuteScalar<int>(
-                    "INSERT INTO Categories (Name, Color, Position) VALUES (@name, @defaultColor, @nextPos); SELECT last_insert_rowid();",
-                    new { name, defaultColor, nextPos });
+                    "INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES (@name, @defaultColor, @nextPos, @systemKey); SELECT last_insert_rowid();",
+                    new { name, defaultColor, nextPos, systemKey });
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to get or create category {Name}", name);
                 return 0;
             }
+        }
+
+        private static string? ResolveCanonicalSystemKey(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            string n = name.Trim();
+            return n switch
+            {
+                "🎮 Oyunlar" or "🎮 Games" or "Oyunlar" or "Games" or "Cat_Games" => "Cat_Games",
+                "🌐 Web & İnternet" or "🌐 Web & Internet" or "Web & İnternet" or "Web & Internet" or "Cat_Internet" => "Cat_Internet",
+                "💼 Uygulamalar & İş" or "📱 Applications" or "📱 Uygulamalar" or "Uygulamalar & İş" or "Applications" or "Cat_Apps" => "Cat_Apps",
+                "🛠️ Sistem & Araçlar" or "⚡ System" or "⚡ Sistem" or "Sistem & Araçlar" or "System" or "Cat_System" => "Cat_System",
+                "⭐ Sık Kullanılanlar" or "⭐ Most Used" or "En Çok Kullandıklarım" or "Cat_MostUsed" => "Cat_MostUsed",
+                _ => null
+            };
         }
     }
 }

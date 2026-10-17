@@ -32,23 +32,43 @@ namespace RadialLauncher.Services.Apps
             "compattelrunner", "dllhost", "cmd", "powershell", "wsl",
             "smartscreen", "backgroundtaskhost", "textinputhost", "crossdeviceresume",
             "secd", "applephotostreams", "apsdaemon", "icloudckks", "icloudservices",
-            "gameinputredistservice", "spacedeskservicetray", "windowspackagemanagerserver"
+            "gameinputredistservice", "spacedeskservicetray", "windowspackagemanagerserver",
+            "nvcontainer", "language_server", "msedgewebview2", "storedesktopextension",
+            "python", "pythonw", "node", "java", "javaw", "ealauncher", "eaupdater",
+            "epiconlineserviceshost", "eosbootstrapper", "desktopoverlayhost"
         };
 
         private static readonly string[] IgnoreSubstrings = new[]
         {
             "crashpad", "crashhandler", "helper", "renderer", "gpu-process",
-            "utility", "broker", "redist", "updater", "unins", "uninstall",
-            "setup", "installer", "vcredist", "directx", "kaldır", "kaldir",
-            "remove", "readme", "license", "documentation", "changelog", "release notes",
-            "yardım", "kılavuz", "tanılaması", "dil ayarları", "error reporter"
+            "utility", "broker", "redist", "updater", "güncelleyici", "guncelleyici",
+            "unins", "uninstall", "setup", "installer", "vcredist", "directx",
+            "kaldır", "kaldir", "remove", "readme", "license", "documentation",
+            "changelog", "release notes", "yardım", "kılavuz", "tanılaması",
+            "dil ayarları", "error reporter", "bootstrapper", "app recovery",
+            "native tools command prompt", "developer command prompt", "developer powershell"
+        };
+
+        private static readonly string[] GameKeywords = new[]
+        {
+            "steam", "epic", "game", "riot", "valorant", "league", "minecraft",
+            "roblox", "gta", "rdr", "red dead", "counter-strike", "csgo", "cs2",
+            "blitz", "battle.net", "origin", "ea desktop", "ea games", "electronic arts",
+            "ealauncher", "battlefield", "bf2042", "jedi", "fallen order", "star wars",
+            "rockstar", "curseforge", "overwolf", "ubisoft", "gog", "genshin",
+            "hitman", "spider-man", "cities", "zomboid", "kenshi", "worldbox",
+            "half sword", "forest", "universe sandbox", "playstation", "xbox",
+            "pubg", "apex", "overwatch", "witcher", "cyberpunk", "dota", "fortnite",
+            "assassin", "far cry", "fifa", "fc 24", "fc 25", "pes", "simulator",
+            "battlefront", "call of duty", "metin2", "gameforge", "oyunindir",
+            "blackmyth", "wukong", "bodycam", "diablo", "dying light", "ready or not", "sims 4"
         };
 
         private static readonly string[] InternetKeywords = new[]
         {
-            "chrome", "msedge", "edge", "brave", "firefox", "opera", "vivaldi", "tor",
+            "chrome", "msedge", "edge", "brave", "firefox", "opera", "vivaldi", "tor browser",
             "discord", "telegram", "whatsapp", "spotify", "zoom", "teams", "skype",
-            "slack", "thunderbird", "rave", "youtube", "twitch", "netflix"
+            "slack", "thunderbird", "rave", "youtube", "twitch", "netflix", "zen browser"
         };
 
         private static readonly string[] DevToolKeywords = new[]
@@ -59,7 +79,7 @@ namespace RadialLauncher.Services.Apps
             "excel", "word", "powerpoint", "onenote", "office", "outlook", "acrobat",
             "photoshop", "illustrator", "premiere", "obs", "gimp", "canva", "davinci",
             "audacity", "godot", "dbeaver", "insomnia", "sharex", "ditto", "textify",
-            "flow.launcher", "unigetui", "qbittorrent", "veracrypt", "curseforge"
+            "flow.launcher", "unigetui", "qbittorrent", "veracrypt", "antigravity", "cursor"
         };
 
         public List<DetectedApp> DetectRunningAndCommonApps()
@@ -68,7 +88,7 @@ namespace RadialLauncher.Services.Apps
 
             try
             {
-                // 1. Detect Running User Processes (Task Manager Apps)
+                // 1. Detect Running User Processes (Task Manager Apps with visible main window)
                 DetectFromRunningProcesses(detected);
 
                 // 2. Detect Common Desktop & Start Menu Shortcuts
@@ -89,6 +109,8 @@ namespace RadialLauncher.Services.Apps
             {
                 try
                 {
+                    if (proc.MainWindowHandle == IntPtr.Zero) continue;
+
                     string pName = proc.ProcessName;
                     if (IgnoredProcessNames.Contains(pName)) continue;
                     if (IgnoreSubstrings.Any(s => pName.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
@@ -105,9 +127,11 @@ namespace RadialLauncher.Services.Apps
 
                     if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath)) continue;
 
-                    // Exclude Windows OS system directories
+                    // Exclude Windows OS system directories and installer caches
                     if (exePath.Contains(@"\Windows\System32", StringComparison.OrdinalIgnoreCase) ||
-                        exePath.Contains(@"\Windows\SysWOW64", StringComparison.OrdinalIgnoreCase))
+                        exePath.Contains(@"\Windows\SysWOW64", StringComparison.OrdinalIgnoreCase) ||
+                        exePath.Contains(@"\Windows\Installer", StringComparison.OrdinalIgnoreCase) ||
+                        exePath.Contains(@"\Package Cache\", StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -117,6 +141,7 @@ namespace RadialLauncher.Services.Apps
 
                     string displayName = CleanAppName(proc, exePath);
                     if (string.IsNullOrWhiteSpace(displayName)) continue;
+                    if (IgnoreSubstrings.Any(s => displayName.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
 
                     var app = new DetectedApp
                     {
@@ -161,43 +186,75 @@ namespace RadialLauncher.Services.Apps
             }
             catch { }
 
+            string desktop1 = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string desktop2 = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+
             foreach (var dir in searchDirs)
             {
                 if (!Directory.Exists(dir)) continue;
+                bool isDesktopDir = string.Equals(dir, desktop1, StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(dir, desktop2, StringComparison.OrdinalIgnoreCase);
                 try
                 {
-                    var lnkFiles = Directory.GetFiles(dir, "*.lnk", SearchOption.AllDirectories);
+                    var lnkFiles = Directory.GetFiles(dir, "*.lnk", isDesktopDir ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
                     foreach (var lnk in lnkFiles)
                     {
                         try
                         {
-                            string fileName = Path.GetFileNameWithoutExtension(lnk);
-                            if (IgnoreSubstrings.Any(s => fileName.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
-
-                            string? target = ResolveShortcutTarget(shell, lnk);
-                            if (string.IsNullOrEmpty(target) || !File.Exists(target) || !target.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                                continue;
-
-                            if (IgnoreSubstrings.Any(s => target.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
-
-                            if (target.Contains(@"\Windows\System32\", StringComparison.OrdinalIgnoreCase) ||
-                                target.Contains(@"\Windows\SysWOW64\", StringComparison.OrdinalIgnoreCase))
+                            if (!isDesktopDir && (
+                                lnk.Contains(@"\Administrative Tools\", StringComparison.OrdinalIgnoreCase) ||
+                                lnk.Contains(@"\Microsoft DirectX SDK", StringComparison.OrdinalIgnoreCase) ||
+                                lnk.Contains(@"\Visual Studio Tools\", StringComparison.OrdinalIgnoreCase) ||
+                                lnk.Contains(@"\Accessibility\", StringComparison.OrdinalIgnoreCase) ||
+                                lnk.Contains(@"\K-Lite Codec Pack\", StringComparison.OrdinalIgnoreCase) ||
+                                lnk.Contains(@"\System Tools\", StringComparison.OrdinalIgnoreCase) ||
+                                lnk.Contains(@"\Maintenance\", StringComparison.OrdinalIgnoreCase)))
                             {
                                 continue;
                             }
 
-                            if (dict.ContainsKey(target)) continue;
+                            string fileName = Path.GetFileNameWithoutExtension(lnk);
+                            if (string.Equals(fileName, "Belgeler", StringComparison.OrdinalIgnoreCase)) continue;
+                            if (IgnoreSubstrings.Any(s => fileName.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
+
+                            string? target = ResolveShortcutTarget(shell, lnk);
+                            string effectiveTarget;
+                            if (!string.IsNullOrEmpty(target) && File.Exists(target) && target.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                            {
+                                effectiveTarget = target;
+                            }
+                            else if (isDesktopDir && string.IsNullOrEmpty(target))
+                            {
+                                // UWP / Xbox / Store Desktop shortcut (e.g. Minecraft Launcher.lnk)
+                                effectiveTarget = lnk;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+
+                            if (IgnoreSubstrings.Any(s => effectiveTarget.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
+
+                            if (effectiveTarget.Contains(@"\Windows\System32\", StringComparison.OrdinalIgnoreCase) ||
+                                effectiveTarget.Contains(@"\Windows\SysWOW64\", StringComparison.OrdinalIgnoreCase) ||
+                                effectiveTarget.Contains(@"\Windows\Installer\", StringComparison.OrdinalIgnoreCase) ||
+                                effectiveTarget.Contains(@"\Package Cache\", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            if (dict.ContainsKey(effectiveTarget)) continue;
 
                             var app = new DetectedApp
                             {
                                 Name = fileName,
-                                ExePath = target,
-                                IconPath = target,
+                                ExePath = effectiveTarget,
+                                IconPath = effectiveTarget,
                                 IsRunning = false
                             };
                             AssignCategory(app);
 
-                            dict[target] = app;
+                            dict[effectiveTarget] = app;
                         }
                         catch
                         {
@@ -247,25 +304,32 @@ namespace RadialLauncher.Services.Apps
 
         private static void AssignCategory(DetectedApp app)
         {
-            string lowerName = (app.Name + " " + Path.GetFileNameWithoutExtension(app.ExePath)).ToLowerInvariant();
+            string lowerCombined = (app.Name + " " + app.ExePath).ToLowerInvariant();
+            bool isExactEa = string.Equals(app.Name.Trim(), "EA", StringComparison.OrdinalIgnoreCase);
 
-            if (InternetKeywords.Any(k => lowerName.Contains(k)))
+            if (isExactEa || GameKeywords.Any(k => lowerCombined.Contains(k)))
+            {
+                app.CategoryKey = "Cat_Games";
+                app.CategoryName = "🎮 Oyunlar";
+                app.CategoryColor = "#e74c3c";
+            }
+            else if (InternetKeywords.Any(k => lowerCombined.Contains(k)))
             {
                 app.CategoryKey = "Cat_Internet";
-                app.CategoryName = "🌐 Web & Internet";
+                app.CategoryName = "🌐 Web & İnternet";
                 app.CategoryColor = "#3498db";
             }
-            else if (DevToolKeywords.Any(k => lowerName.Contains(k)))
+            else if (DevToolKeywords.Any(k => lowerCombined.Contains(k)))
             {
                 app.CategoryKey = "Cat_Apps";
-                app.CategoryName = "📱 Applications";
+                app.CategoryName = "💼 Uygulamalar & İş";
                 app.CategoryColor = "#2ecc71";
             }
             else
             {
                 app.CategoryKey = "Cat_Apps";
-                app.CategoryName = "📱 Applications";
-                app.CategoryColor = "#3498db";
+                app.CategoryName = "💼 Uygulamalar & İş";
+                app.CategoryColor = "#2ecc71";
             }
         }
 

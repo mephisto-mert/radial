@@ -218,12 +218,56 @@ namespace RadialLauncher.Data
                     Log.Information("Applied Database Migration 5: Category SystemKey Schema");
                 }
 
+                ConsolidateCategories(connection);
                 BackfillGamesAndIcons(connection);
                 BackfillRunningAndCommonApps(connection);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to initialize database");
+            }
+        }
+
+        private void ConsolidateCategories(SqliteConnection connection)
+        {
+            try
+            {
+                var groups = new (string SystemKey, string[] ExactNames)[]
+                {
+                    ("Cat_Games", new[] { "🎮 Oyunlar", "🎮 Games", "?? Oyunlar" }),
+                    ("Cat_Internet", new[] { "🌐 Web & İnternet", "🌐 Web & Internet", "?? Web & ?nternet" }),
+                    ("Cat_Apps", new[] { "💼 Uygulamalar & İş", "📱 Applications", "📱 Uygulamalar", "?? Uygulamalar & ??" }),
+                    ("Cat_System", new[] { "🛠️ Sistem & Araçlar", "⚡ System", "⚡ Sistem", "??? Sistem & Ara?lar" })
+                };
+
+                var allCats = connection.Query<Category>("SELECT * FROM Categories ORDER BY Id ASC").ToList();
+                foreach (var grp in groups)
+                {
+                    var matching = allCats.Where(c =>
+                        c.Id > 1 &&
+                        (string.Equals(c.SystemKey, grp.SystemKey, StringComparison.OrdinalIgnoreCase) ||
+                         grp.ExactNames.Any(n => string.Equals((c.Name ?? "").Trim(), n, StringComparison.OrdinalIgnoreCase))))
+                        .ToList();
+
+                    if (matching.Count == 0) continue;
+
+                    var primary = matching[0];
+                    if (string.IsNullOrEmpty(primary.SystemKey))
+                    {
+                        connection.Execute("UPDATE Categories SET SystemKey = @SystemKey WHERE Id = @Id", new { grp.SystemKey, primary.Id });
+                    }
+
+                    for (int i = 1; i < matching.Count; i++)
+                    {
+                        var dup = matching[i];
+                        connection.Execute("UPDATE Items SET CategoryId = @primaryId WHERE CategoryId = @dupId", new { primaryId = primary.Id, dupId = dup.Id });
+                        connection.Execute("DELETE FROM Categories WHERE Id = @dupId", new { dupId = dup.Id });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Category consolidation warning");
             }
         }
 
@@ -249,7 +293,7 @@ namespace RadialLauncher.Data
             try
             {
                 int gamesCatId = 0;
-                var gamesCat = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE SystemKey = 'Cat_Games'");
+                var gamesCat = connection.QueryFirstOrDefault<Category>("SELECT * FROM Categories WHERE SystemKey = 'Cat_Games' ORDER BY Id ASC LIMIT 1");
                 if (gamesCat != null)
                 {
                     gamesCatId = gamesCat.Id;
@@ -257,7 +301,7 @@ namespace RadialLauncher.Data
                 else
                 {
                     int nextPos = connection.QuerySingle<int>("SELECT IFNULL(MAX(Position), 0) + 1 FROM Categories");
-                    connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('🎮 Games', '#e67e22', @nextPos, 'Cat_Games')", new { nextPos });
+                    connection.Execute("INSERT INTO Categories (Name, Color, Position, SystemKey) VALUES ('🎮 Oyunlar', '#e74c3c', @nextPos, 'Cat_Games')", new { nextPos });
                     gamesCatId = connection.QuerySingle<int>("SELECT Id FROM Categories WHERE SystemKey = 'Cat_Games' LIMIT 1");
                 }
 
@@ -279,10 +323,18 @@ namespace RadialLauncher.Data
                             INSERT INTO Items (Name, Type, Target, Arguments, WorkingDirectory, IconPath, CategoryId, Position, IsFavorite, ParentId, IsUserAdded)
                             VALUES (@Name, 'EXE', @ExePath, '', '', @IconPath, @gamesCatId, @currentMaxPos, 0, 0, 0)",
                             new { g.Name, g.ExePath, g.IconPath, gamesCatId, currentMaxPos });
+                        existingItems.Add(new LauncherItem { Name = g.Name, Target = g.ExePath, CategoryId = gamesCatId });
                     }
-                    else if (string.IsNullOrEmpty(match.IconPath) && !string.IsNullOrEmpty(g.IconPath) && File.Exists(g.IconPath))
+                    else
                     {
-                        connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { g.IconPath, match.Id });
+                        if (match.CategoryId != gamesCatId && match.Type == "EXE")
+                        {
+                            connection.Execute("UPDATE Items SET CategoryId = @gamesCatId WHERE Id = @Id", new { gamesCatId, match.Id });
+                        }
+                        if (string.IsNullOrEmpty(match.IconPath) && !string.IsNullOrEmpty(g.IconPath) && File.Exists(g.IconPath))
+                        {
+                            connection.Execute("UPDATE Items SET IconPath = @IconPath WHERE Id = @Id", new { g.IconPath, match.Id });
+                        }
                     }
                 }
             }

@@ -78,6 +78,17 @@ namespace RadialLauncher.Services.Apps
                 return false;
             }
 
+            if (!item.IsUserAdded)
+            {
+                if (target.Contains(@"\Windows\Installer\", StringComparison.OrdinalIgnoreCase) ||
+                    target.Contains(@"\Package Cache\", StringComparison.OrdinalIgnoreCase) ||
+                    Path.GetFileName(target).StartsWith("uninstall", StringComparison.OrdinalIgnoreCase) ||
+                    target.Contains("Güncelleyicisi", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
             // 6. If it is a Windows Shortcut (.lnk), verify its underlying target if it points to a rooted path
             if (target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
             {
@@ -85,6 +96,13 @@ namespace RadialLauncher.Services.Apps
                 if (!string.IsNullOrWhiteSpace(resolved) && Path.IsPathRooted(resolved))
                 {
                     if (!File.Exists(resolved) && !Directory.Exists(resolved))
+                    {
+                        return false;
+                    }
+                    if (!item.IsUserAdded && (
+                        resolved.Contains(@"\Windows\Installer\", StringComparison.OrdinalIgnoreCase) ||
+                        resolved.Contains(@"\Package Cache\", StringComparison.OrdinalIgnoreCase) ||
+                        Path.GetFileName(resolved).StartsWith("uninstall", StringComparison.OrdinalIgnoreCase)))
                     {
                         return false;
                     }

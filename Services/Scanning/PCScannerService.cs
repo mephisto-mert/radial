@@ -16,10 +16,12 @@ namespace RadialLauncher.Services.Scanning
     {
         public string Name { get; set; } = string.Empty;
         public string Target { get; set; } = string.Empty;
+        public string ResolvedTarget { get; set; } = string.Empty;
         public string Arguments { get; set; } = string.Empty;
         public string IconPath { get; set; } = string.Empty;
         public string CategoryName { get; set; } = "🛠️ Sistem & Araçlar";
         public string Source { get; set; } = string.Empty;
+        public bool IsOnDesktop { get; set; } = false;
         public bool IsSelected { get; set; } = true;
         public ImageSource? Icon { get; set; }
     }
@@ -28,6 +30,7 @@ namespace RadialLauncher.Services.Scanning
     {
         public int TotalDiscovered { get; set; }
         public int TotalAdded { get; set; }
+        public int TotalUpdated { get; set; }
         public int GamesCount { get; set; }
         public int InternetCount { get; set; }
         public int DevCount { get; set; }
@@ -62,31 +65,39 @@ namespace RadialLauncher.Services.Scanning
 
         private static readonly string[] IgnoreKeywords = new[]
         {
-            "uninstall", "kaldır", "kaldir", "setup", "installer", "unins000",
-            "vcredist", "directx", "updater", "crashpad", "help",
+            "uninstall", "kaldır", "kaldir", "setup", "installer", "unins000", "unins",
+            "vcredist", "directx", "updater", "güncelleyici", "guncelleyici", "crashpad", "help",
             "readme", "license", "documentation", "yardım", "kılavuz",
             "changelog", "release notes", "website", "support",
-            "report", "telemetry", "crashhandler", "createdump", "helper"
+            "report", "telemetry", "crashhandler", "createdump", "helper",
+            "bootstrapper", "app recovery", "redist", "package cache",
+            "windowsdesktop-runtime", "native tools command prompt",
+            "developer command prompt", "developer powershell", "error reporter",
+            "tanılaması", "dil ayarları", "safe_x64_injector"
         };
 
         private static readonly string[] GameKeywords = new[]
         {
             "steam", "epic", "game", "riot", "valorant", "league", "minecraft",
             "roblox", "gta", "rdr", "red dead", "counter-strike", "csgo", "cs2",
-            "blitz", "battle.net", "origin", "ea desktop", "ubisoft", "gog",
-            "genshin", "star wars", "hitman", "spider-man", "cities", "zomboid",
+            "blitz", "battle.net", "origin", "ea desktop", "ea games", "electronic arts",
+            "ealauncher", "battlefield", "bf2042", "jedi", "fallen order", "star wars",
+            "rockstar", "curseforge", "overwolf", "ubisoft", "gog",
+            "genshin", "hitman", "spider-man", "cities", "zomboid",
             "kenshi", "worldbox", "half sword", "forest", "universe sandbox",
             "playstation", "xbox", "pubg", "apex", "overwatch", "witcher",
             "cyberpunk", "dota", "fortnite", "assassin", "far cry", "fifa",
-            "pes", "simulator", "battlefront"
+            "fc 24", "fc 25", "pes", "simulator", "battlefront",
+            "call of duty", "metin2", "gameforge", "oyunindir",
+            "blackmyth", "wukong", "bodycam", "diablo", "dying light", "ready or not", "sims 4"
         };
 
         private static readonly string[] InternetKeywords = new[]
         {
-            "chrome", "msedge", "edge", "brave", "firefox", "opera", "vivaldi", "tor",
+            "chrome", "msedge", "edge", "brave", "firefox", "opera", "vivaldi", "tor browser",
             "discord", "telegram", "whatsapp", "spotify", "zoom", "teams", "skype",
             "slack", "thunderbird", "rave", "youtube", "twitch", "netflix",
-            "viber", "signal", "messenger", "browser", "internet"
+            "viber", "signal", "messenger", "browser", "internet", "zen browser"
         };
 
         private static readonly string[] DevWorkKeywords = new[]
@@ -97,7 +108,7 @@ namespace RadialLauncher.Services.Scanning
             "blender", "figma", "excel", "word", "powerpoint", "onenote", "office",
             "outlook", "acrobat", "pdf", "photoshop", "illustrator", "premiere",
             "after effects", "obs", "gimp", "canva", "davinci", "audacity",
-            "godot", "dbeaver", "insomnia", "workbench"
+            "godot", "dbeaver", "insomnia", "workbench", "antigravity", "cursor"
         };
 
         public List<ScannedApp> ScanAllApps()
@@ -114,10 +125,17 @@ namespace RadialLauncher.Services.Scanning
                 if (string.IsNullOrWhiteSpace(app.Name) || string.IsNullOrWhiteSpace(app.Target))
                     return;
 
-                string lowerName = app.Name.ToLowerInvariant();
+                if (string.Equals(app.Name.Trim(), "Belgeler", StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                if (app.Target.Contains(@"\Windows\Installer\", StringComparison.OrdinalIgnoreCase) ||
+                    app.Target.Contains(@"\Package Cache\", StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                string lowerCheck = (app.Name + " " + Path.GetFileNameWithoutExtension(app.Target) + " " + Path.GetFileNameWithoutExtension(app.ResolvedTarget ?? "")).ToLowerInvariant();
                 foreach (var ignore in IgnoreKeywords)
                 {
-                    if (lowerName.Contains(ignore)) return;
+                    if (lowerCheck.Contains(ignore)) return;
                 }
 
                 // Do not add broken shortcuts or uninstalled Steam/Epic targets
@@ -126,12 +144,25 @@ namespace RadialLauncher.Services.Scanning
                     return;
 
                 string key = app.Target.ToLowerInvariant();
-                if (seenTargets.Contains(key)) return;
+                string resolvedKey = (app.ResolvedTarget ?? "").ToLowerInvariant();
+                string nameKey = NormalizeAppNameKey(app.Name);
 
-                string nameKey = app.Name.Trim().ToLowerInvariant();
-                if (seenNames.Contains(nameKey)) return;
+                var existing = results.FirstOrDefault(r =>
+                    string.Equals(r.Target, app.Target, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(resolvedKey) && (string.Equals(r.Target, app.ResolvedTarget, StringComparison.OrdinalIgnoreCase) || string.Equals(r.ResolvedTarget, app.ResolvedTarget, StringComparison.OrdinalIgnoreCase))) ||
+                    NormalizeAppNameKey(r.Name) == nameKey);
+
+                if (existing != null)
+                {
+                    if (app.IsOnDesktop) existing.IsOnDesktop = true;
+                    if (app.CategoryName == CatGames) existing.CategoryName = CatGames;
+                    if (string.IsNullOrEmpty(existing.IconPath) && !string.IsNullOrEmpty(app.IconPath))
+                        existing.IconPath = app.IconPath;
+                    return;
+                }
 
                 seenTargets.Add(key);
+                if (!string.IsNullOrEmpty(resolvedKey)) seenTargets.Add(resolvedKey);
                 seenNames.Add(nameKey);
 
                 // Resolve Icon eagerly
@@ -140,28 +171,7 @@ namespace RadialLauncher.Services.Scanning
                 results.Add(app);
             }
 
-            // 1. Steam & Epic Games
-            try
-            {
-                var games = _gameDetector.DetectAll();
-                foreach (var g in games)
-                {
-                    AddIfValid(new ScannedApp
-                    {
-                        Name = g.Name,
-                        Target = g.ExePath,
-                        IconPath = g.IconPath,
-                        CategoryName = CatGames,
-                        Source = g.Platform
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed scanning games in PCScannerService");
-            }
-
-            // 2. Desktop Shortcuts (.lnk and .url)
+            // 1. Desktop Shortcuts FIRST (.lnk and .url) so user's exact Desktop names & targets take priority
             try
             {
                 string[] desktopFolders = new[]
@@ -177,12 +187,24 @@ namespace RadialLauncher.Services.Scanning
                         foreach (var file in Directory.GetFiles(folder, "*.lnk"))
                         {
                             string appName = Path.GetFileNameWithoutExtension(file);
+                            var (resolvedTarget, resolvedArgs, resolvedIcon) = ResolveShortcutDetails(file);
+                            string effectiveTarget = (!string.IsNullOrEmpty(resolvedTarget) && File.Exists(resolvedTarget) && string.IsNullOrEmpty(resolvedArgs))
+                                ? resolvedTarget
+                                : file;
+                            string effectiveIcon = (!string.IsNullOrEmpty(resolvedIcon) && File.Exists(resolvedIcon))
+                                ? resolvedIcon
+                                : ((!string.IsNullOrEmpty(resolvedTarget) && File.Exists(resolvedTarget)) ? resolvedTarget : file);
+
                             AddIfValid(new ScannedApp
                             {
                                 Name = appName,
-                                Target = file,
-                                CategoryName = ClassifyCategory(appName, file),
-                                Source = "Masa?st?"
+                                Target = effectiveTarget,
+                                ResolvedTarget = resolvedTarget ?? string.Empty,
+                                Arguments = string.IsNullOrEmpty(resolvedTarget) ? string.Empty : (resolvedArgs ?? string.Empty),
+                                IconPath = effectiveIcon,
+                                CategoryName = ClassifyCategory(appName, file + " " + resolvedTarget),
+                                Source = "Masaüstü",
+                                IsOnDesktop = true
                             });
                         }
 
@@ -218,7 +240,8 @@ namespace RadialLauncher.Services.Scanning
                                 Target = target,
                                 IconPath = iconPath,
                                 CategoryName = ClassifyCategory(appName, target),
-                                Source = "Masa?st?"
+                                Source = "Masaüstü",
+                                IsOnDesktop = true
                             });
                         }
                     }
@@ -227,6 +250,27 @@ namespace RadialLauncher.Services.Scanning
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed scanning desktop shortcuts");
+            }
+
+            // 2. Steam, Epic & Installed Game Directories
+            try
+            {
+                var games = _gameDetector.DetectAll();
+                foreach (var g in games)
+                {
+                    AddIfValid(new ScannedApp
+                    {
+                        Name = g.Name,
+                        Target = g.ExePath,
+                        IconPath = g.IconPath,
+                        CategoryName = CatGames,
+                        Source = g.Platform
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed scanning games in PCScannerService");
             }
 
             // 3. Start Menu Shortcuts (.lnk and .url)
@@ -244,13 +288,35 @@ namespace RadialLauncher.Services.Scanning
                     {
                         foreach (var file in Directory.GetFiles(folder, "*.lnk", SearchOption.AllDirectories))
                         {
+                            if (file.Contains(@"\Administrative Tools\", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains(@"\Microsoft DirectX SDK", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains(@"\Visual Studio Tools\", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains(@"\Accessibility\", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains(@"\K-Lite Codec Pack\", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains(@"\System Tools\", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains(@"\Maintenance\", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
                             string appName = Path.GetFileNameWithoutExtension(file);
+                            var (resolvedTarget, resolvedArgs, resolvedIcon) = ResolveShortcutDetails(file);
+                            string effectiveTarget = (!string.IsNullOrEmpty(resolvedTarget) && File.Exists(resolvedTarget) && string.IsNullOrEmpty(resolvedArgs))
+                                ? resolvedTarget
+                                : file;
+                            string effectiveIcon = (!string.IsNullOrEmpty(resolvedIcon) && File.Exists(resolvedIcon))
+                                ? resolvedIcon
+                                : ((!string.IsNullOrEmpty(resolvedTarget) && File.Exists(resolvedTarget)) ? resolvedTarget : file);
+
                             AddIfValid(new ScannedApp
                             {
                                 Name = appName,
-                                Target = file,
-                                CategoryName = ClassifyCategory(appName, file),
-                                Source = "Ba?lat Men?s?"
+                                Target = effectiveTarget,
+                                ResolvedTarget = resolvedTarget ?? string.Empty,
+                                Arguments = string.IsNullOrEmpty(resolvedTarget) ? string.Empty : (resolvedArgs ?? string.Empty),
+                                IconPath = effectiveIcon,
+                                CategoryName = ClassifyCategory(appName, file + " " + resolvedTarget),
+                                Source = "Başlat Menüsü"
                             });
                         }
 
@@ -286,7 +352,7 @@ namespace RadialLauncher.Services.Scanning
                                 Target = target,
                                 IconPath = iconPath,
                                 CategoryName = ClassifyCategory(appName, target),
-                                Source = "Ba?lat Men?s?"
+                                Source = "Başlat Menüsü"
                             });
                         }
                     }
@@ -297,7 +363,7 @@ namespace RadialLauncher.Services.Scanning
                 Log.Warning(ex, "Failed scanning start menu shortcuts");
             }
 
-                // 4. Registry Installed Programs
+            // 4. Registry Installed Programs
             try
             {
                 ScanRegistryKeys(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", AddIfValid);
@@ -337,7 +403,10 @@ namespace RadialLauncher.Services.Scanning
                     "Common Files", "Windows Defender", "Windows Defender Advanced Threat Protection",
                     "Windows Mail", "Windows Photo Viewer", "Windows NT", "Windows Kits", "WindowsPowerShell",
                     "Internet Explorer", "ModifiableWindowsApps", "Reference Assemblies", "MSBuild",
-                    "dotnet", "Microsoft.NET", "Uninstall Information", "Package Cache", "RadialLauncher"
+                    "dotnet", "Microsoft.NET", "Uninstall Information", "Package Cache", "RadialLauncher",
+                    "Microsoft DirectX SDK (June 2010)", "Microsoft SDKs", "Microsoft Works", "Microsoft XNA",
+                    "EasyAntiCheat_EOS", "Riot Vanguard", "Microsoft GameInput", "VulkanRT", "OpenAL",
+                    "MSXML 4.0", "Mozilla Maintenance Service", "Application Verifier", "Bonjour"
                 };
 
                 foreach (var baseDir in appDirs)
@@ -392,7 +461,7 @@ namespace RadialLauncher.Services.Scanning
                 Log.Warning(ex, "Failed scanning program directories");
             }
 
-            return results.OrderBy(a => a.CategoryName).ThenBy(a => a.Name).ToList();
+            return results.OrderByDescending(a => a.IsOnDesktop).ThenBy(a => a.CategoryName).ThenBy(a => a.Name).ToList();
         }
 
         private ImageSource? ResolveAppIcon(string name, string target, string iconPath)
@@ -465,13 +534,19 @@ namespace RadialLauncher.Services.Scanning
 
                         if (!string.IsNullOrEmpty(target) && File.Exists(target))
                         {
+                            if (target.Contains(@"\Windows\Installer\", StringComparison.OrdinalIgnoreCase) ||
+                                target.Contains(@"\Package Cache\", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
                             addAction(new ScannedApp
                             {
                                 Name = displayName,
                                 Target = target,
                                 IconPath = icon,
                                 CategoryName = ClassifyCategory(displayName, target),
-                                Source = "Kay?t Defteri"
+                                Source = "Kayıt Defteri"
                             });
                         }
                     }
@@ -487,10 +562,56 @@ namespace RadialLauncher.Services.Scanning
             }
         }
 
+        private static (string? targetPath, string? arguments, string? iconLocation) ResolveShortcutDetails(string shortcutPath)
+        {
+            dynamic? shell = null;
+            dynamic? shortcut = null;
+            try
+            {
+                Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null) return (null, null, null);
+                shell = Activator.CreateInstance(shellType);
+                if (shell == null) return (null, null, null);
+                shortcut = shell.CreateShortcut(shortcutPath);
+                string? target = shortcut.TargetPath as string;
+                string? args = shortcut.Arguments as string;
+                string? iconLoc = shortcut.IconLocation as string;
+                if (!string.IsNullOrEmpty(iconLoc))
+                {
+                    iconLoc = iconLoc.Split(',')[0].Trim().Trim('"');
+                }
+                return (target, args, iconLoc);
+            }
+            catch
+            {
+                return (null, null, null);
+            }
+            finally
+            {
+                if (shortcut != null) { try { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut); } catch { } }
+                if (shell != null) { try { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell); } catch { } }
+            }
+        }
+
+        private static string NormalizeAppNameKey(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+            string n = name.Trim().ToLowerInvariant();
+            if (n == "epic games" || n == "epic games launcher") return "epic games launcher";
+            if (n == "minecraft" || n == "minecraft launcher") return "minecraft launcher";
+            if (n.StartsWith("curseforge ")) return "curseforge";
+            return n;
+        }
+
         public string ClassifyCategory(string name, string target)
         {
             if (target.StartsWith("steam://", StringComparison.OrdinalIgnoreCase) ||
                 target.StartsWith("com.epicgames.", StringComparison.OrdinalIgnoreCase))
+            {
+                return CatGames;
+            }
+
+            if (string.Equals(name.Trim(), "EA", StringComparison.OrdinalIgnoreCase))
             {
                 return CatGames;
             }
@@ -532,17 +653,11 @@ namespace RadialLauncher.Services.Scanning
             int toolsCatId = db.GetOrCreateCategory(CatTools, "#e67e22");
 
             var existingItems = db.GetAllItems();
-            var existingTargets = new HashSet<string>(existingItems.Select(i => i.Target), StringComparer.OrdinalIgnoreCase);
-            var existingNames = new HashSet<string>(existingItems.Select(i => i.Name), StringComparer.OrdinalIgnoreCase);
-
             int maxPos = existingItems.Count > 0 ? existingItems.Max(i => i.Position) : 0;
 
             foreach (var app in appList)
             {
                 if (!app.IsSelected) continue;
-
-                if (existingTargets.Contains(app.Target) || existingNames.Contains(app.Name))
-                    continue;
 
                 int targetCatId = app.CategoryName switch
                 {
@@ -552,8 +667,55 @@ namespace RadialLauncher.Services.Scanning
                     _ => toolsCatId
                 };
 
+                string normName = NormalizeAppNameKey(app.Name);
+                var existingMatch = existingItems.FirstOrDefault(i =>
+                    string.Equals(i.Target, app.Target, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(app.ResolvedTarget) && string.Equals(i.Target, app.ResolvedTarget, StringComparison.OrdinalIgnoreCase)) ||
+                    NormalizeAppNameKey(i.Name) == normName);
+
+                if (existingMatch != null)
+                {
+                    if (existingMatch.Type != "URL" && existingMatch.Type != "ACTION" && existingMatch.Type != "MACRO")
+                    {
+                        bool changed = false;
+                        if (targetCatId == gamesCatId && existingMatch.CategoryId != gamesCatId)
+                        {
+                            if (existingMatch.CategoryId == 0)
+                            {
+                                existingMatch.IsFavorite = true;
+                            }
+                            existingMatch.CategoryId = gamesCatId;
+                            changed = true;
+                        }
+                        else if (!existingMatch.IsUserAdded && existingMatch.CategoryId != targetCatId && existingMatch.CategoryId > 1)
+                        {
+                            existingMatch.CategoryId = targetCatId;
+                            changed = true;
+                        }
+
+                        if (app.IsOnDesktop && targetCatId == gamesCatId && !existingMatch.IsFavorite)
+                        {
+                            existingMatch.IsFavorite = true;
+                            changed = true;
+                        }
+
+                        if (string.IsNullOrEmpty(existingMatch.IconPath) && !string.IsNullOrEmpty(app.IconPath))
+                        {
+                            existingMatch.IconPath = app.IconPath;
+                            changed = true;
+                        }
+
+                        if (changed)
+                        {
+                            db.UpdateItem(existingMatch);
+                            summary.TotalUpdated++;
+                        }
+                    }
+                    continue;
+                }
+
                 maxPos++;
-                db.InsertItem(new LauncherItem
+                var newItem = new LauncherItem
                 {
                     Name = app.Name,
                     Type = "EXE",
@@ -562,13 +724,12 @@ namespace RadialLauncher.Services.Scanning
                     IconPath = app.IconPath,
                     CategoryId = targetCatId,
                     Position = maxPos,
-                    IsFavorite = false,
+                    IsFavorite = app.IsOnDesktop && targetCatId == gamesCatId,
                     ParentId = 0,
                     IsUserAdded = false
-                });
-
-                existingTargets.Add(app.Target);
-                existingNames.Add(app.Name);
+                };
+                db.InsertItem(newItem);
+                existingItems.Add(newItem);
                 summary.TotalAdded++;
 
                 if (app.CategoryName == CatGames) summary.GamesCount++;
