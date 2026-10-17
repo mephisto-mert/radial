@@ -145,5 +145,27 @@ namespace RadialLauncher.Tests
             int slot = RadialLayoutCalculator.ResolveAimSlot(cursor, 4, "cursor", 270.0, 270.0, 48.0, 320.0);
             Assert.Equal(0, slot);
         }
+
+        [Theory]
+        [InlineData(-Math.PI / 2, OuterPillSide.Top)]
+        [InlineData(0.0, OuterPillSide.Right)]
+        [InlineData(Math.PI / 2, OuterPillSide.Bottom)]
+        [InlineData(Math.PI, OuterPillSide.Left)]
+        public void GetOuterPillSide_ClassifiesCardinalAnglesCorrectly(double angleRadians, OuterPillSide expectedSide)
+        {
+            Assert.Equal(expectedSide, RadialLayoutCalculator.GetOuterPillSide(angleRadians));
+        }
+
+        [Fact]
+        public void ComputeRovylMetrics_ScalesRadiusAndTileSizeAppropriately()
+        {
+            var metrics6 = RadialLayoutCalculator.ComputeRovylMetrics(6, false);
+            var metrics12 = RadialLayoutCalculator.ComputeRovylMetrics(12, false);
+
+            Assert.True(metrics12.radius > metrics6.radius);
+            Assert.True(metrics6.tileSize >= metrics12.tileSize);
+            Assert.True(metrics6.iconSize > 0 && metrics6.iconSize < metrics6.tileSize);
+        }
     }
 }
+

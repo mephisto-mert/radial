@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:RadialLauncher.UI.Localization"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
-        Title="{loc:Loc App_Name, Fallback='Radial Launcher'}" Height="600" Width="600"
+        Title="{loc:Loc App_Name, Fallback='Radial Launcher'}" Height="640" Width="640"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
         WindowStartupLocation="Manual" Deactivated="Window_Deactivated"
         KeyDown="Window_KeyDown" TextInput="Window_TextInput" MouseWheel="Window_MouseWheel"
         AllowDrop="True" PreviewDragOver="Window_DragOver" Drop="Window_Drop"
@@ -15,60 +16,116 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid x:Name="RootGrid" RenderTransformOrigin="0.5,0.5">
-        <!-- Outer glow shadow -->
-        <Ellipse x:Name="GlowEllipse" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Ellipse.Effect>
-                <DropShadowEffect BlurRadius="30" ShadowDepth="0" Color="#558CACEC" Opacity="0.45"/>
-            </Ellipse.Effect>
+        <!-- Rovyl-style 7-stop smoothstep radial vignette scrim (no hard disk edge) -->
+        <Ellipse x:Name="GlowEllipse" Width="620" Height="620" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="True">
             <Ellipse.Fill>
-                <RadialGradientBrush>
-                    <GradientStop Color="#00000000" Offset="0.85"/>
-                    <GradientStop Color="#22558CEC" Offset="1.0"/>
+                <RadialGradientBrush GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                    <GradientStop Color="#78040507" Offset="0.0"/>
+                    <GradientStop Color="#6E040507" Offset="0.18"/>
+                    <GradientStop Color="#56040507" Offset="0.36"/>
+                    <GradientStop Color="#38040507" Offset="0.54"/>
+                    <GradientStop Color="#1C040507" Offset="0.72"/>
+                    <GradientStop Color="#08040507" Offset="0.88"/>
+                    <GradientStop Color="#00040507" Offset="1.0"/>
                 </RadialGradientBrush>
             </Ellipse.Fill>
         </Ellipse>
 
-        <!-- Base circle with gradient -->
-        <Ellipse x:Name="BaseCircle" Width="480" Height="480" HorizontalAlignment="Center" VerticalAlignment="Center"
-                 StrokeThickness="1.5">
+        <!-- Subtle orbit ring (replaces heavy opaque BaseCircle so tiles float directly over desktop) -->
+        <Ellipse x:Name="BaseCircle" Width="280" Height="280" HorizontalAlignment="Center" VerticalAlignment="Center"
+                 StrokeThickness="1" StrokeDashArray="3 4" IsHitTestVisible="False">
             <Ellipse.Fill>
-                <SolidColorBrush x:Name="BaseFill" Color="#E8121216"/>
+                <SolidColorBrush x:Name="BaseFill" Color="#00000000"/>
             </Ellipse.Fill>
             <Ellipse.Stroke>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop x:Name="BorderGrad1" Color="#33588CEC" Offset="0"/>
-                    <GradientStop x:Name="BorderGrad2" Color="#11588CEC" Offset="0.5"/>
-                    <GradientStop x:Name="BorderGrad3" Color="#33588CEC" Offset="1"/>
+                    <GradientStop x:Name="BorderGrad1" Color="#18FFFFFF" Offset="0"/>
+                    <GradientStop x:Name="BorderGrad2" Color="#08FFFFFF" Offset="0.5"/>
+                    <GradientStop x:Name="BorderGrad3" Color="#18FFFFFF" Offset="1"/>
                 </LinearGradientBrush>
             </Ellipse.Stroke>
         </Ellipse>
 
-        <!-- Hover Info Header in Upper Center -->
-        <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-100,0,0"
-                   TextAlignment="Center" MaxWidth="240" TextTrimming="CharacterEllipsis">
-            <TextBlock.Effect>
-                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="Black" Opacity="0.8"/>
-            </TextBlock.Effect>
-        </TextBlock>
+        <!-- Top Status HUD Pill (Rovyl RadialHud: Clock + Battery) -->
+        <Border x:Name="TopHudPill" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
+                Background="#C808080A" CornerRadius="14" Padding="12,5" BorderThickness="1" BorderBrush="#1FFFFFFF"
+                IsHitTestVisible="False" Panel.ZIndex="40">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Color="Black" Opacity="0.45"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="HudClockText" Text="00:00" FontSize="11" FontWeight="SemiBold" Foreground="#D8FFFFFF" Margin="0,0,8,0"/>
+                <TextBlock Text="·" FontSize="11" Foreground="#44FFFFFF" Margin="0,0,8,0"/>
+                <TextBlock x:Name="HudBatteryText" Text="⚡ 100%" FontSize="11" FontWeight="Medium" Foreground="#B8FFFFFF"/>
+            </StackPanel>
+        </Border>
 
-        <!-- Contextual Quick Actions Floating Card (Dead Center inside Empty Circle) -->
-        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0"
-                Background="#F0101016" CornerRadius="11" Padding="4,2" BorderThickness="1" BorderBrush="#45588CEC"
+        <!-- Hidden legacy HoverInfoText (kept for code-behind compatibility; labels now open as outer pills) -->
+        <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" Visibility="Collapsed"/>
+
+        <!-- Rovyl Central Hub (Dead Center 56x56 Circle with Vector Ring) -->
+        <Border x:Name="CentralHubBorder" Width="56" Height="56" CornerRadius="28"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="#E8060709" BorderBrush="#4CFFFFFF" BorderThickness="1.5"
+                Cursor="Hand" Panel.ZIndex="120" RenderTransformOrigin="0.5,0.5"
+                MouseLeftButtonUp="CentralHub_MouseLeftButtonUp">
+            <Border.Effect>
+                <DropShadowEffect x:Name="CentralHubShadow" BlurRadius="20" ShadowDepth="4" Color="#000000" Opacity="0.65"/>
+            </Border.Effect>
+            <Grid>
+                <!-- Root Rovyl-style Geometric Emblem -->
+                <Canvas x:Name="CentralHubLogo" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Path x:Name="CentralHubPath"
+                          Data="M11,2 L13.4,8.6 L20,11 L13.4,13.4 L11,20 L8.6,13.4 L2,11 L8.6,8.6 Z"
+                          Stroke="#E6F4F2ED" StrokeThickness="1.6" StrokeLineJoin="Round" Fill="#1AF4F2ED"/>
+                    <Ellipse Width="4" Height="4" Canvas.Left="9" Canvas.Top="9" Fill="#F4F2ED"/>
+                </Canvas>
+                <!-- Folder/Submenu Back Arrow -->
+                <TextBlock x:Name="CentralHubBackIcon" Text="↩" FontSize="18" FontWeight="SemiBold"
+                           Foreground="#F4F2ED" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
+            </Grid>
+        </Border>
+
+        <!-- Contextual Quick Actions Floating Card (Positioned cleanly above bottom pill when active) -->
+        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,318,0,0"
+                Background="#F208090C" CornerRadius="12" Padding="6,3" BorderThickness="1" BorderBrush="#2EFFFFFF"
                 Visibility="Collapsed" SnapsToDevicePixels="True" Panel.ZIndex="200">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="8" ShadowDepth="1" Color="Black" Opacity="0.6"/>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Color="Black" Opacity="0.6"/>
             </Border.Effect>
             <StackPanel x:Name="ContextActionPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
 
-        <!-- Container for radial items (Center area is empty space) -->
-        <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <!-- Container for floating radial squircle tiles and dynamic outer pill labels -->
+        <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
         </Canvas>
 
-        <!-- Pinned Quick Actions Strip (Bottom Inner Area) -->
+        <!-- Rovyl Bottom Context Pill (Workspace / Category Name + Shortcut Chip + Page Dots) -->
+        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,395,0,0"
+                Background="#EC050608" CornerRadius="15" Padding="13,6" BorderThickness="1" BorderBrush="#26FFFFFF"
+                SnapsToDevicePixels="True" Cursor="Hand" Panel.ZIndex="90"
+                MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18" ShadowDepth="4" Color="Black" Opacity="0.65"/>
+            </Border.Effect>
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel x:Name="CategoryDots" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.DisplayName, FallbackValue='Categories'}" 
+                               FontSize="11.5" FontWeight="Medium" Foreground="#B8FFFFFF" 
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
+                    <Border x:Name="CategoryShortcutChip" Background="#1AFFFFFF" CornerRadius="5" Padding="6,2" Margin="7,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="CategoryShortcutText" Text="Esc" FontSize="10" FontWeight="Medium" Foreground="#80FFFFFF"/>
+                    </Border>
+                </StackPanel>
+                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Pinned Quick Actions Strip (Subtle bottom bar) -->
         <ItemsControl x:Name="QuickActionsBar" ItemsSource="{Binding QuickActions}" 
-                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20">
+                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18" Panel.ZIndex="85">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Orientation="Horizontal"/>
@@ -76,15 +133,15 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Width="32" Height="32" Margin="3,0" Background="#33FFFFFF" BorderThickness="1" BorderBrush="#22FFFFFF"
+                    <Button Width="30" Height="30" Margin="3,0" Background="#CC0C0D10" BorderThickness="1" BorderBrush="#24FFFFFF"
                             Command="{Binding DataContext.ExecuteQuickActionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{Binding}" Cursor="Hand" ToolTip="{Binding Name}">
                         <Button.Resources>
                             <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="16"/>
+                                <Setter Property="CornerRadius" Value="10"/>
                             </Style>
                         </Button.Resources>
-                        <TextBlock Text="{Binding IconSymbol}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding IconSymbol}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -93,12 +150,12 @@
         <!-- Search overlay -->
         <Border x:Name="SearchBorder" Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                Background="#EE1E1E24" CornerRadius="16" Padding="12,4" Margin="0,130,0,0"
-                BorderThickness="1" BorderBrush="#44588CEC">
+                Background="#F50A0B0E" CornerRadius="16" Padding="14,6" Margin="0,-390,0,0"
+                BorderThickness="1" BorderBrush="#40FFFFFF" Panel.ZIndex="210">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🔍 " FontSize="12" Foreground="#888" VerticalAlignment="Center"/>
-                <TextBlock x:Name="SearchText" Text="{Binding SearchQuery}" FontSize="12" Foreground="White" VerticalAlignment="Center" MinWidth="70"/>
-                <TextBlock Text="|" FontSize="12" Foreground="#588CEC" VerticalAlignment="Center">
+                <TextBlock x:Name="SearchText" Text="{Binding SearchQuery}" FontSize="12.5" FontWeight="Medium" Foreground="White" VerticalAlignment="Center" MinWidth="80"/>
+                <TextBlock Text="|" FontSize="12.5" Foreground="#FFFFFF" VerticalAlignment="Center">
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
                             <BeginStoryboard>
@@ -112,33 +169,17 @@
             </StackPanel>
         </Border>
 
-        <!-- Category & Page Info Pill -->
-        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,88,0,0"
-                Background="#E015151B" CornerRadius="10" Padding="10,3" BorderThickness="1" BorderBrush="#35FFFFFF"
-                SnapsToDevicePixels="True" Cursor="Hand" MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="10" ShadowDepth="1" Color="Black" Opacity="0.65"/>
-            </Border.Effect>
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                <StackPanel x:Name="CategoryDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.DisplayName, FallbackValue='Categories'}" 
-                           FontSize="10.5" FontWeight="SemiBold" Foreground="#FFFFFF" 
-                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="140"/>
-                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,1"/>
-            </StackPanel>
-        </Border>
-
         <!-- First-run Tutorial Overlay -->
         <Border x:Name="TutorialOverlay" Visibility="{Binding ShowTutorial, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
-                Background="#F0101014" CornerRadius="24" Margin="60" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                Background="#F50C0D10" CornerRadius="20" Margin="60" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Panel.ZIndex="300">
             <StackPanel HorizontalAlignment="Center">
                 <TextBlock x:Name="TxtTutorialHeader" Text="{loc:Loc TutorialHeader, Fallback='🚀 Welcome to Radial Launcher!'}" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12" HorizontalAlignment="Center"/>
                 <TextBlock x:Name="TxtTutorialBody" Text="{loc:Loc TutorialBody, Fallback='• Middle Click: Open / close radial menu&#x0a;• Click any icon: Launch application or shortcut&#x0a;• Mouse wheel / Drag: Navigate pages and categories&#x0a;• Type anytime: Fast search across all apps'}" FontSize="13" Foreground="#DDD" Margin="0,0,0,16" LineHeight="20"/>
-                <Button x:Name="BtnDismissTutorial" Content="{loc:Loc TutorialDismiss, Fallback='Got it! Start using'}" Padding="16,6" Background="#588CEC" Foreground="White" FontWeight="Bold" BorderThickness="0"
+                <Button x:Name="BtnDismissTutorial" Content="{loc:Loc TutorialDismiss, Fallback='Got it! Start using'}" Padding="16,6" Background="#FFFFFF" Foreground="#0A0A0B" FontWeight="Bold" BorderThickness="0"
                         HorizontalAlignment="Center" Cursor="Hand" Command="{Binding DismissTutorialCommand}">
                     <Button.Resources>
                         <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="14"/>
+                            <Setter Property="CornerRadius" Value="12"/>
                         </Style>
                     </Button.Resources>
                 </Button>

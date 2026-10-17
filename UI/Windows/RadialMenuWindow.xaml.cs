@@ -208,6 +208,7 @@ namespace RadialLauncher.UI.Windows
 
                 _keyboardFocusIndex = -1;
                 _viewModel.InitializeForDisplay();
+                UpdateHudStatus();
 
                 ApplyThemeVisuals(_viewModel.ActiveTheme);
                 RenderLayout(true);
@@ -226,36 +227,74 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
+        private void UpdateHudStatus()
+        {
+            try
+            {
+                if (HudClockText != null)
+                    HudClockText.Text = DateTime.Now.ToString("HH:mm");
+
+                if (HudBatteryText != null)
+                {
+                    var ps = System.Windows.Forms.SystemInformation.PowerStatus;
+                    int pct = (int)Math.Round(ps.BatteryLifePercent * 100);
+                    if (pct >= 0 && pct <= 100)
+                        HudBatteryText.Text = $"⚡ {pct}%";
+                    else
+                        HudBatteryText.Text = "⚡ AC";
+                }
+            }
+            catch { }
+        }
+
+        private static Color GetReadableForeground(Color bg)
+        {
+            double lum = (0.2126 * bg.R + 0.7152 * bg.G + 0.0722 * bg.B) / 255.0;
+            return lum > 0.56 ? Color.FromRgb(10, 10, 12) : Colors.White;
+        }
+
         public void ApplyThemeVisuals(Theme theme)
         {
-            byte alpha = (byte)(theme.BackgroundOpacity * 255);
-            BaseFill.Color = Color.FromArgb(alpha, theme.BackgroundColor.R, theme.BackgroundColor.G, theme.BackgroundColor.B);
+            // Keep BaseFill transparent so floating squircle tiles sit directly over the desktop
+            BaseFill.Color = Colors.Transparent;
 
             var stroke = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(90, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.0));
-            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(30, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 0.5));
-            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(90, theme.Accent2Color.R, theme.Accent2Color.G, theme.Accent2Color.B), 1.0));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(40, 255, 255, 255), 0.0));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(14, 255, 255, 255), 0.5));
+            stroke.GradientStops.Add(new GradientStop(Color.FromArgb(40, 255, 255, 255), 1.0));
             BaseCircle.Stroke = stroke;
 
-            var glow = new RadialGradientBrush();
-            glow.GradientStops.Add(new GradientStop(Colors.Transparent, 0.82));
-            glow.GradientStops.Add(new GradientStop(Color.FromArgb(45, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B), 1.0));
-            GlowEllipse.Fill = glow;
+            // Rovyl 7-stop smoothstep radial scrim
+            var scrim = new RadialGradientBrush
+            {
+                GradientOrigin = new Point(0.5, 0.5),
+                Center = new Point(0.5, 0.5),
+                RadiusX = 0.5,
+                RadiusY = 0.5
+            };
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(128, 4, 5, 7), 0.0));
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(112, 4, 5, 7), 0.18));
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(88, 4, 5, 7), 0.36));
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(56, 4, 5, 7), 0.54));
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(28, 4, 5, 7), 0.72));
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(8, 4, 5, 7), 0.88));
+            scrim.GradientStops.Add(new GradientStop(Color.FromArgb(0, 4, 5, 7), 1.0));
+            GlowEllipse.Fill = scrim;
 
             HoverInfoText.Foreground = new SolidColorBrush(theme.TextColor);
 
-            CategoryPill.Background = new SolidColorBrush(Color.FromArgb(220, theme.IconBgR, theme.IconBgG, theme.IconBgB));
-            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(80, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
-            CategoryTitleText.Foreground = new SolidColorBrush(theme.TextColor);
+            CategoryPill.Background = new SolidColorBrush(Color.FromArgb(238, 6, 7, 9));
+            CategoryPill.BorderBrush = new SolidColorBrush(Color.FromArgb(42, 255, 255, 255));
+            CategoryTitleText.Foreground = new SolidColorBrush(Color.FromArgb(215, 255, 255, 255));
 
             if (ContextActionCard != null)
             {
-                ContextActionCard.Background = new SolidColorBrush(Color.FromArgb(240, theme.IconBgR, theme.IconBgG, theme.IconBgB));
-                ContextActionCard.BorderBrush = new SolidColorBrush(Color.FromArgb(100, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+                ContextActionCard.Background = new SolidColorBrush(Color.FromArgb(242, 8, 9, 12));
+                ContextActionCard.BorderBrush = new SolidColorBrush(Color.FromArgb(55, 255, 255, 255));
             }
 
-            SearchBorder.Background = new SolidColorBrush(Color.FromArgb(235, theme.IconBgR, theme.IconBgG, theme.IconBgB));
-            SearchBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(120, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            SearchBorder.Background = new SolidColorBrush(Color.FromArgb(245, 10, 11, 14));
+            SearchBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(90, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
             SearchText.Foreground = new SolidColorBrush(theme.TextColor);
         }
 
@@ -268,16 +307,34 @@ namespace RadialLauncher.UI.Windows
             ItemsCanvas.Children.Clear();
             _visibleButtons.Clear();
 
+            if (CentralHubLogo != null && CentralHubBackIcon != null)
+            {
+                CentralHubLogo.Visibility = _viewModel.IsSubmenu ? Visibility.Collapsed : Visibility.Visible;
+                CentralHubBackIcon.Visibility = _viewModel.IsSubmenu ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (CategoryShortcutText != null)
+            {
+                CategoryShortcutText.Text = _viewModel.IsSubmenu ? "↩ Back" : $"Key {_viewModel.CurrentCategoryIndex + 1}";
+            }
+
             var items = _viewModel.CurrentPageItems;
             if (items.Count == 0) return;
 
             bool isCompact = _viewModel.ActiveTheme.DensityMode == "Compact";
             var placements = RadialLayoutCalculator.CalculatePlacements(items.Count, 250, 250, isCompact);
+            if (placements.Count > 0 && BaseCircle != null)
+            {
+                BaseCircle.Width = placements[0].DynamicRadius * 2.0;
+                BaseCircle.Height = placements[0].DynamicRadius * 2.0;
+            }
 
             var theme = _viewModel.ActiveTheme;
-            var regularBorderBrush = new SolidColorBrush(Color.FromArgb(50, theme.TextR, theme.TextG, theme.TextB));
-            var badgeBg = new SolidColorBrush(Color.FromArgb(215, theme.IconBgR, theme.IconBgG, theme.IconBgB));
-            var badgeBorder = new SolidColorBrush(Color.FromArgb(70, theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B));
+            var idleTileBg = new SolidColorBrush(Color.FromArgb(248, 18, 19, 23));
+            var regularBorderBrush = new SolidColorBrush(Color.FromArgb(72, 255, 255, 255));
+            var activeReadableFg = new SolidColorBrush(GetReadableForeground(theme.AccentColor));
+            var pillBg = theme.AccentBrush;
+            var pillBorder = new SolidColorBrush(theme.AccentColor);
             var textBrush = new SolidColorBrush(theme.TextColor);
 
             for (int i = 0; i < placements.Count; i++)
@@ -286,24 +343,39 @@ namespace RadialLauncher.UI.Windows
                 var item = items[i];
                 IntPtr currentHoverThumb = IntPtr.Zero;
 
+                double tileSize = p.DynamicTileSize > 0 ? p.DynamicTileSize : p.CircleSize;
+                double iconSize = p.DynamicIconSize > 0 ? p.DynamicIconSize : p.IconSize;
+                double tileX = p.DynamicTileSize > 0 ? p.DynamicButtonX : p.ButtonX;
+                double tileY = p.DynamicTileSize > 0 ? p.DynamicButtonY : p.ButtonY;
+                double squircleRadius = Math.Round(tileSize * 0.32);
+
                 var btn = new Button
                 {
-                    Width = p.CircleSize,
-                    Height = p.CircleSize,
+                    Width = tileSize,
+                    Height = tileSize,
                     Tag = item,
-                    BorderThickness = new Thickness(1.5),
+                    BorderThickness = new Thickness(1.2),
                     BorderBrush = regularBorderBrush,
-                    Background = new SolidColorBrush(theme.IconBackgroundColor),
+                    Background = idleTileBg,
                     Cursor = Cursors.Hand,
-                    RenderTransformOrigin = new Point(0.5, 0.5)
+                    UseLayoutRounding = true,
+                    SnapsToDevicePixels = true,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius = 18,
+                        ShadowDepth = 4,
+                        Color = Colors.Black,
+                        Opacity = 0.58
+                    }
                 };
-                Canvas.SetLeft(btn, p.ButtonX);
-                Canvas.SetTop(btn, p.ButtonY);
+                Canvas.SetLeft(btn, tileX);
+                Canvas.SetTop(btn, tileY);
                 Panel.SetZIndex(btn, 15);
 
                 btn.Resources.Add(typeof(Border), new Style(typeof(Border))
                 {
-                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(p.CircleSize / 2.0)) }
+                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(squircleRadius)) }
                 });
 
                 // Icon content
@@ -313,9 +385,11 @@ namespace RadialLauncher.UI.Windows
                     var img = new Image
                     {
                         Source = iconImg,
-                        Width = p.IconSize,
-                        Height = p.IconSize,
-                        Stretch = Stretch.Uniform
+                        Width = iconSize,
+                        Height = iconSize,
+                        Stretch = Stretch.Uniform,
+                        UseLayoutRounding = true,
+                        SnapsToDevicePixels = true
                     };
                     RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
                     btn.Content = img;
@@ -325,41 +399,69 @@ namespace RadialLauncher.UI.Windows
                     btn.Content = new TextBlock
                     {
                         Text = item.Name.Length > 0 ? item.Name.Substring(0, 1).ToUpper() : "?",
-                        FontSize = 14,
+                        FontSize = 15,
                         FontWeight = FontWeights.Bold,
                         Foreground = textBrush
                     };
                 }
 
-                // Label badge
-                var lblBorder = new Border
-                {
-                    Width = RadialLayoutCalculator.LabelWidth,
-                    Height = RadialLayoutCalculator.LabelHeight,
-                    CornerRadius = new CornerRadius(4),
-                    Background = badgeBg,
-                    BorderBrush = badgeBorder,
-                    BorderThickness = new Thickness(1),
-                    Cursor = Cursors.Hand,
-                    RenderTransformOrigin = new Point(0.5, 0.5)
-                };
-                Panel.SetZIndex(lblBorder, 25);
-                Canvas.SetLeft(lblBorder, p.LabelX);
-                Canvas.SetTop(lblBorder, p.LabelY);
-
+                // Rovyl-style Dynamic Outer Pill Label (never truncates, opens outward from slice)
                 var txt = new TextBlock
                 {
                     Text = item.Name,
-                    FontSize = 10.5,
-                    FontWeight = FontWeights.Normal,
-                    Foreground = textBrush,
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = activeReadableFg,
                     TextAlignment = TextAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = 58
+                    HorizontalAlignment = HorizontalAlignment.Center
                 };
-                lblBorder.Child = txt;
+
+                var lblBorder = new Border
+                {
+                    CornerRadius = new CornerRadius(13),
+                    Padding = new Thickness(12, 5, 12, 5),
+                    Background = pillBg,
+                    BorderBrush = pillBorder,
+                    BorderThickness = new Thickness(1),
+                    IsHitTestVisible = false,
+                    Opacity = 0.0,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    Child = txt,
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius = 14,
+                        ShadowDepth = 3,
+                        Color = Colors.Black,
+                        Opacity = 0.55
+                    }
+                };
+                lblBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double pillW = Math.Max(44.0, lblBorder.DesiredSize.Width);
+                double pillH = Math.Max(26.0, lblBorder.DesiredSize.Height);
+
+                var pillSide = RadialLayoutCalculator.GetOuterPillSide(p.AngleRadians);
+                double pillX = tileX + (tileSize - pillW) / 2.0;
+                double pillY = tileY + tileSize + 10.0;
+                if (pillSide == OuterPillSide.Right)
+                {
+                    pillX = tileX + tileSize + 10.0;
+                    pillY = tileY + (tileSize - pillH) / 2.0;
+                }
+                else if (pillSide == OuterPillSide.Left)
+                {
+                    pillX = tileX - pillW - 10.0;
+                    pillY = tileY + (tileSize - pillH) / 2.0;
+                }
+                else if (pillSide == OuterPillSide.Top)
+                {
+                    pillX = tileX + (tileSize - pillW) / 2.0;
+                    pillY = tileY - pillH - 10.0;
+                }
+
+                Panel.SetZIndex(lblBorder, 250);
+                Canvas.SetLeft(lblBorder, Math.Round(pillX));
+                Canvas.SetTop(lblBorder, Math.Round(pillY));
 
                 // Wire interactions
                 int localIndex = i;
@@ -441,15 +543,8 @@ namespace RadialLauncher.UI.Windows
                 void OnEnter(object s, MouseEventArgs e)
                 {
                     _keyboardFocusIndex = localIndex;
-                    Panel.SetZIndex(btn, 100);
-                    Panel.SetZIndex(lblBorder, 101);
-                    btn.BorderBrush = theme.AccentBrush;
-                    txt.Foreground = theme.AccentBrush;
-                    txt.FontWeight = FontWeights.Bold;
-                    _viewModel.HoveredItemTitle = item.Name;
-                    RadialMotionSystem.AnimateHover(btn, lblBorder, true, theme.ReduceMotion);
-
-                    ShowContextActions(item);
+                    _currentAimSlot = localIndex;
+                    HighlightKeyboardFocused();
 
                     if (item.Type == "WINDOW" && long.TryParse(item.Target, out long targetHwnd) && targetHwnd != 0)
                     {
@@ -465,10 +560,10 @@ namespace RadialLauncher.UI.Windows
 
                             double previewW = 160;
                             double previewH = 100;
-                            double previewX = Math.Clamp(btnLogicalX + (p.CircleSize / 2.0) - (previewW / 2.0), 20.0, this.Width - previewW - 20.0);
+                            double previewX = Math.Clamp(btnLogicalX + (tileSize / 2.0) - (previewW / 2.0), 20.0, this.Width - previewW - 20.0);
                             double previewY = (btnLogicalY > 300) 
                                 ? Math.Max(20.0, btnLogicalY - previewH - 12.0) 
-                                : Math.Min(this.Height - previewH - 20.0, btnLogicalY + p.CircleSize + 12.0);
+                                : Math.Min(this.Height - previewH - 20.0, btnLogicalY + tileSize + 12.0);
 
                             int destLeft = (int)(previewX * dpiX);
                             int destTop = (int)(previewY * dpiY);
@@ -501,13 +596,12 @@ namespace RadialLauncher.UI.Windows
 
                 void OnLeave(object s, MouseEventArgs e)
                 {
-                    Panel.SetZIndex(btn, 15);
-                    Panel.SetZIndex(lblBorder, 25);
-                    btn.BorderBrush = regularBorderBrush;
-                    txt.Foreground = textBrush;
-                    txt.FontWeight = FontWeights.Normal;
-                    _viewModel.HoveredItemTitle = string.Empty;
-                    RadialMotionSystem.AnimateHover(btn, lblBorder, false, theme.ReduceMotion);
+                    if (!IsHoldGestureActive)
+                    {
+                        _keyboardFocusIndex = -1;
+                        _currentAimSlot = -1;
+                        HighlightKeyboardFocused();
+                    }
 
                     if (currentHoverThumb != IntPtr.Zero)
                     {
@@ -519,8 +613,6 @@ namespace RadialLauncher.UI.Windows
 
                 btn.MouseEnter += OnEnter;
                 btn.MouseLeave += OnLeave;
-                lblBorder.MouseEnter += OnEnter;
-                lblBorder.MouseLeave += OnLeave;
 
                 ItemsCanvas.Children.Add(btn);
                 ItemsCanvas.Children.Add(lblBorder);
@@ -528,8 +620,14 @@ namespace RadialLauncher.UI.Windows
 
                 if (animateBloom)
                 {
-                    RadialMotionSystem.AnimateItemBloom(btn, i, theme.ReduceMotion);
-                    RadialMotionSystem.AnimateItemBloom(lblBorder, i, theme.ReduceMotion);
+                    double tileCenterX = tileX + (tileSize / 2.0);
+                    double tileCenterY = tileY + (tileSize / 2.0);
+                    RadialMotionSystem.AnimateItemBloomFromCenter(
+                        btn,
+                        i,
+                        tileCenterX - 250.0,
+                        tileCenterY - 250.0,
+                        theme.ReduceMotion);
                 }
             }
 
@@ -776,7 +874,23 @@ namespace RadialLauncher.UI.Windows
                 }
             }
 
-            // 1b. Hold-and-Aim gesture resolution (Rovyl style)
+            // 1b. Hold-and-Aim gesture & Central Hub deadzone resolution (Rovyl style)
+            double dxCenter = canvasPos.X - 250.0;
+            double dyCenter = canvasPos.Y - 250.0;
+            double distCenter = Math.Sqrt(dxCenter * dxCenter + dyCenter * dyCenter);
+            bool inCenterHub = distCenter < 48.0;
+
+            if (CentralHubBorder != null)
+            {
+                var theme = _viewModel.ActiveTheme;
+                CentralHubBorder.Background = inCenterHub
+                    ? theme.AccentBrush
+                    : new SolidColorBrush(Color.FromArgb(232, 6, 7, 9));
+                CentralHubBorder.BorderBrush = inCenterHub
+                    ? new SolidColorBrush(Colors.White)
+                    : new SolidColorBrush(Color.FromArgb(76, 255, 255, 255));
+            }
+
             if (IsHoldGestureActive)
             {
                 int count = _viewModel.CurrentPageItems.Count;
@@ -798,12 +912,12 @@ namespace RadialLauncher.UI.Windows
                     if (dx > 35)
                     {
                         _viewModel.NavigateNextGlobal();
-                        RadialMotionSystem.AnimatePageTransition(ItemsCanvas, 1, _viewModel.ActiveTheme.ReduceMotion);
+                        RenderLayout(true);
                     }
                     else if (dx < -35)
                     {
                         _viewModel.NavigatePrevGlobal();
-                        RadialMotionSystem.AnimatePageTransition(ItemsCanvas, -1, _viewModel.ActiveTheme.ReduceMotion);
+                        RenderLayout(true);
                     }
                     _hasNavigatedInCurrentDrag = true;
                     _dragStartPoint = pos;
@@ -915,12 +1029,12 @@ namespace RadialLauncher.UI.Windows
             if (e.Delta > 0)
             {
                 _viewModel.NavigatePrevGlobal();
-                RadialMotionSystem.AnimatePageTransition(ItemsCanvas, -1, _viewModel.ActiveTheme.ReduceMotion);
+                RenderLayout(true);
             }
             else if (e.Delta < 0)
             {
                 _viewModel.NavigateNextGlobal();
-                RadialMotionSystem.AnimatePageTransition(ItemsCanvas, 1, _viewModel.ActiveTheme.ReduceMotion);
+                RenderLayout(true);
             }
         }
 
@@ -991,6 +1105,7 @@ namespace RadialLauncher.UI.Windows
             {
                 int nextCat = (_viewModel.CurrentCategoryIndex + 1) % Math.Max(1, _viewModel.Categories.Count);
                 _viewModel.SwitchCategory(nextCat);
+                RenderLayout(true);
                 e.Handled = true;
                 return;
             }
@@ -1009,6 +1124,7 @@ namespace RadialLauncher.UI.Windows
             if (categoryNum >= 0 && categoryNum < _viewModel.Categories.Count && !_viewModel.IsSearchMode)
             {
                 _viewModel.SwitchCategory(categoryNum);
+                RenderLayout(true);
                 e.Handled = true;
                 return;
             }
@@ -1016,8 +1132,16 @@ namespace RadialLauncher.UI.Windows
 
         private void HighlightKeyboardFocused()
         {
-            var regularBorder = new SolidColorBrush(Color.FromArgb(50, _viewModel.ActiveTheme.TextR, _viewModel.ActiveTheme.TextG, _viewModel.ActiveTheme.TextB));
-            var textBrush = new SolidColorBrush(_viewModel.ActiveTheme.TextColor);
+            var theme = _viewModel.ActiveTheme;
+            var idleTileBg = new SolidColorBrush(Color.FromArgb(248, 18, 19, 23));
+            var regularBorder = new SolidColorBrush(Color.FromArgb(72, 255, 255, 255));
+            var activeReadableFg = new SolidColorBrush(GetReadableForeground(theme.AccentColor));
+
+            if (_keyboardFocusIndex < 0)
+            {
+                _viewModel.HoveredItemTitle = string.Empty;
+                HideContextActionCard();
+            }
 
             for (int i = 0; i < _visibleButtons.Count; i++)
             {
@@ -1025,29 +1149,42 @@ namespace RadialLauncher.UI.Windows
                 var txt = lbl.Child as TextBlock;
                 if (i == _keyboardFocusIndex)
                 {
-                    Panel.SetZIndex(btn, 100);
-                    Panel.SetZIndex(lbl, 101);
-                    btn.BorderBrush = _viewModel.ActiveTheme.AccentBrush;
+                    Panel.SetZIndex(btn, 180);
+                    Panel.SetZIndex(lbl, 260);
+                    btn.Background = theme.AccentBrush;
+                    btn.BorderBrush = new SolidColorBrush(Colors.White);
+                    btn.BorderThickness = new Thickness(1.6);
+                    btn.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius = 26,
+                        ShadowDepth = 0,
+                        Color = theme.AccentColor,
+                        Opacity = 0.82
+                    };
                     if (txt != null)
                     {
-                        txt.Foreground = _viewModel.ActiveTheme.AccentBrush;
-                        txt.FontWeight = FontWeights.Bold;
+                        txt.Foreground = activeReadableFg;
+                        txt.FontWeight = FontWeights.SemiBold;
                     }
                     _viewModel.HoveredItemTitle = item.Name;
-                    RadialMotionSystem.AnimateHover(btn, lbl, true, _viewModel.ActiveTheme.ReduceMotion);
+                    RadialMotionSystem.AnimateHover(btn, lbl, true, theme.ReduceMotion);
                     ShowContextActions(item);
                 }
                 else
                 {
                     Panel.SetZIndex(btn, 15);
-                    Panel.SetZIndex(lbl, 25);
+                    Panel.SetZIndex(lbl, 250);
+                    btn.Background = idleTileBg;
                     btn.BorderBrush = regularBorder;
-                    if (txt != null)
+                    btn.BorderThickness = new Thickness(1.2);
+                    btn.Effect = new System.Windows.Media.Effects.DropShadowEffect
                     {
-                        txt.Foreground = textBrush;
-                        txt.FontWeight = FontWeights.Normal;
-                    }
-                    RadialMotionSystem.AnimateHover(btn, lbl, false, _viewModel.ActiveTheme.ReduceMotion);
+                        BlurRadius = 18,
+                        ShadowDepth = 4,
+                        Color = Colors.Black,
+                        Opacity = 0.58
+                    };
+                    RadialMotionSystem.AnimateHover(btn, lbl, false, theme.ReduceMotion);
                 }
             }
         }
@@ -1062,11 +1199,22 @@ namespace RadialLauncher.UI.Windows
             }
         }
 
+        private void CentralHub_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            bool wasSubmenu = _viewModel.IsSubmenu;
+            _viewModel.CenterButtonClick();
+            if (wasSubmenu)
+            {
+                RenderLayout(true);
+            }
+        }
+
         private void CategoryPill_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             int nextCat = (_viewModel.CurrentCategoryIndex + 1) % Math.Max(1, _viewModel.Categories.Count);
             _viewModel.SwitchCategory(nextCat);
-            RadialMotionSystem.AnimatePageTransition(ItemsCanvas, 1, _viewModel.ActiveTheme.ReduceMotion);
+            RenderLayout(true);
         }
 
         private void Window_Deactivated(object sender, EventArgs e)

@@ -106,11 +106,78 @@ namespace RadialLauncher.UI.Animations
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
         }
 
+        public static void AnimateItemBloomFromCenter(
+            FrameworkElement element,
+            int index,
+            double offsetFromCenterX,
+            double offsetFromCenterY,
+            bool reduceMotion = false)
+        {
+            if (reduceMotion)
+            {
+                element.Opacity = 1.0;
+                return;
+            }
+
+            var transformGroup = new TransformGroup();
+            var scale = new ScaleTransform(0.22, 0.22);
+            var translate = new TranslateTransform(-offsetFromCenterX, -offsetFromCenterY);
+            transformGroup.Children.Add(scale);
+            transformGroup.Children.Add(translate);
+            element.RenderTransform = transformGroup;
+            element.RenderTransformOrigin = new Point(0.5, 0.5);
+            element.Opacity = 0.0;
+
+            int delayMs = index * 12;
+
+            var opacityAnim = new DoubleAnimation
+            {
+                From = 0.0,
+                To = 1.0,
+                BeginTime = TimeSpan.FromMilliseconds(delayMs),
+                Duration = TimeSpan.FromMilliseconds(185),
+                EasingFunction = SoftQuartic
+            };
+
+            var scaleAnim = new DoubleAnimation
+            {
+                From = 0.22,
+                To = 1.0,
+                BeginTime = TimeSpan.FromMilliseconds(delayMs),
+                Duration = TimeSpan.FromMilliseconds(245),
+                EasingFunction = SubtleSpring
+            };
+
+            var transXAnim = new DoubleAnimation
+            {
+                From = -offsetFromCenterX,
+                To = 0.0,
+                BeginTime = TimeSpan.FromMilliseconds(delayMs),
+                Duration = TimeSpan.FromMilliseconds(235),
+                EasingFunction = SoftQuartic
+            };
+
+            var transYAnim = new DoubleAnimation
+            {
+                From = -offsetFromCenterY,
+                To = 0.0,
+                BeginTime = TimeSpan.FromMilliseconds(delayMs),
+                Duration = TimeSpan.FromMilliseconds(235),
+                EasingFunction = SoftQuartic
+            };
+
+            element.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
+            translate.BeginAnimation(TranslateTransform.XProperty, transXAnim);
+            translate.BeginAnimation(TranslateTransform.YProperty, transYAnim);
+        }
+
         public static void AnimateHover(FrameworkElement button, FrameworkElement? label, bool isHovered, bool reduceMotion = false)
         {
-            double targetScaleBtn = isHovered ? 1.10 : 1.0;
-            double targetScaleLbl = isHovered ? 1.06 : 1.0;
-            var duration = TimeSpan.FromMilliseconds(reduceMotion ? 1 : 180);
+            double targetScaleBtn = isHovered ? 1.08 : 1.0;
+            double targetScaleLbl = isHovered ? 1.0 : 0.90;
+            var duration = TimeSpan.FromMilliseconds(reduceMotion ? 1 : 155);
             var easing = isHovered ? SubtleSpring : SoftCubic;
 
             if (button.RenderTransform is TransformGroup group)
@@ -143,6 +210,9 @@ namespace RadialLauncher.UI.Animations
 
             if (label != null)
             {
+                double targetOpacity = isHovered ? 1.0 : 0.0;
+                label.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(targetOpacity, TimeSpan.FromMilliseconds(reduceMotion ? 1 : 140)) { EasingFunction = SoftQuartic });
+
                 if (label.RenderTransform is ScaleTransform lst)
                 {
                     lst.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(targetScaleLbl, duration) { EasingFunction = easing });
@@ -150,7 +220,7 @@ namespace RadialLauncher.UI.Animations
                 }
                 else
                 {
-                    var lstNew = new ScaleTransform(1.0, 1.0);
+                    var lstNew = new ScaleTransform(isHovered ? 0.90 : 1.0, isHovered ? 0.90 : 1.0);
                     label.RenderTransform = lstNew;
                     label.RenderTransformOrigin = new Point(0.5, 0.5);
                     lstNew.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(targetScaleLbl, duration) { EasingFunction = easing });
