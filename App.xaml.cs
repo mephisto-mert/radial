@@ -35,6 +35,7 @@ namespace RadialLauncher
         private TaskbarIcon? notifyIcon;
         private Hooks.GlobalMouseHook? mouseHook;
         private RadialMenuWindow? _radialMenu;
+        private static System.Threading.Mutex? _singleInstanceMutex;
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
@@ -45,6 +46,16 @@ namespace RadialLauncher
             var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
+                // Single-Instance Mutex guard: prevents double hook installation or duplicate process
+                const string mutexName = "Local\\RadialLauncher_SingleInstance_Mutex_9001";
+                _singleInstanceMutex = new System.Threading.Mutex(true, mutexName, out bool createdNew);
+                if (!createdNew)
+                {
+                    // Another instance is already running; exit cleanly
+                    Current.Shutdown();
+                    return;
+                }
+
                 string[] rawArgs = e.Args ?? Environment.GetCommandLineArgs();
                 int dirIdx = Array.FindIndex(rawArgs, a => a.Equals("--data-dir", StringComparison.OrdinalIgnoreCase) || a.Equals("-d", StringComparison.OrdinalIgnoreCase));
                 if (dirIdx >= 0 && dirIdx < rawArgs.Length - 1)
@@ -86,6 +97,7 @@ namespace RadialLauncher
 
                 // 2b. Initialize Plugin System
                 var pluginService = ServiceProvider.GetRequiredService<IPluginService>();
+                pluginService.RegisterProvider(new OpenSourceToolsProvider());
                 pluginService.LoadPlugins();
 
                 // 3. Initialize Radial Window
@@ -166,8 +178,22 @@ namespace RadialLauncher
                 mouseHook.TriggerMode = themeService.GetActivationShortcut();
                 mouseHook.OnMiddleMouseDown += (s, pt) => 
                 {
+                    var gameFocus = ServiceProvider?.GetService<IGameFocusDetector>();
+                    if (gameFocus != null && gameFocus.IsFullscreenGameOrBusy())
+                    {
+                        Log.Debug("Suppressed Radial Launcher trigger because a fullscreen game/D3D app is active");
+                        return;
+                    }
+
                     double vel = mouseHook?.LastCursorVelocity ?? 0.0;
                     Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt, vel)));
+                };
+                mouseHook.OnMiddleMouseUp += (s, pt) =>
+                {
+                    Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        _radialMenu?.HandleGlobalTriggerUp(pt.X, pt.Y);
+                    }));
                 };
                 mouseHook.Start();
 
@@ -263,6 +289,7 @@ namespace RadialLauncher
             services.AddSingleton<IProcessRunner, ProcessRunner>();
             services.AddSingleton<IPCScannerService, PCScannerService>();
             services.AddSingleton<IGameDetector, GameDetector>();
+            services.AddSingleton<IGameFocusDetector, GameFocusDetector>();
             services.AddSingleton<IAppDetector, AppDetector>();
             services.AddSingleton<IWindowSwitcherService, WindowSwitcherService>();
             services.AddSingleton<IStartupManager, StartupManager>();

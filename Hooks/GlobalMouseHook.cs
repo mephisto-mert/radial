@@ -22,7 +22,13 @@ namespace RadialLauncher.Hooks
         private const int VK_CONTROL = 0x11;
         private const int VK_MENU = 0x12;
 
+        // Signature for injected synthetic clicks (so hook does not swallow its own clicks)
+        private static readonly IntPtr SYNTHETIC_CLICK_EXTRA_INFO = new IntPtr(0x5241444C); // 'RADL'
+        private const int MOUSEEVENTF_MIDDLEDOWN = 0x0020;
+        private const int MOUSEEVENTF_MIDDLEUP = 0x0040;
+
         public event EventHandler<Point>? OnMiddleMouseDown;
+        public event EventHandler<Point>? OnMiddleMouseUp;
 
         private readonly LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
@@ -35,6 +41,13 @@ namespace RadialLauncher.Hooks
         public bool IsPassThroughEnabled { get; set; } = false;
         public string TriggerMode { get; set; } = "MiddleClick";
         public bool IsInstalled => _hookID != IntPtr.Zero;
+
+        // Press-and-hold tracking for gesture launcher
+        private bool _isTriggerHeld = false;
+        private long _triggerDownTimestamp = 0;
+        private POINT _triggerDownPoint;
+        private const int TAP_THRESHOLD_MS = 250;
+        private const int DRAG_DEADZONE_PX = 8;
 
         public GlobalMouseHook()
         {
@@ -108,6 +121,12 @@ namespace RadialLauncher.Hooks
                     int msg = (int)wParam;
                     MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
 
+                    // Ignore our own synthetic injected clicks to prevent loop
+                    if (hookStruct.dwExtraInfo == SYNTHETIC_CLICK_EXTRA_INFO)
+                    {
+                        return CallNextHookEx(_hookID, nCode, wParam, lParam);
+                    }
+
                     if (msg == WM_MOUSEMOVE)
                     {
                         long now = Environment.TickCount64;
@@ -128,10 +147,15 @@ namespace RadialLauncher.Hooks
                         _lastMouseMoveTime = now;
                     }
 
-                    bool triggered = IsMouseTriggerMatched(TriggerMode, msg, hookStruct.mouseData);
+                    bool triggeredDown = IsMouseTriggerMatched(TriggerMode, msg, hookStruct.mouseData);
+                    bool triggeredUp = IsMouseTriggerUpMatched(TriggerMode, msg, hookStruct.mouseData);
 
-                    if (triggered)
+                    if (triggeredDown)
                     {
+                        _isTriggerHeld = true;
+                        _triggerDownTimestamp = Environment.TickCount64;
+                        _triggerDownPoint = hookStruct.pt;
+
                         try
                         {
                             OnMiddleMouseDown?.Invoke(this, new Point(hookStruct.pt.x, hookStruct.pt.y));
@@ -139,6 +163,36 @@ namespace RadialLauncher.Hooks
                         catch (Exception listenerEx)
                         {
                             Log.Error(listenerEx, "Exception inside OnMiddleMouseDown event handler");
+                        }
+
+                        if (!IsPassThroughEnabled)
+                        {
+                            return (IntPtr)1;
+                        }
+                    }
+                    else if (triggeredUp && _isTriggerHeld)
+                    {
+                        long holdDuration = Environment.TickCount64 - _triggerDownTimestamp;
+                        double dx = hookStruct.pt.x - _triggerDownPoint.x;
+                        double dy = hookStruct.pt.y - _triggerDownPoint.y;
+                        double moveDist = Math.Sqrt(dx * dx + dy * dy);
+
+                        _isTriggerHeld = false;
+
+                        try
+                        {
+                            OnMiddleMouseUp?.Invoke(this, new Point(hookStruct.pt.x, hookStruct.pt.y));
+                        }
+                        catch (Exception listenerEx)
+                        {
+                            Log.Error(listenerEx, "Exception inside OnMiddleMouseUp event handler");
+                        }
+
+                        // Tap behavior: If held for very short time without significant movement,
+                        // and trigger was MButton, synthesize a real middle click back so browser tabs close!
+                        if (holdDuration < TAP_THRESHOLD_MS && moveDist < DRAG_DEADZONE_PX && TriggerMode.Contains("Middle", StringComparison.OrdinalIgnoreCase))
+                        {
+                            SynthesizeMiddleClick(hookStruct.pt.x, hookStruct.pt.y);
                         }
 
                         if (!IsPassThroughEnabled)
@@ -203,6 +257,54 @@ namespace RadialLauncher.Hooks
 
             return false;
         }
+
+        public static bool IsMouseTriggerUpMatched(string trigger, int msg, uint mouseData)
+        {
+            if (string.IsNullOrWhiteSpace(trigger)) return false;
+            string t = trigger.Trim();
+
+            if (t == "AltSpace" || t == "CtrlSpace" || t == "F4" || t == "Tilde")
+                return false;
+
+            if (t.Contains("XButton1", StringComparison.OrdinalIgnoreCase) || t.Contains("Mouse4", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_XBUTTONUP && ((mouseData >> 16) & 0xFFFF) == 1;
+            }
+            if (t.Contains("XButton2", StringComparison.OrdinalIgnoreCase) || t.Contains("Mouse5", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_XBUTTONUP && ((mouseData >> 16) & 0xFFFF) == 2;
+            }
+            if (t.Contains("RightClick", StringComparison.OrdinalIgnoreCase) || t.Contains("RightButton", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_RBUTTONUP;
+            }
+            if (t.Contains("LeftClick", StringComparison.OrdinalIgnoreCase) || t.Contains("LeftButton", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_LBUTTONUP;
+            }
+            if (t.Contains("Middle", StringComparison.OrdinalIgnoreCase) || t.Contains("MButton", StringComparison.OrdinalIgnoreCase) || t.Contains("Wheel", StringComparison.OrdinalIgnoreCase))
+            {
+                return msg == WM_MBUTTONUP;
+            }
+
+            return false;
+        }
+
+        private static void SynthesizeMiddleClick(int x, int y)
+        {
+            try
+            {
+                mouse_event(MOUSEEVENTF_MIDDLEDOWN, (uint)x, (uint)y, 0, SYNTHETIC_CLICK_EXTRA_INFO);
+                mouse_event(MOUSEEVENTF_MIDDLEUP, (uint)x, (uint)y, 0, SYNTHETIC_CLICK_EXTRA_INFO);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to synthesize middle click back to OS");
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, IntPtr dwExtraInfo);
 
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);

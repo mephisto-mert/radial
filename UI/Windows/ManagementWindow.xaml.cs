@@ -411,6 +411,23 @@ namespace RadialLauncher.UI.Windows
         private void LoadStartupState()
         {
             RunOnStartupCheck.IsChecked = _startupManager.IsRunOnStartup();
+            GameProtectionCheck.IsChecked = _themeService.GetGameFocusProtection();
+            string aim = _themeService.GetAimMode();
+            AimModeCombo.SelectedIndex = aim == "cursor" ? 1 : 0;
+        }
+
+        private void AimModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (AimModeCombo.SelectedItem is ComboBoxItem cbi && cbi.Tag is string tag)
+            {
+                _themeService.SetAimMode(tag);
+            }
+        }
+
+        private void GameProtectionCheck_Click(object sender, RoutedEventArgs e)
+        {
+            bool enable = GameProtectionCheck.IsChecked ?? true;
+            _themeService.SetGameFocusProtection(enable);
         }
 
         private void RefreshGrid()

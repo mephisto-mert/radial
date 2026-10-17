@@ -25,6 +25,10 @@ namespace RadialLauncher.Services.Themes
         void ResetSettingsToDefault();
         string GetSteamGridDbKey();
         void SetSteamGridDbKey(string key);
+        string GetAimMode();
+        void SetAimMode(string aimMode);
+        bool GetGameFocusProtection();
+        void SetGameFocusProtection(bool enable);
         ThemeService.AppSettings GetSettings();
         void UpdateSettings(ThemeService.AppSettings settings);
 

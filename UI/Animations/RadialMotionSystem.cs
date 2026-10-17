@@ -81,23 +81,23 @@ namespace RadialLauncher.UI.Animations
             element.RenderTransform = transformGroup;
             element.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            int delayMs = index * 48; // 3x slower, smooth cinematic clockwise bloom ripple
+            int delayMs = index * 18; // Crisp, fast fluid ripple like Rovyl (under 120ms total)
 
             var opacityAnim = new DoubleAnimation
             {
                 From = 0.0,
                 To = 1.0,
                 BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                Duration = TimeSpan.FromMilliseconds(420),
+                Duration = TimeSpan.FromMilliseconds(240),
                 EasingFunction = SoftQuartic
             };
 
             var scaleAnim = new DoubleAnimation
             {
-                From = 0.35,
+                From = 0.45,
                 To = 1.0,
                 BeginTime = TimeSpan.FromMilliseconds(delayMs),
-                Duration = TimeSpan.FromMilliseconds(520),
+                Duration = TimeSpan.FromMilliseconds(280),
                 EasingFunction = SubtleSpring
             };
 

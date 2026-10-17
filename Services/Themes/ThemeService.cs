@@ -401,7 +401,7 @@ namespace RadialLauncher.Services.Themes
                 {
                     var json = File.ReadAllText(SettingsPath);
                     var settings = JsonSerializer.Deserialize<AppSettings>(json);
-                    if (settings != null) return settings;
+                    if (settings != null) return NormalizeSettings(settings);
                 }
             }
             catch (JsonException jsonEx)
@@ -430,8 +430,9 @@ namespace RadialLauncher.Services.Themes
                     if (recovered != null)
                     {
                         Log.Information("Successfully recovered settings from {BakPath}", bakPath);
-                        SaveSettings(recovered);
-                        return recovered;
+                        var normalized = NormalizeSettings(recovered);
+                        SaveSettings(normalized);
+                        return normalized;
                     }
                 }
             }
@@ -443,6 +444,18 @@ namespace RadialLauncher.Services.Themes
             // 3. Fallback: return default settings
             var defaultFallback = new AppSettings();
             return defaultFallback;
+        }
+
+        private static AppSettings NormalizeSettings(AppSettings s)
+        {
+            var def = new AppSettings();
+            if (string.IsNullOrWhiteSpace(s.ThemeName)) s.ThemeName = def.ThemeName;
+            if (string.IsNullOrWhiteSpace(s.ActivationShortcut)) s.ActivationShortcut = def.ActivationShortcut;
+            if (string.IsNullOrWhiteSpace(s.AimMode)) s.AimMode = def.AimMode;
+            if (string.IsNullOrWhiteSpace(s.Language)) s.Language = def.Language;
+            if (string.IsNullOrWhiteSpace(s.DensityMode)) s.DensityMode = def.DensityMode;
+            if (s.RadialOpacity < 0.20 || s.RadialOpacity > 1.0) s.RadialOpacity = def.RadialOpacity;
+            return s;
         }
 
         private void SaveSettings(AppSettings settings)
@@ -473,6 +486,24 @@ namespace RadialLauncher.Services.Themes
         {
             var settings = LoadSettings();
             settings.SteamGridDbApiKey = key;
+            SaveSettings(settings);
+        }
+
+        public string GetAimMode() => LoadSettings().AimMode ?? "angle";
+
+        public void SetAimMode(string aimMode)
+        {
+            var settings = LoadSettings();
+            settings.AimMode = aimMode == "cursor" ? "cursor" : "angle";
+            SaveSettings(settings);
+        }
+
+        public bool GetGameFocusProtection() => LoadSettings().GameFocusProtection;
+
+        public void SetGameFocusProtection(bool enable)
+        {
+            var settings = LoadSettings();
+            settings.GameFocusProtection = enable;
             SaveSettings(settings);
         }
 
@@ -517,6 +548,8 @@ namespace RadialLauncher.Services.Themes
             public bool AutoCheckUpdates { get; set; } = true;
             public string Language { get; set; } = "en";
             public string? SteamGridDbApiKey { get; set; } = string.Empty;
+            public string AimMode { get; set; } = "angle"; // "angle" (gesture direction) or "cursor" (point-on-icon)
+            public bool GameFocusProtection { get; set; } = true; // Supress opening when in full-screen D3D game
         }
     }
 }

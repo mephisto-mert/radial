@@ -42,6 +42,11 @@ namespace RadialLauncher.UI.Windows
         private bool _isDraggingBubble = false;
         private bool _isPotentialBubbleDrag = false;
 
+        // Press-Hold-Aim-Release (Rovyl-style gesture mode)
+        public bool IsHoldGestureActive { get; set; } = false;
+        public string AimMode { get; set; } = "angle"; // "angle" or "cursor"
+        private int _currentAimSlot = -1;
+
         // Auto-close on mouse leave
         private readonly DispatcherTimer _autoCloseGraceTimer;
         private bool _isInteractingWithQuickActions = false;
@@ -131,6 +136,48 @@ namespace RadialLauncher.UI.Windows
                 BtnDismissTutorial.Content = loc.GetString("TutorialDismiss", "Got it! Start using");
         }
 
+        public void HandleGlobalTriggerUp(int screenX, int screenY)
+        {
+            if (!this.IsVisible) return;
+
+            IsHoldGestureActive = false;
+
+            // Resolve aim slot against canvas coordinates
+            try
+            {
+                var source = PresentationSource.FromVisual(this);
+                double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+                double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+                double logicalX = screenX / dpiX;
+                double logicalY = screenY / dpiY;
+
+                Point relToWindow = new Point(logicalX - this.Left, logicalY - this.Top);
+                Point canvasPos = this.TranslatePoint(relToWindow, ItemsCanvas);
+
+                int count = _viewModel.CurrentPageItems.Count;
+                int slot = RadialLayoutCalculator.ResolveAimSlot(canvasPos, count, AimMode, 250, 250, 48.0, 320.0);
+
+                if (slot >= 0 && slot < _visibleButtons.Count)
+                {
+                    var itemToLaunch = _visibleButtons[slot].item;
+                    Log.Information("Hold-and-Aim gesture: Launching item {Name} at slot {Slot}", itemToLaunch.Name, slot);
+                    _viewModel.LaunchItem(itemToLaunch);
+                }
+                else if (slot == -1)
+                {
+                    // Released in dead center or outside -> dismiss without launching
+                    Log.Debug("Hold-and-Aim gesture: Released in deadzone/outside, dismissing");
+                    this.Hide();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Error resolving hold-and-aim release target");
+                this.Hide();
+            }
+        }
+
         public void ShowAt(int screenX, int screenY, double cursorVelocity = 0.0)
         {
             try
@@ -145,6 +192,8 @@ namespace RadialLauncher.UI.Windows
                 _draggedBubbleLabel = null;
                 _draggedBubbleIndex = -1;
                 _draggedBubbleItem = null;
+                _currentAimSlot = -1;
+                IsHoldGestureActive = true;
 
                 var source = PresentationSource.FromVisual(this);
                 double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
@@ -727,6 +776,19 @@ namespace RadialLauncher.UI.Windows
                 }
             }
 
+            // 1b. Hold-and-Aim gesture resolution (Rovyl style)
+            if (IsHoldGestureActive)
+            {
+                int count = _viewModel.CurrentPageItems.Count;
+                int slot = RadialLayoutCalculator.ResolveAimSlot(canvasPos, count, AimMode, 250, 250, 48.0, 320.0);
+                if (slot != _currentAimSlot)
+                {
+                    _currentAimSlot = slot;
+                    _keyboardFocusIndex = slot;
+                    HighlightKeyboardFocused();
+                }
+            }
+
             // 2. Global Swipe Navigation
             if (_isDragNavigating && !_isDraggingBubble && (e.MiddleButton == MouseButtonState.Pressed || e.LeftButton == MouseButtonState.Pressed))
             {
@@ -930,6 +992,25 @@ namespace RadialLauncher.UI.Windows
                 int nextCat = (_viewModel.CurrentCategoryIndex + 1) % Math.Max(1, _viewModel.Categories.Count);
                 _viewModel.SwitchCategory(nextCat);
                 e.Handled = true;
+                return;
+            }
+
+            // Number keys 1-9 switch category/workspace directly (inspired by Rovyl)
+            int categoryNum = -1;
+            if (e.Key >= Key.D1 && e.Key <= Key.D9)
+            {
+                categoryNum = (int)e.Key - (int)Key.D1;
+            }
+            else if (e.Key >= Key.NumPad1 && e.Key <= Key.NumPad9)
+            {
+                categoryNum = (int)e.Key - (int)Key.NumPad1;
+            }
+
+            if (categoryNum >= 0 && categoryNum < _viewModel.Categories.Count && !_viewModel.IsSearchMode)
+            {
+                _viewModel.SwitchCategory(categoryNum);
+                e.Handled = true;
+                return;
             }
         }
 

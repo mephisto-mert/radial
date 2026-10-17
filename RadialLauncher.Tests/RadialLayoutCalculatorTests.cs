@@ -106,5 +106,44 @@ namespace RadialLauncher.Tests
             Assert.Equal(0, RadialLayoutCalculator.CalculateNearestSlot(new Point(100, 100), 1, 250.0, 250.0));
             Assert.Equal(0, RadialLayoutCalculator.CalculateNearestSlot(new Point(100, 100), 0, 250.0, 250.0));
         }
+
+        [Fact]
+        public void ResolveAimSlot_WhenInsideDeadzone_ReturnsNegativeOne()
+        {
+            // Point inside the 48px deadzone radius (distance = 20px)
+            Point cursor = new Point(270.0, 250.0);
+            int slot = RadialLayoutCalculator.ResolveAimSlot(cursor, 8, "angle", 270.0, 270.0, 48.0, 320.0);
+            Assert.Equal(-1, slot);
+        }
+
+        [Fact]
+        public void ResolveAimSlot_WhenBeyondOuterBounds_ReturnsNegativeOne()
+        {
+            // Point 400px away from center, outside 320px outer bound
+            Point cursor = new Point(270.0, 700.0);
+            int slot = RadialLayoutCalculator.ResolveAimSlot(cursor, 8, "angle", 270.0, 270.0, 48.0, 320.0);
+            Assert.Equal(-1, slot);
+        }
+
+        [Theory]
+        [InlineData(270.0, 150.0, 4, 0)]  // Top (12 o'clock)
+        [InlineData(390.0, 270.0, 4, 1)]  // Right (3 o'clock)
+        [InlineData(270.0, 390.0, 4, 2)]  // Bottom (6 o'clock)
+        [InlineData(150.0, 270.0, 4, 3)]  // Left (9 o'clock)
+        public void ResolveAimSlot_AngleMode_ResolvesCorrectDirectionalSlot(double x, double y, int count, int expectedSlot)
+        {
+            Point cursor = new Point(x, y);
+            int slot = RadialLayoutCalculator.ResolveAimSlot(cursor, count, "angle", 270.0, 270.0, 48.0, 320.0);
+            Assert.Equal(expectedSlot, slot);
+        }
+
+        [Fact]
+        public void ResolveAimSlot_CursorMode_SelectsClosestPlacements()
+        {
+            // 4 items with center at 270, 270. Point close to top item (dist ~140px, within [110, 235]).
+            Point cursor = new Point(270.0, 130.0);
+            int slot = RadialLayoutCalculator.ResolveAimSlot(cursor, 4, "cursor", 270.0, 270.0, 48.0, 320.0);
+            Assert.Equal(0, slot);
+        }
     }
 }

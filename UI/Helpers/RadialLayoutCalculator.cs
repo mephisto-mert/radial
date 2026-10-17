@@ -107,5 +107,35 @@ namespace RadialLauncher.UI.Helpers
 
             return slot;
         }
+
+        public static int ResolveAimSlot(
+            Point mousePos, 
+            int itemCount, 
+            string aimMode = "angle", 
+            double centerCanvasX = 250.0, 
+            double centerCanvasY = 250.0, 
+            double deadZoneRadius = 45.0,
+            double outerRadius = 260.0)
+        {
+            if (itemCount <= 0) return -1;
+
+            double dx = mousePos.X - centerCanvasX;
+            double dy = mousePos.Y - centerCanvasY;
+            double dist = Math.Sqrt(dx * dx + dy * dy);
+
+            // Inside dead zone: no selection / cancel
+            if (dist < deadZoneRadius) return -1;
+
+            // Outside outer limit: cancel
+            if (dist > outerRadius) return -1;
+
+            if (aimMode.Equals("cursor", StringComparison.OrdinalIgnoreCase))
+            {
+                // In cursor mode, must be in reasonable proximity to the icon ring radius (~130 - 230px)
+                if (dist < 110.0 || dist > 235.0) return -1;
+            }
+
+            return CalculateNearestSlot(mousePos, itemCount, centerCanvasX, centerCanvasY);
+        }
     }
 }

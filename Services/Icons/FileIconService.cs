@@ -22,6 +22,26 @@ namespace RadialLauncher.Services.Icons
         private const uint SHGFI_LARGEICON = 0x000000000;
         private const uint SHGFI_USEFILEATTRIBUTES = 0x000000010;
 
+        [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IShellItemImageFactory
+        {
+            void GetImage([In, MarshalAs(UnmanagedType.Struct)] SIZE size, [In] int flags, [Out] out IntPtr phbm);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SIZE { public int cx; public int cy; public SIZE(int x, int y) { cx = x; cy = y; } }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+        private static extern void SHCreateItemFromParsingName(
+            [MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc,
+            [In] ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out object ppv);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        private const int SIIGBF_ICONONLY = 0x4;
+        private const int SIIGBF_SCALEUP = 0x100;
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct SHFILEINFO
         {
@@ -32,6 +52,48 @@ namespace RadialLauncher.Services.Icons
             public string szDisplayName;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
             public string szTypeName;
+        }
+
+        private static ImageSource? GetShellItemImage(string path, int size = 256)
+        {
+            try
+            {
+                Guid iid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");
+                SHCreateItemFromParsingName(path, IntPtr.Zero, ref iid, out object shellItem);
+                if (shellItem is IShellItemImageFactory factory)
+                {
+                    // Prefer native largest icon without scaleup, fallback with scaleup
+                    int flags = SIIGBF_ICONONLY;
+                    factory.GetImage(new SIZE(size, size), flags, out IntPtr hbm);
+                    if (hbm == IntPtr.Zero)
+                    {
+                        factory.GetImage(new SIZE(size, size), flags | SIIGBF_SCALEUP, out hbm);
+                    }
+
+                    if (hbm != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            var img = Imaging.CreateBitmapSourceFromHBitmap(
+                                hbm,
+                                IntPtr.Zero,
+                                Int32Rect.Empty,
+                                BitmapSizeOptions.FromEmptyOptions());
+                            img.Freeze();
+                            return img;
+                        }
+                        finally
+                        {
+                            DeleteObject(hbm);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "IShellItemImageFactory extraction skipped for {Path}", path);
+            }
+            return null;
         }
 
         public ImageSource? GetIconForFile(string filePath)
@@ -70,7 +132,11 @@ namespace RadialLauncher.Services.Icons
                     }
                 }
 
-                // 3. ExtractAssociatedIcon from GDI+
+                // 3. High-DPI IShellItemImageFactory (clean 256px icon without scaleup artifacts, works on UWP and apps)
+                var shellItemImg = GetShellItemImage(filePath, 256);
+                if (shellItemImg != null) return shellItemImg;
+
+                // 4. ExtractAssociatedIcon from GDI+
                 if (File.Exists(filePath))
                 {
                     try
@@ -92,7 +158,7 @@ namespace RadialLauncher.Services.Icons
                     }
                 }
 
-                // 4. SHGetFileInfo fallback
+                // 5. SHGetFileInfo fallback
                 return GetShellIcon(filePath);
             }
             catch (Exception ex)

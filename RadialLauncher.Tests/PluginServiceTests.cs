@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -200,6 +200,23 @@ namespace RadialLauncher.Tests
                 var items = service.GetSafeItems(providers[0]);
                 Assert.NotEmpty(items);
             }
+        }
+
+        [Fact]
+        public void OpenSourceToolsProvider_ProvidesExpectedPresetsAndDeepSeekOcr()
+        {
+            var service = new PluginService();
+            var provider = new OpenSourceToolsProvider();
+            service.RegisterProvider(provider);
+
+            var providers = service.GetProviders();
+            Assert.Single(providers);
+            Assert.Equal("OpenSourceTools", providers[0].ProviderName);
+
+            var items = service.GetSafeItems(provider);
+            Assert.NotEmpty(items);
+            Assert.Contains(items, i => i.Name.Contains("DeepSeek-OCR", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(items, i => i.Name.Contains("OpenSourceTools", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

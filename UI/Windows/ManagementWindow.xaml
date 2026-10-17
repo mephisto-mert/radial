@@ -373,6 +373,24 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Gesture & Game Protection Card (Rovyl Integration) -->
+                        <Border Background="#14141E" CornerRadius="10" Padding="18" Margin="0,0,0,16" BorderBrush="#20FFFFFF" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock x:Name="TxtGestureCardTitle" Text="🎯 Hold-to-Aim &amp; Fullscreen Protection" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="TxtGestureCardSub" Text="Hold down the trigger button, flick or aim toward an app, and release to instantly launch." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock x:Name="TxtAimModeLabel" Text="Aiming Method:" VerticalAlignment="Center" Foreground="#E2E8F0" FontWeight="SemiBold" Margin="0,0,12,0"/>
+                                    <ComboBox x:Name="AimModeCombo" Width="220" SelectionChanged="AimModeCombo_SelectionChanged">
+                                        <ComboBoxItem Content="Directional Flick (Angle-Based)" Tag="angle"/>
+                                        <ComboBoxItem Content="Proximity Pointer (Cursor Distance)" Tag="cursor"/>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <CheckBox x:Name="GameProtectionCheck" Content="Suppress radial launcher during fullscreen DirectX games and presentations" Foreground="White" Margin="0,4,0,0" Click="GameProtectionCheck_Click"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Menu Behavior Info Card -->
                         <Border Background="#14141E" CornerRadius="10" Padding="18" BorderBrush="#20FFFFFF" BorderThickness="1">
                             <StackPanel>
