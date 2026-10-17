@@ -18,7 +18,7 @@ namespace RadialLauncher.Services.Scanning
         public string Target { get; set; } = string.Empty;
         public string Arguments { get; set; } = string.Empty;
         public string IconPath { get; set; } = string.Empty;
-        public string CategoryName { get; set; } = "??? Sistem & Ara?lar";
+        public string CategoryName { get; set; } = "🛠️ Sistem & Araçlar";
         public string Source { get; set; } = string.Empty;
         public bool IsSelected { get; set; } = true;
         public ImageSource? Icon { get; set; }
@@ -36,10 +36,10 @@ namespace RadialLauncher.Services.Scanning
 
     public class PCScannerService : IPCScannerService
     {
-        public const string CatGames = "?? Oyunlar";
-        public const string CatInternet = "?? Web & ?nternet";
-        public const string CatDev = "?? Uygulamalar & ??";
-        public const string CatTools = "??? Sistem & Ara?lar";
+        public const string CatGames = "🎮 Oyunlar";
+        public const string CatInternet = "🌐 Web & İnternet";
+        public const string CatDev = "💼 Uygulamalar & İş";
+        public const string CatTools = "🛠️ Sistem & Araçlar";
 
         private readonly IGameDetector _gameDetector;
         private readonly IIconExtractor _iconExtractor;
@@ -62,11 +62,11 @@ namespace RadialLauncher.Services.Scanning
 
         private static readonly string[] IgnoreKeywords = new[]
         {
-            "uninstall", "kald?r", "setup", "installer", "unins000",
+            "uninstall", "kaldır", "kaldir", "setup", "installer", "unins000",
             "vcredist", "directx", "updater", "crashpad", "help",
-            "readme", "license", "documentation", "yard?m", "k?lavuz",
+            "readme", "license", "documentation", "yardım", "kılavuz",
             "changelog", "release notes", "website", "support",
-            "report", "telemetry", "crashhandler"
+            "report", "telemetry", "crashhandler", "createdump", "helper"
         };
 
         private static readonly string[] GameKeywords = new[]
@@ -106,6 +106,9 @@ namespace RadialLauncher.Services.Scanning
             var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            var installedSteamIds = RadialLauncher.Services.Apps.InstalledTargetValidator.GetInstalledSteamAppIds();
+            var installedEpicNames = RadialLauncher.Services.Apps.InstalledTargetValidator.GetInstalledEpicAppNames();
+
             void AddIfValid(ScannedApp app)
             {
                 if (string.IsNullOrWhiteSpace(app.Name) || string.IsNullOrWhiteSpace(app.Target))
@@ -116,6 +119,11 @@ namespace RadialLauncher.Services.Scanning
                 {
                     if (lowerName.Contains(ignore)) return;
                 }
+
+                // Do not add broken shortcuts or uninstalled Steam/Epic targets
+                var tempItem = new LauncherItem { Name = app.Name, Target = app.Target, Type = "EXE" };
+                if (!RadialLauncher.Services.Apps.InstalledTargetValidator.IsItemStillInstalled(tempItem, installedSteamIds, installedEpicNames))
+                    return;
 
                 string key = app.Target.ToLowerInvariant();
                 if (seenTargets.Contains(key)) return;
@@ -289,7 +297,7 @@ namespace RadialLauncher.Services.Scanning
                 Log.Warning(ex, "Failed scanning start menu shortcuts");
             }
 
-            // 4. Registry Installed Programs
+                // 4. Registry Installed Programs
             try
             {
                 ScanRegistryKeys(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", AddIfValid);
@@ -299,6 +307,89 @@ namespace RadialLauncher.Services.Scanning
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed scanning registry uninstall programs");
+            }
+
+            // 5. Running Processes & Common Installed Directories (%LOCALAPPDATA%\Programs, Program Files)
+            try
+            {
+                var runningAndCommon = RadialLauncher.Services.Apps.AppDetector.Instance.DetectRunningAndCommonApps();
+                foreach (var rc in runningAndCommon)
+                {
+                    AddIfValid(new ScannedApp
+                    {
+                        Name = rc.Name,
+                        Target = rc.ExePath,
+                        IconPath = rc.IconPath,
+                        CategoryName = ClassifyCategory(rc.Name, rc.ExePath),
+                        Source = "Sistem Taraması"
+                    });
+                }
+
+                string[] appDirs = new[]
+                {
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+                };
+
+                var skipProgramFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "Common Files", "Windows Defender", "Windows Defender Advanced Threat Protection",
+                    "Windows Mail", "Windows Photo Viewer", "Windows NT", "Windows Kits", "WindowsPowerShell",
+                    "Internet Explorer", "ModifiableWindowsApps", "Reference Assemblies", "MSBuild",
+                    "dotnet", "Microsoft.NET", "Uninstall Information", "Package Cache", "RadialLauncher"
+                };
+
+                foreach (var baseDir in appDirs)
+                {
+                    if (string.IsNullOrEmpty(baseDir) || !Directory.Exists(baseDir)) continue;
+                    foreach (var subDir in Directory.GetDirectories(baseDir))
+                    {
+                        try
+                        {
+                            string folderName = Path.GetFileName(subDir);
+                            if (skipProgramFolders.Contains(folderName)) continue;
+
+                            var exes = Directory.GetFiles(subDir, "*.exe", SearchOption.TopDirectoryOnly);
+                            if (exes.Length == 0) continue;
+
+                            // Pick main executable matching folder name or first valid exe
+                            string? bestExe = exes.FirstOrDefault(e =>
+                                Path.GetFileNameWithoutExtension(e).Equals(folderName, StringComparison.OrdinalIgnoreCase))
+                                ?? exes.FirstOrDefault(e =>
+                                {
+                                    string n = Path.GetFileNameWithoutExtension(e).ToLowerInvariant();
+                                    return !IgnoreKeywords.Any(kw => n.Contains(kw));
+                                });
+
+                            if (!string.IsNullOrEmpty(bestExe) && File.Exists(bestExe))
+                            {
+                                string displayName = folderName;
+                                try
+                                {
+                                    var vi = System.Diagnostics.FileVersionInfo.GetVersionInfo(bestExe);
+                                    if (!string.IsNullOrWhiteSpace(vi.ProductName) && vi.ProductName.Length > 1 && vi.ProductName.Length < 45)
+                                        displayName = vi.ProductName.Trim();
+                                }
+                                catch { }
+
+                                AddIfValid(new ScannedApp
+                                {
+                                    Name = displayName,
+                                    Target = bestExe,
+                                    IconPath = bestExe,
+                                    CategoryName = ClassifyCategory(displayName, bestExe),
+                                    Source = "Program Klasörleri"
+                                });
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed scanning program directories");
             }
 
             return results.OrderBy(a => a.CategoryName).ThenBy(a => a.Name).ToList();

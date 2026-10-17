@@ -852,6 +852,11 @@ namespace RadialLauncher.UI.Windows
             var loc = LocalizationService.Instance;
             StatusText.Text = loc.GetString("MsgScanningPc", "Scanning computer...");
             await _viewModel.ScanPc();
+            LoadCategories();
+            if (CategoryFilterCombo != null && CategoryFilterCombo.Items.Count > 0)
+            {
+                CategoryFilterCombo.SelectedIndex = 0; // Show All Categories so newly scanned apps are immediately visible
+            }
             RefreshGrid();
             StatusText.Text = _viewModel.StatusMessage;
         }
