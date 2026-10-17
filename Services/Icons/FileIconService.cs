@@ -110,8 +110,17 @@ namespace RadialLauncher.Services.Icons
                     {
                         if (!string.IsNullOrEmpty(resolved.IconLocation) && File.Exists(resolved.IconLocation))
                         {
-                            var ico = LoadImageFromFile(resolved.IconLocation);
-                            if (ico != null) return ico;
+                            if (resolved.IconLocation.EndsWith(".ico", StringComparison.OrdinalIgnoreCase) ||
+                                resolved.IconLocation.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                                resolved.IconLocation.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var ico = LoadImageFromFile(resolved.IconLocation);
+                                if (ico != null) return ico;
+                            }
+                            else
+                            {
+                                filePath = resolved.IconLocation;
+                            }
                         }
                         if (!string.IsNullOrEmpty(resolved.TargetPath) && File.Exists(resolved.TargetPath))
                         {

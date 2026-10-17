@@ -145,9 +145,9 @@ namespace RadialLauncher.UI.Windows
             // Resolve aim slot against canvas coordinates
             try
             {
-                var source = PresentationSource.FromVisual(this);
-                double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-                double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+                var dpi = VisualTreeHelper.GetDpi(this);
+                double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
 
                 double logicalX = screenX / dpiX;
                 double logicalY = screenY / dpiY;
@@ -195,14 +195,14 @@ namespace RadialLauncher.UI.Windows
                 _currentAimSlot = -1;
                 IsHoldGestureActive = true;
 
-                var source = PresentationSource.FromVisual(this);
-                double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-                double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+                var dpi = VisualTreeHelper.GetDpi(this);
+                double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
 
                 double logicalX = screenX / dpiX;
                 double logicalY = screenY / dpiY;
 
-                var clamped = MultiMonitorHelper.ClampWindowToCursorScreen(this.Width, this.Height, logicalX, logicalY);
+                var clamped = MultiMonitorHelper.ClampWindowToCursorScreen(this.Width, this.Height, logicalX, logicalY, dpiX, dpiY);
                 this.Left = clamped.X;
                 this.Top = clamped.Y;
 
@@ -373,10 +373,22 @@ namespace RadialLauncher.UI.Windows
                 Canvas.SetTop(btn, tileY);
                 Panel.SetZIndex(btn, 15);
 
-                btn.Resources.Add(typeof(Border), new Style(typeof(Border))
+                var borderFactory = new FrameworkElementFactory(typeof(Border));
+                borderFactory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+                borderFactory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+                borderFactory.SetBinding(Border.BorderThicknessProperty, new System.Windows.Data.Binding("BorderThickness") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+                borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(squircleRadius));
+                borderFactory.SetValue(Border.SnapsToDevicePixelsProperty, true);
+
+                var contentFactory = new FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+                contentFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                contentFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+                borderFactory.AppendChild(contentFactory);
+
+                btn.Template = new System.Windows.Controls.ControlTemplate(typeof(Button))
                 {
-                    Setters = { new Setter(Border.CornerRadiusProperty, new CornerRadius(squircleRadius)) }
-                });
+                    VisualTree = borderFactory
+                };
 
                 // Icon content
                 var iconImg = ResolveItemIcon(item);
@@ -766,16 +778,24 @@ namespace RadialLauncher.UI.Windows
             var actionIcon = _iconExtractor.GetActionIcon(item.Target) ?? _iconExtractor.GetActionIcon(item.Name);
             if (actionIcon != null) return actionIcon;
 
+            if (item.Type == "URL" && (item.Name.Contains("gmail", StringComparison.OrdinalIgnoreCase) || item.Target.Contains("mail.google", StringComparison.OrdinalIgnoreCase)))
+            {
+                var gmailIcon = _iconExtractor.GetBrandIcon(item.Name, item.Target);
+                if (gmailIcon != null) return gmailIcon;
+            }
+
             if (!string.IsNullOrEmpty(item.IconPath) && File.Exists(item.IconPath))
             {
                 var f = _iconExtractor.GetIconForFile(item.IconPath);
                 if (f != null) return f;
             }
+
             if (item.Type == "URL")
             {
                 var fav = _iconExtractor.GetFaviconForUrl(item.Target);
                 if (fav != null) return fav;
             }
+
             var brand = _iconExtractor.GetBrandIcon(item.Name, item.Target);
             if (brand != null) return brand;
 

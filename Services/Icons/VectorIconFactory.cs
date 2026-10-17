@@ -184,11 +184,26 @@ namespace RadialLauncher.Services.Icons
             var visual = new DrawingVisual();
             using (var dc = visual.RenderOpen())
             {
-                dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(234, 67, 53)), null, new Rect(8, 12, 48, 40), 10, 10);
-                var formatted = new FormattedText("M", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                    new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Black, FontStretches.Normal),
-                    24, Brushes.White, 1.0);
-                dc.DrawText(formatted, new Point((64 - formatted.Width) / 2, (64 - formatted.Height) / 2));
+                dc.DrawRoundedRectangle(Brushes.White, null, new Rect(6, 10, 52, 44), 10, 10);
+                var leftBar = new SolidColorBrush(Color.FromRgb(66, 133, 244));
+                var rightBar = new SolidColorBrush(Color.FromRgb(52, 168, 83));
+                var redPen = new Pen(new SolidColorBrush(Color.FromRgb(234, 67, 53)), 6.5)
+                {
+                    StartLineCap = PenLineCap.Round,
+                    EndLineCap = PenLineCap.Round,
+                    LineJoin = PenLineJoin.Round
+                };
+                dc.DrawRoundedRectangle(leftBar, null, new Rect(11, 20, 6.5, 26), 3, 3);
+                dc.DrawRoundedRectangle(rightBar, null, new Rect(46.5, 20, 6.5, 26), 3, 3);
+                var vShape = new StreamGeometry();
+                using (var gc = vShape.Open())
+                {
+                    gc.BeginFigure(new Point(14, 20), false, false);
+                    gc.LineTo(new Point(32, 34), true, false);
+                    gc.LineTo(new Point(50, 20), true, false);
+                }
+                vShape.Freeze();
+                dc.DrawGeometry(null, redPen, vShape);
             }
             return RenderVisualToBitmap(visual);
         }

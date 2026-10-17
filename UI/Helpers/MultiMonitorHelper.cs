@@ -7,23 +7,38 @@ namespace RadialLauncher.UI.Helpers
 {
     public static class MultiMonitorHelper
     {
-        public static Point ClampWindowToCursorScreen(double windowWidth, double windowHeight, double cursorLogicalX, double cursorLogicalY)
+        public static Point ClampWindowToCursorScreen(
+            double windowWidth,
+            double windowHeight,
+            double cursorLogicalX,
+            double cursorLogicalY,
+            double dpiX = 1.0,
+            double dpiY = 1.0)
         {
-            // Center window initially around cursor
+            if (dpiX <= 0) dpiX = 1.0;
+            if (dpiY <= 0) dpiY = 1.0;
+
+            // Center window initially around cursor (in logical DIPs)
             double left = cursorLogicalX - (windowWidth / 2.0);
             double top = cursorLogicalY - (windowHeight / 2.0);
 
             try
             {
-                // Find screen containing cursor
-                var screen = Screen.FromPoint(new System.Drawing.Point((int)cursorLogicalX, (int)cursorLogicalY));
+                int physX = (int)Math.Round(cursorLogicalX * dpiX);
+                int physY = (int)Math.Round(cursorLogicalY * dpiY);
+                var screen = Screen.FromPoint(new System.Drawing.Point(physX, physY));
                 var bounds = screen.WorkingArea;
 
-                // Clamp to working area
-                if (left < bounds.Left) left = bounds.Left;
-                if (top < bounds.Top) top = bounds.Top;
-                if (left + windowWidth > bounds.Right) left = bounds.Right - windowWidth;
-                if (top + windowHeight > bounds.Bottom) top = bounds.Bottom - windowHeight;
+                double minLeft = bounds.Left / dpiX;
+                double minTop = bounds.Top / dpiY;
+                double maxRight = bounds.Right / dpiX;
+                double maxBottom = bounds.Bottom / dpiY;
+
+                // Clamp to working area in logical DIPs
+                if (left < minLeft) left = minLeft;
+                if (top < minTop) top = minTop;
+                if (left + windowWidth > maxRight) left = maxRight - windowWidth;
+                if (top + windowHeight > maxBottom) top = maxBottom - windowHeight;
             }
             catch
             {
