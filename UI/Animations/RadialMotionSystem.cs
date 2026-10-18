@@ -175,10 +175,22 @@ namespace RadialLauncher.UI.Animations
 
         public static void AnimateHover(FrameworkElement button, FrameworkElement? label, bool isHovered, bool reduceMotion = false)
         {
-            double targetScaleBtn = isHovered ? 1.08 : 1.0;
-            double targetScaleLbl = isHovered ? 1.0 : 0.90;
+            AnimateHoverState(button, label, isHovered ? 1.15 : 1.0, 1.0, isHovered, reduceMotion);
+        }
+
+        public static void AnimateHoverState(
+            FrameworkElement button,
+            FrameworkElement? label,
+            double targetScaleBtn,
+            double targetOpacityBtn,
+            bool showLabel,
+            bool reduceMotion = false)
+        {
+            double targetScaleLbl = showLabel ? 1.0 : 0.90;
             var duration = TimeSpan.FromMilliseconds(reduceMotion ? 1 : 155);
-            var easing = isHovered ? SubtleSpring : SoftCubic;
+            var easing = showLabel ? SubtleSpring : SoftCubic;
+
+            button.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(targetOpacityBtn, TimeSpan.FromMilliseconds(reduceMotion ? 1 : 135)) { EasingFunction = SoftQuartic });
 
             if (button.RenderTransform is TransformGroup group)
             {
@@ -201,7 +213,7 @@ namespace RadialLauncher.UI.Animations
             }
             else
             {
-                var st = new ScaleTransform(isHovered ? 1.0 : targetScaleBtn, isHovered ? 1.0 : targetScaleBtn);
+                var st = new ScaleTransform(1.0, 1.0);
                 button.RenderTransform = st;
                 button.RenderTransformOrigin = new Point(0.5, 0.5);
                 st.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(targetScaleBtn, duration) { EasingFunction = easing });
@@ -210,8 +222,8 @@ namespace RadialLauncher.UI.Animations
 
             if (label != null)
             {
-                double targetOpacity = isHovered ? 1.0 : 0.0;
-                label.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(targetOpacity, TimeSpan.FromMilliseconds(reduceMotion ? 1 : 140)) { EasingFunction = SoftQuartic });
+                double targetOpacity = showLabel ? 1.0 : 0.0;
+                label.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(targetOpacity, TimeSpan.FromMilliseconds(reduceMotion ? 1 : 135)) { EasingFunction = SoftQuartic });
 
                 if (label.RenderTransform is ScaleTransform lst)
                 {
@@ -220,13 +232,67 @@ namespace RadialLauncher.UI.Animations
                 }
                 else
                 {
-                    var lstNew = new ScaleTransform(isHovered ? 0.90 : 1.0, isHovered ? 0.90 : 1.0);
+                    var lstNew = new ScaleTransform(showLabel ? 0.90 : 1.0, showLabel ? 0.90 : 1.0);
                     label.RenderTransform = lstNew;
                     label.RenderTransformOrigin = new Point(0.5, 0.5);
                     lstNew.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(targetScaleLbl, duration) { EasingFunction = easing });
                     lstNew.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(targetScaleLbl, duration) { EasingFunction = easing });
                 }
             }
+        }
+
+        public static void AnimateItemImplodeToCenter(
+            FrameworkElement element,
+            int index,
+            double offsetFromCenterX,
+            double offsetFromCenterY,
+            bool reduceMotion = false)
+        {
+            if (reduceMotion)
+            {
+                element.Opacity = 0.0;
+                return;
+            }
+
+            var transformGroup = element.RenderTransform as TransformGroup ?? new TransformGroup();
+            ScaleTransform? scale = null;
+            TranslateTransform? translate = null;
+            foreach (var child in transformGroup.Children)
+            {
+                if (child is ScaleTransform s) scale = s;
+                else if (child is TranslateTransform t) translate = t;
+            }
+            if (scale == null) { scale = new ScaleTransform(1.0, 1.0); transformGroup.Children.Add(scale); }
+            if (translate == null) { translate = new TranslateTransform(0, 0); transformGroup.Children.Add(translate); }
+            element.RenderTransform = transformGroup;
+
+            int delayMs = index * 5;
+            var dur = TimeSpan.FromMilliseconds(120);
+
+            element.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, dur) { BeginTime = TimeSpan.FromMilliseconds(delayMs), EasingFunction = SoftCubic });
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.20, dur) { BeginTime = TimeSpan.FromMilliseconds(delayMs), EasingFunction = SoftCubic });
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.20, dur) { BeginTime = TimeSpan.FromMilliseconds(delayMs), EasingFunction = SoftCubic });
+            translate.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-offsetFromCenterX, dur) { BeginTime = TimeSpan.FromMilliseconds(delayMs), EasingFunction = SoftCubic });
+            translate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-offsetFromCenterY, dur) { BeginTime = TimeSpan.FromMilliseconds(delayMs), EasingFunction = SoftCubic });
+        }
+
+        public static void AnimateItemLaunchPulse(FrameworkElement element, bool reduceMotion = false)
+        {
+            if (reduceMotion) return;
+
+            var transformGroup = element.RenderTransform as TransformGroup ?? new TransformGroup();
+            ScaleTransform? scale = null;
+            foreach (var child in transformGroup.Children)
+            {
+                if (child is ScaleTransform s) { scale = s; break; }
+            }
+            if (scale == null) { scale = new ScaleTransform(1.15, 1.15); transformGroup.Children.Add(scale); }
+            element.RenderTransform = transformGroup;
+
+            var dur = TimeSpan.FromMilliseconds(145);
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.36, dur) { EasingFunction = SoftQuartic });
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.36, dur) { EasingFunction = SoftQuartic });
+            element.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, dur) { EasingFunction = SoftCubic });
         }
 
         public static void AnimatePageTransition(FrameworkElement container, int direction, bool reduceMotion = false)

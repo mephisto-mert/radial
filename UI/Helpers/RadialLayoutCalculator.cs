@@ -39,24 +39,101 @@ namespace RadialLauncher.UI.Helpers
 
         public static (double radius, double tileSize, double iconSize) ComputeRovylMetrics(int itemCount, bool isCompact = false)
         {
-            if (itemCount <= 0) return (135.0, 56.0, 34.0);
+            if (itemCount <= 0) return (138.0, 56.0, 38.0);
 
             double density = Math.Clamp((itemCount - 3) / 8.0, 0.0, 1.0);
             double baseTile = isCompact ? 48.0 : 56.0;
-            double tileSize = Math.Round(baseTile * (1.0 - 0.12 * density));
+            double tileSize = Math.Round(baseTile * (1.0 - 0.10 * density));
             if (itemCount > 10)
             {
-                tileSize = Math.Max(42.0, Math.Round(tileSize - (itemCount - 10) * 1.5));
+                tileSize = Math.Max(46.0, Math.Round(tileSize - (itemCount - 10) * 1.0));
             }
 
             double sinHalf = itemCount > 1 ? Math.Sin(Math.PI / itemCount) : 1.0;
-            double minGap = isCompact ? 14.0 : 20.0;
-            double packedRadius = itemCount > 1 ? (tileSize + minGap) / (2.0 * sinHalf) : 115.0;
-            double floorRadius = (isCompact ? 112.0 : 120.0) + (28.0 * density);
+            double minGap = isCompact ? 16.0 : 22.0;
+            double packedRadius = itemCount > 1 ? (tileSize + minGap) / (2.0 * sinHalf) : 122.0;
+            double floorRadius = (isCompact ? 116.0 : 126.0) + (30.0 * density);
 
-            double radius = Math.Clamp(Math.Max(floorRadius, packedRadius), 112.0, 188.0);
-            double iconSize = Math.Round(tileSize * 0.62);
+            double radius = Math.Clamp(Math.Max(floorRadius, packedRadius), 116.0, 188.0);
+            double iconSize = Math.Round(tileSize * 0.68);
             return (radius, tileSize, iconSize);
+        }
+
+        public static System.Windows.Media.Color ExtractDominantAccentColor(
+            System.Windows.Media.ImageSource? source,
+            System.Windows.Media.Color fallback)
+        {
+            try
+            {
+                if (source is not System.Windows.Media.Imaging.BitmapSource bmp)
+                    return fallback;
+
+                var formatted = new System.Windows.Media.Imaging.FormatConvertedBitmap(
+                    bmp,
+                    System.Windows.Media.PixelFormats.Bgra32,
+                    null,
+                    0);
+                int w = formatted.PixelWidth;
+                int h = formatted.PixelHeight;
+                if (w <= 0 || h <= 0) return fallback;
+
+                int stride = w * 4;
+                byte[] pixels = new byte[h * stride];
+                formatted.CopyPixels(pixels, stride, 0);
+
+                double sumR = 0, sumG = 0, sumB = 0, totalWeight = 0;
+                int stepX = Math.Max(1, w / 16);
+                int stepY = Math.Max(1, h / 16);
+
+                for (int y = 0; y < h; y += stepY)
+                {
+                    int row = y * stride;
+                    for (int x = 0; x < w; x += stepX)
+                    {
+                        int idx = row + x * 4;
+                        byte b = pixels[idx];
+                        byte g = pixels[idx + 1];
+                        byte r = pixels[idx + 2];
+                        byte a = pixels[idx + 3];
+                        if (a < 140) continue;
+
+                        double rf = r / 255.0, gf = g / 255.0, bf = b / 255.0;
+                        double max = Math.Max(rf, Math.Max(gf, bf));
+                        double min = Math.Min(rf, Math.Min(gf, bf));
+                        double delta = max - min;
+                        double sat = max <= 0.01 ? 0 : delta / max;
+                        if (sat < 0.25 || max < 0.22) continue;
+
+                        double weight = sat * sat * max * (a / 255.0);
+                        sumR += r * weight;
+                        sumG += g * weight;
+                        sumB += b * weight;
+                        totalWeight += weight;
+                    }
+                }
+
+                if (totalWeight < 0.4) return fallback;
+
+                double avgR = sumR / totalWeight;
+                double avgG = sumG / totalWeight;
+                double avgB = sumB / totalWeight;
+
+                // Boost brightness so the accent glow is vivid and vibrant
+                double peak = Math.Max(avgR, Math.Max(avgG, avgB));
+                if (peak > 1 && peak < 235)
+                {
+                    double boost = 235.0 / peak;
+                    avgR = Math.Clamp(avgR * boost, 0, 255);
+                    avgG = Math.Clamp(avgG * boost, 0, 255);
+                    avgB = Math.Clamp(avgB * boost, 0, 255);
+                }
+
+                return System.Windows.Media.Color.FromRgb((byte)avgR, (byte)avgG, (byte)avgB);
+            }
+            catch
+            {
+                return fallback;
+            }
         }
 
         public static OuterPillSide GetOuterPillSide(double angleRadians)

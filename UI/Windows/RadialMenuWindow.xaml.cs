@@ -26,6 +26,8 @@ namespace RadialLauncher.UI.Windows
         private readonly IContextualActionService _contextualActionService;
         private readonly List<(Button btn, Border labelBorder, LauncherItem item)> _visibleButtons = new();
         private readonly List<IntPtr> _activeDwmThumbs = new();
+        private List<RadialItemPlacement> _currentPlacements = new();
+        private readonly List<Color> _itemAccentColors = new();
         private int _keyboardFocusIndex = -1;
 
         // Middle & Left Mouse Drag Navigation
@@ -306,6 +308,9 @@ namespace RadialLauncher.UI.Windows
 
             ItemsCanvas.Children.Clear();
             _visibleButtons.Clear();
+            _itemAccentColors.Clear();
+            _currentPlacements.Clear();
+            UpdateAimIndicator(-1, _viewModel.ActiveTheme.AccentColor);
 
             if (CentralHubLogo != null && CentralHubBackIcon != null)
             {
@@ -323,6 +328,7 @@ namespace RadialLauncher.UI.Windows
 
             bool isCompact = _viewModel.ActiveTheme.DensityMode == "Compact";
             var placements = RadialLayoutCalculator.CalculatePlacements(items.Count, 250, 250, isCompact);
+            _currentPlacements = placements;
             if (placements.Count > 0 && BaseCircle != null)
             {
                 BaseCircle.Width = placements[0].DynamicRadius * 2.0;
@@ -390,10 +396,14 @@ namespace RadialLauncher.UI.Windows
                     VisualTree = borderFactory
                 };
 
-                // Icon content
+                // Icon content + Rounded squircle clipping + Dominant color extraction
                 var iconImg = ResolveItemIcon(item);
+                Color itemAccent = RadialLayoutCalculator.ExtractDominantAccentColor(iconImg, theme.AccentColor);
+                _itemAccentColors.Add(itemAccent);
+
                 if (iconImg != null)
                 {
+                    double iconCorner = Math.Round(iconSize * 0.28);
                     var img = new Image
                     {
                         Source = iconImg,
@@ -401,7 +411,8 @@ namespace RadialLauncher.UI.Windows
                         Height = iconSize,
                         Stretch = Stretch.Uniform,
                         UseLayoutRounding = true,
-                        SnapsToDevicePixels = true
+                        SnapsToDevicePixels = true,
+                        Clip = new RectangleGeometry(new Rect(0, 0, iconSize, iconSize), iconCorner, iconCorner)
                     };
                     RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
                     btn.Content = img;
@@ -418,12 +429,16 @@ namespace RadialLauncher.UI.Windows
                 }
 
                 // Rovyl-style Dynamic Outer Pill Label (never truncates, opens outward from slice)
+                var itemReadableFg = new SolidColorBrush(GetReadableForeground(itemAccent));
+                var itemPillBg = new SolidColorBrush(itemAccent);
+                var itemPillBorder = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255));
+
                 var txt = new TextBlock
                 {
                     Text = item.Name,
                     FontSize = 12,
                     FontWeight = FontWeights.SemiBold,
-                    Foreground = activeReadableFg,
+                    Foreground = itemReadableFg,
                     TextAlignment = TextAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center
@@ -433,8 +448,8 @@ namespace RadialLauncher.UI.Windows
                 {
                     CornerRadius = new CornerRadius(13),
                     Padding = new Thickness(12, 5, 12, 5),
-                    Background = pillBg,
-                    BorderBrush = pillBorder,
+                    Background = itemPillBg,
+                    BorderBrush = itemPillBorder,
                     BorderThickness = new Thickness(1),
                     IsHitTestVisible = false,
                     Opacity = 0.0,
@@ -442,10 +457,10 @@ namespace RadialLauncher.UI.Windows
                     Child = txt,
                     Effect = new System.Windows.Media.Effects.DropShadowEffect
                     {
-                        BlurRadius = 14,
-                        ShadowDepth = 3,
-                        Color = Colors.Black,
-                        Opacity = 0.55
+                        BlurRadius = 16,
+                        ShadowDepth = 2,
+                        Color = itemAccent,
+                        Opacity = 0.65
                     }
                 };
                 lblBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -457,18 +472,22 @@ namespace RadialLauncher.UI.Windows
                 double pillY = tileY + tileSize + 10.0;
                 if (pillSide == OuterPillSide.Right)
                 {
-                    pillX = tileX + tileSize + 10.0;
+                    pillX = Math.Min(tileX + tileSize + 10.0, 582.0 - pillW);
                     pillY = tileY + (tileSize - pillH) / 2.0;
                 }
                 else if (pillSide == OuterPillSide.Left)
                 {
-                    pillX = tileX - pillW - 10.0;
+                    pillX = Math.Max(-82.0, tileX - pillW - 10.0);
                     pillY = tileY + (tileSize - pillH) / 2.0;
                 }
                 else if (pillSide == OuterPillSide.Top)
                 {
-                    pillX = tileX + (tileSize - pillW) / 2.0;
+                    pillX = Math.Clamp(tileX + (tileSize - pillW) / 2.0, -82.0, 582.0 - pillW);
                     pillY = tileY - pillH - 10.0;
+                }
+                else
+                {
+                    pillX = Math.Clamp(pillX, -82.0, 582.0 - pillW);
                 }
 
                 Panel.SetZIndex(lblBorder, 250);
@@ -1155,39 +1174,48 @@ namespace RadialLauncher.UI.Windows
             var theme = _viewModel.ActiveTheme;
             var idleTileBg = new SolidColorBrush(Color.FromArgb(248, 18, 19, 23));
             var regularBorder = new SolidColorBrush(Color.FromArgb(72, 255, 255, 255));
-            var activeReadableFg = new SolidColorBrush(GetReadableForeground(theme.AccentColor));
+            var neighborBorder = new SolidColorBrush(Color.FromArgb(128, 255, 255, 255));
 
             if (_keyboardFocusIndex < 0)
             {
                 _viewModel.HoveredItemTitle = string.Empty;
                 HideContextActionCard();
+                UpdateAimIndicator(-1, theme.AccentColor);
             }
 
-            for (int i = 0; i < _visibleButtons.Count; i++)
+            int total = _visibleButtons.Count;
+            for (int i = 0; i < total; i++)
             {
                 var (btn, lbl, item) = _visibleButtons[i];
                 var txt = lbl.Child as TextBlock;
+                Color itemAccent = (i < _itemAccentColors.Count) ? _itemAccentColors[i] : theme.AccentColor;
+
                 if (i == _keyboardFocusIndex)
                 {
                     Panel.SetZIndex(btn, 180);
                     Panel.SetZIndex(lbl, 260);
-                    btn.Background = theme.AccentBrush;
+                    var accentBrush = new SolidColorBrush(itemAccent);
+                    var readableFg = new SolidColorBrush(GetReadableForeground(itemAccent));
+                    btn.Background = accentBrush;
                     btn.BorderBrush = new SolidColorBrush(Colors.White);
                     btn.BorderThickness = new Thickness(1.6);
                     btn.Effect = new System.Windows.Media.Effects.DropShadowEffect
                     {
-                        BlurRadius = 26,
+                        BlurRadius = 28,
                         ShadowDepth = 0,
-                        Color = theme.AccentColor,
-                        Opacity = 0.82
+                        Color = itemAccent,
+                        Opacity = 0.88
                     };
+                    lbl.Background = accentBrush;
+                    lbl.BorderBrush = new SolidColorBrush(Color.FromArgb(225, 255, 255, 255));
                     if (txt != null)
                     {
-                        txt.Foreground = activeReadableFg;
+                        txt.Foreground = readableFg;
                         txt.FontWeight = FontWeights.SemiBold;
                     }
                     _viewModel.HoveredItemTitle = item.Name;
-                    RadialMotionSystem.AnimateHover(btn, lbl, true, theme.ReduceMotion);
+                    UpdateAimIndicator(i, itemAccent);
+                    RadialMotionSystem.AnimateHoverState(btn, lbl, 1.16, 1.0, true, theme.ReduceMotion);
                     ShowContextActions(item);
                 }
                 else
@@ -1195,8 +1223,6 @@ namespace RadialLauncher.UI.Windows
                     Panel.SetZIndex(btn, 15);
                     Panel.SetZIndex(lbl, 250);
                     btn.Background = idleTileBg;
-                    btn.BorderBrush = regularBorder;
-                    btn.BorderThickness = new Thickness(1.2);
                     btn.Effect = new System.Windows.Media.Effects.DropShadowEffect
                     {
                         BlurRadius = 18,
@@ -1204,8 +1230,111 @@ namespace RadialLauncher.UI.Windows
                         Color = Colors.Black,
                         Opacity = 0.58
                     };
-                    RadialMotionSystem.AnimateHover(btn, lbl, false, theme.ReduceMotion);
+
+                    if (_keyboardFocusIndex < 0 || total <= 2)
+                    {
+                        btn.BorderBrush = regularBorder;
+                        btn.BorderThickness = new Thickness(1.2);
+                        RadialMotionSystem.AnimateHoverState(btn, lbl, 1.0, 1.0, false, theme.ReduceMotion);
+                    }
+                    else
+                    {
+                        int diff = Math.Abs(i - _keyboardFocusIndex);
+                        int dist = Math.Min(diff, total - diff);
+                        if (dist == 1)
+                        {
+                            btn.BorderBrush = neighborBorder;
+                            btn.BorderThickness = new Thickness(1.35);
+                            RadialMotionSystem.AnimateHoverState(btn, lbl, 1.06, 0.94, false, theme.ReduceMotion);
+                        }
+                        else
+                        {
+                            btn.BorderBrush = regularBorder;
+                            btn.BorderThickness = new Thickness(1.1);
+                            RadialMotionSystem.AnimateHoverState(btn, lbl, 0.97, 0.76, false, theme.ReduceMotion);
+                        }
+                    }
                 }
+            }
+        }
+
+        private void UpdateAimIndicator(int focusedIndex, Color activeColor)
+        {
+            if (AimSectorWedge == null || AimRayLine == null || AimHubArc == null) return;
+
+            if (focusedIndex < 0 || focusedIndex >= _currentPlacements.Count)
+            {
+                AimSectorWedge.Opacity = 0;
+                AimRayLine.Opacity = 0;
+                AimHubArc.Opacity = 0;
+                if (CentralHubBorder != null)
+                {
+                    CentralHubBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(76, 255, 255, 255));
+                }
+                return;
+            }
+
+            var p = _currentPlacements[focusedIndex];
+            double cx = 250.0, cy = 250.0;
+            double angle = p.AngleRadians;
+            double cosA = Math.Cos(angle), sinA = Math.Sin(angle);
+            double hubRadius = 31.0;
+            double tileInnerEdge = Math.Max(hubRadius + 10.0, p.DynamicRadius - (p.DynamicTileSize / 2.0) - 4.0);
+
+            AimRayLine.X1 = cx + hubRadius * cosA;
+            AimRayLine.Y1 = cy + hubRadius * sinA;
+            AimRayLine.X2 = cx + tileInnerEdge * cosA;
+            AimRayLine.Y2 = cy + tileInnerEdge * sinA;
+            AimRayLine.Stroke = new SolidColorBrush(Color.FromArgb(220, activeColor.R, activeColor.G, activeColor.B));
+            AimRayLine.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 10,
+                ShadowDepth = 0,
+                Color = activeColor,
+                Opacity = 0.85
+            };
+            AimRayLine.Opacity = 1.0;
+
+            double halfSpan = Math.Min(Math.PI / 7.5, Math.PI / Math.Max(4, _currentPlacements.Count));
+            double a1 = angle - halfSpan;
+            double a2 = angle + halfSpan;
+
+            Point arcStart = new Point(cx + hubRadius * Math.Cos(a1), cy + hubRadius * Math.Sin(a1));
+            Point arcEnd = new Point(cx + hubRadius * Math.Cos(a2), cy + hubRadius * Math.Sin(a2));
+            var arcFig = new PathFigure { StartPoint = arcStart, IsClosed = false, IsFilled = false };
+            arcFig.Segments.Add(new ArcSegment(arcEnd, new Size(hubRadius, hubRadius), 0, false, SweepDirection.Clockwise, true));
+            var arcGeo = new PathGeometry();
+            arcGeo.Figures.Add(arcFig);
+            AimHubArc.Data = arcGeo;
+            AimHubArc.Stroke = new SolidColorBrush(activeColor);
+            AimHubArc.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 12,
+                ShadowDepth = 0,
+                Color = activeColor,
+                Opacity = 0.9
+            };
+            AimHubArc.Opacity = 1.0;
+
+            double outerWedgeR = p.DynamicRadius;
+            Point w1 = new Point(cx + hubRadius * Math.Cos(a1), cy + hubRadius * Math.Sin(a1));
+            Point w2 = new Point(cx + outerWedgeR * Math.Cos(a1), cy + outerWedgeR * Math.Sin(a1));
+            Point w3 = new Point(cx + outerWedgeR * Math.Cos(a2), cy + outerWedgeR * Math.Sin(a2));
+            Point w4 = new Point(cx + hubRadius * Math.Cos(a2), cy + hubRadius * Math.Sin(a2));
+            var wedgeFig = new PathFigure { StartPoint = w1, IsClosed = true, IsFilled = true };
+            wedgeFig.Segments.Add(new LineSegment(w2, false));
+            wedgeFig.Segments.Add(new ArcSegment(w3, new Size(outerWedgeR, outerWedgeR), 0, false, SweepDirection.Clockwise, false));
+            wedgeFig.Segments.Add(new LineSegment(w4, false));
+            wedgeFig.Segments.Add(new ArcSegment(w1, new Size(hubRadius, hubRadius), 0, false, SweepDirection.Counterclockwise, false));
+            var wedgeGeo = new PathGeometry();
+            wedgeGeo.Figures.Add(wedgeFig);
+            AimSectorWedge.Data = wedgeGeo;
+            AimSectorWedge.Fill = new SolidColorBrush(Color.FromArgb(30, activeColor.R, activeColor.G, activeColor.B));
+            AimSectorWedge.Opacity = 1.0;
+
+            if (CentralHubBorder != null)
+            {
+                CentralHubBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(165, activeColor.R, activeColor.G, activeColor.B));
             }
         }
 

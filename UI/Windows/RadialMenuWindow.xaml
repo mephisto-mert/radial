@@ -63,6 +63,15 @@
         <!-- Hidden legacy HoverInfoText (kept for code-behind compatibility; labels now open as outer pills) -->
         <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" Visibility="Collapsed"/>
 
+        <!-- Directional Aim Ray & Active Sector Arc (Rovyl Aim Pointer) -->
+        <Canvas x:Name="AimIndicatorCanvas" Width="500" Height="500"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                IsHitTestVisible="False" Panel.ZIndex="10">
+            <Path x:Name="AimSectorWedge" Opacity="0" IsHitTestVisible="False"/>
+            <Line x:Name="AimRayLine" StrokeThickness="2.0" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
+            <Path x:Name="AimHubArc" StrokeThickness="3.0" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
+        </Canvas>
+
         <!-- Rovyl Central Hub (Dead Center 56x56 Circle with Vector Ring) -->
         <Border x:Name="CentralHubBorder" Width="56" Height="56" CornerRadius="28"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -88,33 +97,11 @@
         </Border>
 
         <!-- Container for floating radial squircle tiles and dynamic outer pill labels -->
-        <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
+        <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False" Panel.ZIndex="30">
         </Canvas>
 
-        <!-- Rovyl Bottom Context Pill (Workspace / Category Name + Shortcut Chip + Page Dots) -->
-        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,84"
-                Background="#EE06070A" CornerRadius="15" Padding="13,6" BorderThickness="1" BorderBrush="#2AFFFFFF"
-                SnapsToDevicePixels="True" Cursor="Hand" Panel.ZIndex="90"
-                MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="18" ShadowDepth="4" Color="Black" Opacity="0.65"/>
-            </Border.Effect>
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <StackPanel x:Name="CategoryDots" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                    <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.DisplayName, FallbackValue='Categories'}" 
-                               FontSize="11.5" FontWeight="Medium" Foreground="#DCFFFFFF" 
-                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
-                    <Border x:Name="CategoryShortcutChip" Background="#1FFFFFFF" CornerRadius="5" Padding="6,2" Margin="7,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="CategoryShortcutText" Text="Esc" FontSize="10" FontWeight="Medium" Foreground="#A8FFFFFF"/>
-                    </Border>
-                </StackPanel>
-                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-            </StackPanel>
-        </Border>
-
-        <!-- Contextual Quick Actions Floating Card (Positioned cleanly between CategoryPill and QuickActionsBar so it NEVER overlaps bottom radial tiles) -->
-        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,48"
+        <!-- Contextual Quick Actions Floating Card (Appears cleanly above unified bottom HUD pill only on hover) -->
+        <Border x:Name="ContextActionCard" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,66"
                 Background="#F208090C" CornerRadius="12" Padding="6,3" BorderThickness="1" BorderBrush="#2EFFFFFF"
                 Visibility="Collapsed" SnapsToDevicePixels="True" Panel.ZIndex="200">
             <Border.Effect>
@@ -123,40 +110,60 @@
             <StackPanel x:Name="ContextActionPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
 
-        <!-- Pinned Quick Actions Strip (Subtle bottom bar with high-contrast icons) -->
-        <ItemsControl x:Name="QuickActionsBar" ItemsSource="{Binding QuickActions}" 
-                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,10" Panel.ZIndex="85">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Button Width="32" Height="32" Margin="3.5,0" Background="#E6101216" Foreground="#EAFFFFFF" BorderThickness="1" BorderBrush="#30FFFFFF"
-                            Command="{Binding DataContext.ExecuteQuickActionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="{Binding}" Cursor="Hand" ToolTip="{Binding Name}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="BtnBorder" Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="10">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="BtnBorder" Property="Background" Value="#F51C2028"/>
-                                        <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#66FFFFFF"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                        <TextBlock Text="{Binding IconSymbol}" FontSize="12.5" Foreground="#EAFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Button>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <!-- Unified Rovyl Bottom Capsule HUD (Category Dots + Title + Key Chip + Page Dots + Integrated Utility Micro-Buttons) -->
+        <Border x:Name="CategoryPill" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
+                Background="#F006070A" CornerRadius="18" Padding="14,6" BorderThickness="1" BorderBrush="#2CFFFFFF"
+                SnapsToDevicePixels="True" Cursor="Hand" Panel.ZIndex="90"
+                MouseLeftButtonUp="CategoryPill_MouseLeftButtonUp">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Color="Black" Opacity="0.68"/>
+            </Border.Effect>
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel x:Name="CategoryDots" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="CategoryTitleText" Text="{Binding CurrentCategory.DisplayName, FallbackValue='Categories'}" 
+                               FontSize="11.5" FontWeight="SemiBold" Foreground="#EAFFFFFF" 
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
+                    <Border x:Name="CategoryShortcutChip" Background="#22FFFFFF" CornerRadius="5" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="CategoryShortcutText" Text="Esc" FontSize="10" FontWeight="Medium" Foreground="#B8FFFFFF"/>
+                    </Border>
+                    <Border Width="1" Height="16" Background="#26FFFFFF" Margin="10,0,8,0" VerticalAlignment="Center"/>
+                    <ItemsControl x:Name="QuickActionsBar" ItemsSource="{Binding QuickActions}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="24" Height="24" Margin="2,0" Background="#14FFFFFF" Foreground="#D8FFFFFF" BorderThickness="1" BorderBrush="#22FFFFFF"
+                                        Command="{Binding DataContext.ExecuteQuickActionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}" Cursor="Hand" ToolTip="{Binding Name}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="BtnBorder" Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="7">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Background" Value="#38FFFFFF"/>
+                                                    <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#70FFFFFF"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <TextBlock Text="{Binding IconSymbol}" FontSize="11" Foreground="#EAFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+                <StackPanel x:Name="PageDots" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
 
         <!-- Search overlay -->
         <Border x:Name="SearchBorder" Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
