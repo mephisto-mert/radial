@@ -58,6 +58,8 @@
                 <TextBlock Text="·" FontSize="11" Foreground="#55FFFFFF" Margin="0,0,7,0" VerticalAlignment="Center"/>
                 <TextBlock x:Name="HudBatteryText" Text="⚡ 100%" FontSize="11" FontWeight="Medium" Foreground="#CCFFFFFF" VerticalAlignment="Center"/>
                 <TextBlock Text="·" FontSize="11" Foreground="#55FFFFFF" Margin="7,0,7,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="HudTelemetryText" Text="CPU %12 · RAM %45" FontSize="10.5" FontWeight="Medium" Foreground="#A5F3FC" VerticalAlignment="Center"/>
+                <TextBlock Text="·" FontSize="11" Foreground="#55FFFFFF" Margin="7,0,7,0" VerticalAlignment="Center"/>
                 <TextBlock x:Name="HudProfileBadgeText" Text="⚡ Akıllı" FontSize="10.5" FontWeight="SemiBold" Foreground="#38BDF8" VerticalAlignment="Center"/>
                 <StackPanel x:Name="HudNowPlayingPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <Border Width="1" Height="13" Background="#28FFFFFF" Margin="8,0,8,0" VerticalAlignment="Center"/>
@@ -85,12 +87,17 @@
         <!-- Hidden legacy HoverInfoText (kept for code-behind compatibility; labels now open as outer pills) -->
         <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" Visibility="Collapsed"/>
 
-        <!-- Directional Aim Ray, Active Sector Arc & Radial Volume/Dwell Ring -->
+        <!-- Directional Aim Ray, Active Sector Arc, Live Telemetry Rings & Dynamic Cursor Neon Trail -->
         <Canvas x:Name="AimIndicatorCanvas" Width="500" Height="500"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
                 IsHitTestVisible="False" Panel.ZIndex="10">
             <Path x:Name="AimSectorWedge" Opacity="0" IsHitTestVisible="False"/>
+            <Polyline x:Name="AimTrailGlowPolyline" StrokeThickness="9.0" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
+            <Polyline x:Name="AimTrailCorePolyline" StrokeThickness="2.6" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
             <Line x:Name="AimRayLine" StrokeThickness="2.0" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
+            <Path x:Name="TelemetryCpuArc" StrokeThickness="2.0" Stroke="#38BDF8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.82" IsHitTestVisible="False"/>
+            <Path x:Name="TelemetryRamArc" StrokeThickness="2.0" Stroke="#A855F7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.82" IsHitTestVisible="False"/>
+            <Path x:Name="TelemetryBatArc" StrokeThickness="2.0" Stroke="#10B981" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.82" IsHitTestVisible="False"/>
             <Path x:Name="AimHubArc" StrokeThickness="3.0" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
             <Path x:Name="HubVolumeArc" StrokeThickness="3.4" Stroke="#10B981" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
         </Canvas>
@@ -118,6 +125,9 @@
                            Visibility="Collapsed"/>
             </Grid>
         </Border>
+
+        <!-- Orbital Sub-Ring Peek Canvas (Magnified Satellite Submenu Previews) -->
+        <Canvas x:Name="OrbitalPeekCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False" IsHitTestVisible="False" Panel.ZIndex="28"/>
 
         <!-- Container for floating radial squircle tiles and dynamic outer pill labels -->
         <Canvas x:Name="ItemsCanvas" Width="500" Height="500" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False" Panel.ZIndex="30">

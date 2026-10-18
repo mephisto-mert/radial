@@ -319,6 +319,10 @@ namespace RadialLauncher
             services.AddSingleton<RadialLauncher.Services.SystemTools.IPlaytimeTrackerService, RadialLauncher.Services.SystemTools.PlaytimeTrackerService>();
             services.AddSingleton<RadialLauncher.Services.Intelligence.IInlineCalculatorService, RadialLauncher.Services.Intelligence.InlineCalculatorService>();
             services.AddSingleton<RadialLauncher.Services.Intelligence.IAppContextProfileService, RadialLauncher.Services.Intelligence.AppContextProfileService>();
+            services.AddSingleton<RadialLauncher.Services.SystemTools.ISystemTelemetryService, RadialLauncher.Services.SystemTools.SystemTelemetryService>();
+            services.AddSingleton<RadialLauncher.Services.SystemTools.IWorkspaceAndMonitorService, RadialLauncher.Services.SystemTools.WorkspaceAndMonitorService>();
+            services.AddSingleton<RadialLauncher.Services.Audio.IPerAppAudioAndDeviceService, RadialLauncher.Services.Audio.PerAppAudioAndDeviceService>();
+            services.AddSingleton<RadialLauncher.Services.Clipboard.IRichClipboardPreviewService, RadialLauncher.Services.Clipboard.RichClipboardPreviewService>();
 
             // ViewModels
             services.AddSingleton<RadialMenuViewModel>();

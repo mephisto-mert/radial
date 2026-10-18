@@ -86,6 +86,16 @@ namespace RadialLauncher.Services.Icons
                 return GetOrCache("act_glass", () => CreateMonogramIcon("🔮", Color.FromRgb(168, 85, 247)));
             if (key.Contains("BOOST_RAM") || key.Contains("GAMING_BOOST") || key.Contains("GAMING BOOST"))
                 return GetOrCache("act_boost", () => CreateMonogramIcon("🚀", Color.FromRgb(239, 68, 68)));
+            if (key.Contains("NEXT_MONITOR") || key.Contains("DİĞER EKRAN") || key.Contains("MONİTÖRE"))
+                return GetOrCache("act_next_mon", () => CreateMonogramIcon("🖥️", Color.FromRgb(14, 165, 233)));
+            if (key.Contains("SAVE_WORKSPACE") || key.Contains("DÜZENİ KAYDET"))
+                return GetOrCache("act_save_ws", () => CreateMonogramIcon("💾", Color.FromRgb(16, 185, 129)));
+            if (key.Contains("RESTORE_WORKSPACE") || key.Contains("DÜZENİ YÜKLE") || key.Contains("ÇALIŞMA ALANI"))
+                return GetOrCache("act_rest_ws", () => CreateMonogramIcon("📐", Color.FromRgb(139, 92, 246)));
+            if (key.Contains("SWITCH_AUDIO_DEVICE") || key.Contains("SES ÇIKIŞ") || key.Contains("KULAKLIK"))
+                return GetOrCache("act_aud_dev", () => CreateMonogramIcon("🎧", Color.FromRgb(236, 72, 153)));
+            if (key.Contains("APP_AUDIO") || key.Contains("SES MİKSER"))
+                return GetOrCache("act_app_aud", () => CreateMonogramIcon("🎚️", Color.FromRgb(16, 185, 129)));
             if (key.Contains("HOTKEY") || key.Contains("CTRL+") || key.Contains("ALT+") || key.Contains("F12") || key.Contains("F5") || key.Contains("SEKME"))
                 return GetOrCache("act_hotkey_" + key, () => CreateMonogramIcon("⌨", Color.FromRgb(16, 185, 129)));
             if (key.Contains("YAPIŞTIR") || key.Contains("SNIPPET") || key.Contains("METİN") || key.Contains("CALCULATOR_RESULT"))

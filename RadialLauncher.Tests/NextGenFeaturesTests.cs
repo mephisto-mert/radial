@@ -2,6 +2,7 @@ using Xunit;
 using RadialLauncher.Services.Intelligence;
 using RadialLauncher.Services.SystemTools;
 using RadialLauncher.Services.Audio;
+using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Icons;
 
 namespace RadialLauncher.Tests
@@ -66,6 +67,11 @@ namespace RadialLauncher.Tests
             Assert.NotNull(VectorIconFactory.GetActionIcon("BOOST_RAM"));
             Assert.NotNull(VectorIconFactory.GetActionIcon("HOTKEY"));
             Assert.NotNull(VectorIconFactory.GetActionIcon("SNIPPET"));
+            Assert.NotNull(VectorIconFactory.GetActionIcon("NEXT_MONITOR"));
+            Assert.NotNull(VectorIconFactory.GetActionIcon("SAVE_WORKSPACE"));
+            Assert.NotNull(VectorIconFactory.GetActionIcon("RESTORE_WORKSPACE"));
+            Assert.NotNull(VectorIconFactory.GetActionIcon("SWITCH_AUDIO_DEVICE"));
+            Assert.NotNull(VectorIconFactory.GetActionIcon("APP_AUDIO"));
         }
 
         [Fact]
@@ -78,6 +84,56 @@ namespace RadialLauncher.Tests
             sfx.PlayLaunchConfirm();
             sfx.PlayGamingBoost();
             Assert.False(sfx.IsEnabled);
+        }
+
+        [Fact]
+        public void RichClipboardPreviewService_DetectsHexColorUrlAndCodeSnippet()
+        {
+            var svc = new RichClipboardPreviewService();
+
+            var hexMeta = svc.Analyze("#FF5733");
+            Assert.Equal(RichClipboardKind.HexColor, hexMeta.Kind);
+            Assert.Contains("#FF5733", hexMeta.FormattedTitle);
+            Assert.NotNull(svc.CreateRichIcon("#FF5733"));
+
+            var urlMeta = svc.Analyze("https://github.com/google/radial-launcher");
+            Assert.Equal(RichClipboardKind.Url, urlMeta.Kind);
+            Assert.Contains("github.com", urlMeta.FormattedTitle);
+            Assert.NotNull(svc.CreateRichIcon("https://github.com/google/radial-launcher"));
+
+            var codeMeta = svc.Analyze("public void Execute() { return; }");
+            Assert.Equal(RichClipboardKind.CodeSnippet, codeMeta.Kind);
+            Assert.Contains("💻 Kod:", codeMeta.FormattedTitle);
+            Assert.NotNull(svc.CreateRichIcon("public void Execute() { return; }"));
+        }
+
+        [Fact]
+        public void SystemTelemetryService_ReturnsValidMetrics()
+        {
+            var telemetry = new SystemTelemetryService();
+            var snap = telemetry.GetLatestSnapshot();
+            Assert.InRange(snap.CpuPercent, 0, 100);
+            Assert.InRange(snap.RamPercent, 1, 100);
+            Assert.True(snap.TotalRamMb > 0);
+            Assert.InRange(snap.BatteryPercent, 0, 100);
+        }
+
+        [Fact]
+        public void WorkspaceAndMonitorService_SavesAndRestoresSnapshotSafely()
+        {
+            var ws = new WorkspaceAndMonitorService();
+            string saveMsg = ws.SaveWorkspaceSnapshot("UnitTestLayout");
+            Assert.Contains("💾", saveMsg);
+        }
+
+        [Fact]
+        public void PerAppAudioAndDeviceService_HandlesVolumeAndSessionsGracefully()
+        {
+            var audio = new PerAppAudioAndDeviceService();
+            var sessions = audio.GetActiveAppAudioSessions();
+            Assert.NotNull(sessions);
+            int adjusted = audio.AdjustAppVolume(999999, -15);
+            Assert.Equal(85, adjusted);
         }
     }
 }

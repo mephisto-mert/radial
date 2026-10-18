@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using RadialLauncher.Models;
 using RadialLauncher.Services.Audio;
+using RadialLauncher.Services.Clipboard;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Icons;
 using RadialLauncher.Services.Input;
@@ -41,14 +42,22 @@ namespace RadialLauncher.UI.Windows
         private IUiSoundEffectsService SoundService => App.ServiceProvider?.GetService<IUiSoundEffectsService>() ?? _fallbackSoundService;
         private IGamepadRadialService GamepadService => App.ServiceProvider?.GetService<IGamepadRadialService>() ?? _fallbackGamepadService;
         private IPlaytimeTrackerService PlaytimeService => App.ServiceProvider?.GetService<IPlaytimeTrackerService>() ?? _fallbackPlaytimeService;
+        private ISystemTelemetryService TelemetryService => App.ServiceProvider?.GetService<ISystemTelemetryService>() ?? _fallbackTelemetryService;
+        private IPerAppAudioAndDeviceService PerAppAudioService => App.ServiceProvider?.GetService<IPerAppAudioAndDeviceService>() ?? _fallbackPerAppAudioService;
+        private IRichClipboardPreviewService RichClipboardService => App.ServiceProvider?.GetService<IRichClipboardPreviewService>() ?? _fallbackRichClipboardService;
 
         private static readonly INowPlayingAndAudioService _fallbackAudioService = new NowPlayingAndAudioService();
         private static readonly IUiSoundEffectsService _fallbackSoundService = new UiSoundEffectsService();
         private static readonly IGamepadRadialService _fallbackGamepadService = new GamepadRadialService();
         private static readonly IPlaytimeTrackerService _fallbackPlaytimeService = new PlaytimeTrackerService();
+        private static readonly ISystemTelemetryService _fallbackTelemetryService = new SystemTelemetryService();
+        private static readonly IPerAppAudioAndDeviceService _fallbackPerAppAudioService = new PerAppAudioAndDeviceService();
+        private static readonly IRichClipboardPreviewService _fallbackRichClipboardService = new RichClipboardPreviewService();
 
         private readonly DispatcherTimer _toastHideTimer;
         private readonly DispatcherTimer _markingDwellTimer;
+        private readonly DispatcherTimer _trailDecayTimer;
+        private readonly List<Point> _cursorTrailPoints = new();
         private DateTime _markingDwellStartUtc;
         private int _markingDwellSlot = -1;
 
@@ -129,6 +138,12 @@ namespace RadialLauncher.UI.Windows
             };
             _markingDwellTimer.Tick += MarkingDwellTimer_Tick;
 
+            _trailDecayTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(22)
+            };
+            _trailDecayTimer.Tick += TrailDecayTimer_Tick;
+
             _viewModel.RequestShowToast += (msg, hexColor) =>
             {
                 Dispatcher.Invoke(() => ShowActionToast(msg, ParseHexColor(hexColor)));
@@ -138,6 +153,7 @@ namespace RadialLauncher.UI.Windows
             {
                 _autoCloseGraceTimer.Stop();
                 _markingDwellTimer.Stop();
+                _trailDecayTimer.Stop();
                 GamepadService.StopPolling();
                 ClearActiveDwmThumbnails();
                 Dispatcher.Invoke(this.Hide);
@@ -163,6 +179,7 @@ namespace RadialLauncher.UI.Windows
             {
                 _autoCloseGraceTimer.Stop();
                 _markingDwellTimer.Stop();
+                _trailDecayTimer.Stop();
                 GamepadService.StopPolling();
                 ClearActiveDwmThumbnails();
             };
@@ -172,6 +189,7 @@ namespace RadialLauncher.UI.Windows
                 {
                     _autoCloseGraceTimer.Stop();
                     _markingDwellTimer.Stop();
+                    _trailDecayTimer.Stop();
                     GamepadService.StopPolling();
                     ClearActiveDwmThumbnails();
                     HideContextActionCard();
@@ -275,6 +293,10 @@ namespace RadialLauncher.UI.Windows
                 _lastSoundHoverIndex = -1;
                 _markingDwellSlot = -1;
                 _markingDwellTimer.Stop();
+                _cursorTrailPoints.Clear();
+                if (AimTrailGlowPolyline != null) AimTrailGlowPolyline.Opacity = 0;
+                if (AimTrailCorePolyline != null) AimTrailCorePolyline.Opacity = 0;
+                if (OrbitalPeekCanvas != null) OrbitalPeekCanvas.Children.Clear();
                 if (HubVolumeArc != null) HubVolumeArc.Opacity = 0;
 
                 _viewModel.InitializeForDisplay();
@@ -304,15 +326,20 @@ namespace RadialLauncher.UI.Windows
                 if (HudClockText != null)
                     HudClockText.Text = DateTime.Now.ToString("HH:mm");
 
+                var snap = TelemetryService.GetLatestSnapshot();
                 if (HudBatteryText != null)
                 {
-                    var ps = System.Windows.Forms.SystemInformation.PowerStatus;
-                    int pct = (int)Math.Round(ps.BatteryLifePercent * 100);
-                    if (pct >= 0 && pct <= 100)
-                        HudBatteryText.Text = $"⚡ {pct}%";
-                    else
-                        HudBatteryText.Text = "⚡ AC";
+                    HudBatteryText.Text = snap.BatteryPercent >= 0 && snap.BatteryPercent <= 100
+                        ? $"⚡ {snap.BatteryPercent}%"
+                        : "⚡ AC";
                 }
+
+                if (HudTelemetryText != null)
+                {
+                    HudTelemetryText.Text = $"CPU %{snap.CpuPercent} · RAM %{snap.RamPercent}";
+                }
+
+                UpdateTelemetryRings(snap);
 
                 if (HudProfileBadgeText != null)
                 {
@@ -339,6 +366,62 @@ namespace RadialLauncher.UI.Windows
                 });
             }
             catch { }
+        }
+
+        private void UpdateTelemetryRings(SystemTelemetrySnapshot snap)
+        {
+            DrawRingArc(TelemetryCpuArc, 35.8, Math.Max(0.05, snap.CpuPercent / 100.0), -Math.PI / 2.0);
+            DrawRingArc(TelemetryRamArc, 38.2, Math.Max(0.05, snap.RamPercent / 100.0), -Math.PI / 2.0);
+            DrawRingArc(TelemetryBatArc, 40.6, Math.Max(0.05, snap.BatteryPercent / 100.0), -Math.PI / 2.0);
+        }
+
+        private static void DrawRingArc(System.Windows.Shapes.Path? path, double radius, double ratio0To1, double startAngleRad)
+        {
+            if (path == null) return;
+            double clamped = Math.Clamp(ratio0To1, 0.02, 0.995);
+            double cx = 250.0, cy = 250.0;
+            double endAngle = startAngleRad + (clamped * 2.0 * Math.PI);
+            Point pStart = new Point(cx + radius * Math.Cos(startAngleRad), cy + radius * Math.Sin(startAngleRad));
+            Point pEnd = new Point(cx + radius * Math.Cos(endAngle), cy + radius * Math.Sin(endAngle));
+
+            var fig = new PathFigure { StartPoint = pStart, IsClosed = false, IsFilled = false };
+            fig.Segments.Add(new ArcSegment(pEnd, new Size(radius, radius), 0, clamped > 0.5, SweepDirection.Clockwise, true));
+            var geo = new PathGeometry();
+            geo.Figures.Add(fig);
+            path.Data = geo;
+        }
+
+        private void TrailDecayTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_cursorTrailPoints.Count > 1)
+            {
+                _cursorTrailPoints.RemoveAt(0);
+                RefreshTrailPolylinePoints();
+            }
+            else
+            {
+                _cursorTrailPoints.Clear();
+                if (AimTrailGlowPolyline != null) AimTrailGlowPolyline.Opacity = 0;
+                if (AimTrailCorePolyline != null) AimTrailCorePolyline.Opacity = 0;
+                _trailDecayTimer.Stop();
+            }
+        }
+
+        private void RefreshTrailPolylinePoints()
+        {
+            if (AimTrailGlowPolyline == null || AimTrailCorePolyline == null) return;
+            if (_cursorTrailPoints.Count < 2)
+            {
+                AimTrailGlowPolyline.Opacity = 0;
+                AimTrailCorePolyline.Opacity = 0;
+                return;
+            }
+
+            var pts = new PointCollection(_cursorTrailPoints);
+            AimTrailGlowPolyline.Points = pts;
+            AimTrailCorePolyline.Points = pts;
+            AimTrailGlowPolyline.Opacity = 0.42;
+            AimTrailCorePolyline.Opacity = 0.88;
         }
 
         private void BtnHudMediaPrev_Click(object sender, RoutedEventArgs e)
@@ -577,6 +660,7 @@ namespace RadialLauncher.UI.Windows
             HideContextActionCard();
 
             ItemsCanvas.Children.Clear();
+            OrbitalPeekCanvas?.Children.Clear();
             _visibleButtons.Clear();
             _itemAccentColors.Clear();
             _currentPlacements.Clear();
@@ -1071,6 +1155,12 @@ namespace RadialLauncher.UI.Windows
 
         private ImageSource? ResolveItemIconUncached(LauncherItem item)
         {
+            if (string.Equals(item.Type, "CLIPBOARD", StringComparison.OrdinalIgnoreCase))
+            {
+                var richClipIcon = RichClipboardService.CreateRichIcon(item.Target);
+                if (richClipIcon != null) return richClipIcon;
+            }
+
             var actionIcon = _iconExtractor.GetActionIcon(item.Target)
                           ?? _iconExtractor.GetActionIcon(item.Name)
                           ?? _iconExtractor.GetActionIcon(item.Type);
@@ -1209,6 +1299,34 @@ namespace RadialLauncher.UI.Windows
                     : new SolidColorBrush(Color.FromArgb(76, 255, 255, 255));
             }
 
+            // 1c. Dynamic Cursor Neon Ribbon Trail
+            if (!inCenterHub && distCenter < 245.0 && !_viewModel.ActiveTheme.ReduceMotion)
+            {
+                if (_cursorTrailPoints.Count == 0 ||
+                    (canvasPos - _cursorTrailPoints[^1]).Length >= 3.5)
+                {
+                    _cursorTrailPoints.Add(canvasPos);
+                    if (_cursorTrailPoints.Count > 14)
+                    {
+                        _cursorTrailPoints.RemoveAt(0);
+                    }
+
+                    Color trailColor = (_keyboardFocusIndex >= 0 && _keyboardFocusIndex < _itemAccentColors.Count)
+                        ? _itemAccentColors[_keyboardFocusIndex]
+                        : _viewModel.ActiveTheme.AccentColor;
+                    if (AimTrailGlowPolyline != null)
+                        AimTrailGlowPolyline.Stroke = new SolidColorBrush(Color.FromArgb(145, trailColor.R, trailColor.G, trailColor.B));
+                    if (AimTrailCorePolyline != null)
+                        AimTrailCorePolyline.Stroke = new SolidColorBrush(Color.FromArgb(245, trailColor.R, trailColor.G, trailColor.B));
+
+                    RefreshTrailPolylinePoints();
+                    if (!_trailDecayTimer.IsEnabled)
+                    {
+                        _trailDecayTimer.Start();
+                    }
+                }
+            }
+
             if (IsHoldGestureActive)
             {
                 int count = _viewModel.CurrentPageItems.Count;
@@ -1344,6 +1462,36 @@ namespace RadialLauncher.UI.Windows
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
+            if (_keyboardFocusIndex >= 0 && _keyboardFocusIndex < _visibleButtons.Count)
+            {
+                var (focusedBtn, focusedLbl, focusedItem) = _visibleButtons[_keyboardFocusIndex];
+                if (string.Equals(focusedItem.Type, "APP_AUDIO_SESSION", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(focusedItem.Target, out int appPid))
+                {
+                    int appDelta = e.Delta > 0 ? 5 : -5;
+                    int newAppVol = PerAppAudioService.AdjustAppVolume(appPid, appDelta);
+                    SoundService.PlayHoverTick();
+                    Color mixerColor = Color.FromRgb(236, 72, 153);
+                    UpdateHubArcProgress(newAppVol / 100.0, mixerColor);
+
+                    string baseName = focusedItem.Name;
+                    int parenIdx = baseName.LastIndexOf("(%", StringComparison.Ordinal);
+                    if (parenIdx > 0)
+                    {
+                        baseName = baseName[..parenIdx].TrimEnd();
+                    }
+                    focusedItem.Name = $"{baseName} (%{newAppVol})";
+                    if (focusedLbl.Child is TextBlock lblTxt)
+                    {
+                        lblTxt.Text = focusedItem.Name;
+                    }
+                    _viewModel.HoveredItemTitle = focusedItem.Name;
+                    ShowActionToast($"🎚️ {focusedItem.Name}", mixerColor);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             var canvasPos = e.GetPosition(ItemsCanvas);
             double distCenter = Math.Sqrt(Math.Pow(canvasPos.X - 250.0, 2) + Math.Pow(canvasPos.Y - 250.0, 2));
             bool isVolumeScroll = distCenter < 72.0 ||
@@ -1508,6 +1656,7 @@ namespace RadialLauncher.UI.Windows
                 _viewModel.HoveredItemTitle = string.Empty;
                 HideContextActionCard();
                 UpdateAimIndicator(-1, theme.AccentColor);
+                RenderOrbitalSubRingPeek(-1, theme.AccentColor);
             }
 
             int total = _visibleButtons.Count;
@@ -1552,6 +1701,7 @@ namespace RadialLauncher.UI.Windows
                         ? item.Name
                         : $"{item.Name}  ·  {playtimeBadge}";
                     UpdateAimIndicator(i, itemAccent);
+                    RenderOrbitalSubRingPeek(i, itemAccent);
                     RadialMotionSystem.AnimateHoverState(btn, lbl, 1.16, 1.0, true, theme.ReduceMotion);
                     ShowContextActions(item);
                 }
@@ -1587,6 +1737,113 @@ namespace RadialLauncher.UI.Windows
                         }
                     }
                 }
+            }
+        }
+
+        private void RenderOrbitalSubRingPeek(int focusedIndex, Color activeColor)
+        {
+            if (OrbitalPeekCanvas == null) return;
+            OrbitalPeekCanvas.Children.Clear();
+
+            if (focusedIndex < 0 || focusedIndex >= _visibleButtons.Count || focusedIndex >= _currentPlacements.Count)
+                return;
+
+            var p = _currentPlacements[focusedIndex];
+            var parentItem = _visibleButtons[focusedIndex].item;
+            var subItems = _viewModel.GetSubmenuPreviewItems(parentItem, 5);
+            var quickActions = subItems.Count == 0
+                ? _contextualActionService.GetItemQuickActions(parentItem)
+                : new List<RadialLauncher.Services.Context.ItemContextAction>();
+
+            int count = subItems.Count > 0 ? subItems.Count : Math.Min(3, quickActions.Count);
+            if (count == 0) return;
+
+            double cx = 250.0, cy = 250.0;
+            double orbitR = Math.Min(232.0, p.DynamicRadius + 46.0);
+            double stepRad = 0.21;
+            double startRad = p.AngleRadians - ((count - 1) * stepRad / 2.0);
+            double endRad = p.AngleRadians + ((count - 1) * stepRad / 2.0);
+
+            if (count > 1)
+            {
+                Point arcStart = new Point(cx + orbitR * Math.Cos(startRad - 0.08), cy + orbitR * Math.Sin(startRad - 0.08));
+                Point arcEnd = new Point(cx + orbitR * Math.Cos(endRad + 0.08), cy + orbitR * Math.Sin(endRad + 0.08));
+                var arcFig = new PathFigure { StartPoint = arcStart, IsClosed = false, IsFilled = false };
+                arcFig.Segments.Add(new ArcSegment(arcEnd, new Size(orbitR, orbitR), 0, false, SweepDirection.Clockwise, true));
+                var arcGeo = new PathGeometry();
+                arcGeo.Figures.Add(arcFig);
+                var guidePath = new System.Windows.Shapes.Path
+                {
+                    Data = arcGeo,
+                    Stroke = new SolidColorBrush(Color.FromArgb(145, activeColor.R, activeColor.G, activeColor.B)),
+                    StrokeThickness = 1.6,
+                    StrokeDashArray = new DoubleCollection { 2.5, 2.0 },
+                    IsHitTestVisible = false
+                };
+                OrbitalPeekCanvas.Children.Add(guidePath);
+            }
+
+            for (int k = 0; k < count; k++)
+            {
+                double ang = startRad + (k * stepRad);
+                double satSize = 26.0;
+                double sx = cx + orbitR * Math.Cos(ang) - (satSize / 2.0);
+                double sy = cy + orbitR * Math.Sin(ang) - (satSize / 2.0);
+
+                var satBorder = new Border
+                {
+                    Width = satSize,
+                    Height = satSize,
+                    CornerRadius = new CornerRadius(8.5),
+                    Background = new SolidColorBrush(Color.FromArgb(242, 14, 16, 22)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(215, activeColor.R, activeColor.G, activeColor.B)),
+                    BorderThickness = new Thickness(1.3),
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius = 10,
+                        ShadowDepth = 1,
+                        Color = activeColor,
+                        Opacity = 0.65
+                    }
+                };
+
+                if (subItems.Count > 0)
+                {
+                    var sub = subItems[k];
+                    satBorder.Child = new Image
+                    {
+                        Width = 15,
+                        Height = 15,
+                        Source = ResolveItemIcon(sub),
+                        Stretch = Stretch.Uniform
+                    };
+                }
+                else
+                {
+                    var qa = quickActions[k];
+                    satBorder.Child = new TextBlock
+                    {
+                        Text = string.IsNullOrWhiteSpace(qa.Icon) ? "⚡" : qa.Icon,
+                        FontSize = 11,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Foreground = new SolidColorBrush(Colors.White)
+                    };
+                }
+
+                Canvas.SetLeft(satBorder, sx);
+                Canvas.SetTop(satBorder, sy);
+                OrbitalPeekCanvas.Children.Add(satBorder);
+
+                double parentCenterX = cx + p.DynamicRadius * Math.Cos(p.AngleRadians);
+                double parentCenterY = cy + p.DynamicRadius * Math.Sin(p.AngleRadians);
+                RadialMotionSystem.AnimateItemBloomFromCenter(
+                    satBorder,
+                    k,
+                    (sx + satSize / 2.0) - parentCenterX,
+                    (sy + satSize / 2.0) - parentCenterY,
+                    _viewModel.ActiveTheme.ReduceMotion);
             }
         }
 

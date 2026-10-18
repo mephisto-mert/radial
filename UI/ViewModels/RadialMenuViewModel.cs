@@ -47,6 +47,9 @@ namespace RadialLauncher.UI.ViewModels
         private IInlineCalculatorService CalculatorService => App.ServiceProvider?.GetService<IInlineCalculatorService>() ?? _fallbackCalculatorService;
         private IAppContextProfileService ProfileService => App.ServiceProvider?.GetService<IAppContextProfileService>() ?? _fallbackProfileService;
         private IUiSoundEffectsService SoundService => App.ServiceProvider?.GetService<IUiSoundEffectsService>() ?? _fallbackSoundService;
+        private IWorkspaceAndMonitorService WorkspaceService => App.ServiceProvider?.GetService<IWorkspaceAndMonitorService>() ?? _fallbackWorkspaceService;
+        private IPerAppAudioAndDeviceService PerAppAudioService => App.ServiceProvider?.GetService<IPerAppAudioAndDeviceService>() ?? _fallbackPerAppAudioService;
+        private IRichClipboardPreviewService RichClipboardService => App.ServiceProvider?.GetService<IRichClipboardPreviewService>() ?? _fallbackRichClipboardService;
 
         private static readonly IHotkeyAndSnippetService _fallbackHotkeyService = new HotkeyAndSnippetService();
         private static readonly IWindowTilingAndBoostService _fallbackTilingService = new WindowTilingAndBoostService();
@@ -54,6 +57,9 @@ namespace RadialLauncher.UI.ViewModels
         private static readonly IInlineCalculatorService _fallbackCalculatorService = new InlineCalculatorService();
         private static readonly IAppContextProfileService _fallbackProfileService = new AppContextProfileService();
         private static readonly IUiSoundEffectsService _fallbackSoundService = new UiSoundEffectsService();
+        private static readonly IWorkspaceAndMonitorService _fallbackWorkspaceService = new WorkspaceAndMonitorService();
+        private static readonly IPerAppAudioAndDeviceService _fallbackPerAppAudioService = new PerAppAudioAndDeviceService();
+        private static readonly IRichClipboardPreviewService _fallbackRichClipboardService = new RichClipboardPreviewService();
 
         public string ActiveProfileTitle { get; private set; } = "⚡ Akıllı Aksiyonlar";
         public event Action<string, string>? RequestShowToast;
@@ -246,11 +252,21 @@ namespace RadialLauncher.UI.ViewModels
                 Position = 3
             };
 
-            var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat, smartProfileCat };
+            // 2d. Per-App Audio Mixer category
+            var appAudioCat = new Category
+            {
+                Id = -96,
+                Name = "🎚️ Ses Mikseri",
+                SystemKey = "Cat_AppAudioMixer",
+                Color = "#EC4899",
+                Position = 4
+            };
+
+            var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat, smartProfileCat, appAudioCat };
 
             foreach (var c in allDbCats)
             {
-                if (c.Id == mostUsedCat.Id || c.SystemKey == "Cat_MostUsed" || c.SystemKey == "Cat_OpenWindows" || c.SystemKey == "Cat_ClipboardHistory" || c.SystemKey == "Cat_SmartProfile") continue;
+                if (c.Id == mostUsedCat.Id || c.SystemKey == "Cat_MostUsed" || c.SystemKey == "Cat_OpenWindows" || c.SystemKey == "Cat_ClipboardHistory" || c.SystemKey == "Cat_SmartProfile" || c.SystemKey == "Cat_AppAudioMixer") continue;
                 if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
                 {
                     validCats.Add(c);
@@ -381,14 +397,21 @@ namespace RadialLauncher.UI.ViewModels
                 else if (cat.SystemKey == "Cat_ClipboardHistory" || cat.Id == -98)
                 {
                     var clips = _clipboardService?.GetRecentHistory(20) ?? new List<ClipboardItem>();
-                    filtered = clips.Select((c, idx) => new LauncherItem
+                    filtered = clips.Select((c, idx) =>
                     {
-                        Id = -400 - idx,
-                        Name = c.Preview,
-                        Type = "CLIPBOARD",
-                        Target = c.Text,
-                        CategoryId = cat.Id,
-                        Position = idx
+                        var meta = RichClipboardService.Analyze(c.Text);
+                        string displayTitle = meta.Kind == RichClipboardKind.PlainText
+                            ? c.Preview
+                            : meta.FormattedTitle;
+                        return new LauncherItem
+                        {
+                            Id = -400 - idx,
+                            Name = displayTitle,
+                            Type = "CLIPBOARD",
+                            Target = c.Text,
+                            CategoryId = cat.Id,
+                            Position = idx
+                        };
                     }).ToList();
                 }
                 else if (cat.SystemKey == "Cat_SmartProfile" || cat.Id == -97)
@@ -397,6 +420,36 @@ namespace RadialLauncher.UI.ViewModels
                     var profile = ProfileService.GetProfileForProcess(fgProc);
                     ActiveProfileTitle = profile.ProfileTitle;
                     filtered = profile.QuickItems ?? new List<LauncherItem>();
+                }
+                else if (cat.SystemKey == "Cat_AppAudioMixer" || cat.Id == -96)
+                {
+                    filtered = new List<LauncherItem>
+                    {
+                        new LauncherItem
+                        {
+                            Id = -960,
+                            Name = "🎧 Ses Çıkışı Değiştir (Kulaklık ⇄ Hoparlör)",
+                            Type = "AUDIO_DEVICE",
+                            Target = "SWITCH_AUDIO_DEVICE",
+                            CategoryId = cat.Id,
+                            Position = 0
+                        }
+                    };
+                    var sessions = PerAppAudioService.GetActiveAppAudioSessions();
+                    int sIdx = 1;
+                    foreach (var s in sessions)
+                    {
+                        filtered.Add(new LauncherItem
+                        {
+                            Id = -960 - sIdx,
+                            Name = $"{(s.IsMuted ? "🔇" : "🔊")} {s.DisplayName} (%{s.VolumePercent})",
+                            Type = "APP_AUDIO_SESSION",
+                            Target = s.ProcessId.ToString(),
+                            IconPath = s.ProcessName,
+                            CategoryId = cat.Id,
+                            Position = sIdx++
+                        });
+                    }
                 }
                 else if (cat.Id <= -200)
                 {
@@ -428,6 +481,16 @@ namespace RadialLauncher.UI.ViewModels
             {
                 RequestLayoutUpdate?.Invoke();
             }
+        }
+
+        public List<LauncherItem> GetSubmenuPreviewItems(LauncherItem parentItem, int maxCount = 5)
+        {
+            if (parentItem == null) return new List<LauncherItem>();
+            return _allItems
+                .Where(i => i.ParentId == parentItem.Id)
+                .OrderBy(i => i.Position)
+                .Take(maxCount)
+                .ToList();
         }
 
         public void ReorderCurrentPageItems(int sourceIndex, int targetIndex)
@@ -542,6 +605,46 @@ namespace RadialLauncher.UI.ViewModels
                         bool glass = TilingService.ToggleGlassTransparency();
                         RequestShowToast?.Invoke(glass ? "🔮 Cam Şeffaflığı (%84) Aktif" : "🔮 Pencere Opaklığı (%100) Normal", "#A855F7");
                         break;
+                    case "NEXT_MONITOR":
+                        string monMsg = WorkspaceService.MoveWindowToNextMonitor(TilingService.LastActiveWindow);
+                        RequestShowToast?.Invoke(monMsg, "#38BDF8");
+                        break;
+                }
+                return;
+            }
+
+            if (string.Equals(item.Type, "WORKSPACE_ACTION", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                if (item.Target == "SAVE_WORKSPACE")
+                {
+                    string saveMsg = WorkspaceService.SaveWorkspaceSnapshot("Varsayılan");
+                    RequestShowToast?.Invoke(saveMsg, "#10B981");
+                }
+                else if (item.Target == "RESTORE_WORKSPACE")
+                {
+                    string restoreMsg = WorkspaceService.RestoreWorkspaceSnapshot("Varsayılan");
+                    RequestShowToast?.Invoke(restoreMsg, "#38BDF8");
+                }
+                return;
+            }
+
+            if (string.Equals(item.Type, "AUDIO_DEVICE", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                string devMsg = PerAppAudioService.CycleDefaultPlaybackDevice();
+                RequestShowToast?.Invoke(devMsg, "#EC4899");
+                return;
+            }
+
+            if (string.Equals(item.Type, "APP_AUDIO_SESSION", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                if (int.TryParse(item.Target, out int pid))
+                {
+                    bool nowMuted = PerAppAudioService.ToggleAppMute(pid);
+                    RequestShowToast?.Invoke(nowMuted ? "🔇 Uygulama Sesi Kapatıldı" : "🔊 Uygulama Sesi Açıldı", "#EC4899");
+                    RefreshPageItems();
                 }
                 return;
             }
