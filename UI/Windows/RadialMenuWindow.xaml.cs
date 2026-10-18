@@ -8,10 +8,14 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using RadialLauncher.Models;
+using RadialLauncher.Services.Audio;
 using RadialLauncher.Services.Context;
 using RadialLauncher.Services.Icons;
+using RadialLauncher.Services.Input;
 using RadialLauncher.Services.Localization;
+using RadialLauncher.Services.SystemTools;
 using RadialLauncher.UI.Animations;
 using RadialLauncher.UI.Helpers;
 using RadialLauncher.UI.ViewModels;
@@ -31,6 +35,22 @@ namespace RadialLauncher.UI.Windows
         private readonly Dictionary<string, ImageSource?> _resolvedIconCache = new();
         private readonly Dictionary<string, Color> _dominantColorCache = new();
         private int _keyboardFocusIndex = -1;
+        private int _lastSoundHoverIndex = -1;
+
+        private INowPlayingAndAudioService AudioService => App.ServiceProvider?.GetService<INowPlayingAndAudioService>() ?? _fallbackAudioService;
+        private IUiSoundEffectsService SoundService => App.ServiceProvider?.GetService<IUiSoundEffectsService>() ?? _fallbackSoundService;
+        private IGamepadRadialService GamepadService => App.ServiceProvider?.GetService<IGamepadRadialService>() ?? _fallbackGamepadService;
+        private IPlaytimeTrackerService PlaytimeService => App.ServiceProvider?.GetService<IPlaytimeTrackerService>() ?? _fallbackPlaytimeService;
+
+        private static readonly INowPlayingAndAudioService _fallbackAudioService = new NowPlayingAndAudioService();
+        private static readonly IUiSoundEffectsService _fallbackSoundService = new UiSoundEffectsService();
+        private static readonly IGamepadRadialService _fallbackGamepadService = new GamepadRadialService();
+        private static readonly IPlaytimeTrackerService _fallbackPlaytimeService = new PlaytimeTrackerService();
+
+        private readonly DispatcherTimer _toastHideTimer;
+        private readonly DispatcherTimer _markingDwellTimer;
+        private DateTime _markingDwellStartUtc;
+        private int _markingDwellSlot = -1;
 
         // Middle & Left Mouse Drag Navigation
         private Point _dragStartPoint;
@@ -86,13 +106,45 @@ namespace RadialLauncher.UI.Windows
             };
             _autoCloseGraceTimer.Tick += AutoCloseGraceTimer_Tick;
 
+            _toastHideTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(2100)
+            };
+            _toastHideTimer.Tick += (s, e) =>
+            {
+                _toastHideTimer.Stop();
+                if (ActionToastBadge != null)
+                {
+                    RadialMotionSystem.AnimateToastBadge(ActionToastBadge, false, _viewModel.ActiveTheme.ReduceMotion);
+                }
+                if (HubVolumeArc != null && _markingDwellSlot < 0)
+                {
+                    HubVolumeArc.Opacity = 0;
+                }
+            };
+
+            _markingDwellTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+            _markingDwellTimer.Tick += MarkingDwellTimer_Tick;
+
+            _viewModel.RequestShowToast += (msg, hexColor) =>
+            {
+                Dispatcher.Invoke(() => ShowActionToast(msg, ParseHexColor(hexColor)));
+            };
+
             _viewModel.RequestClose += () => 
             {
                 _autoCloseGraceTimer.Stop();
+                _markingDwellTimer.Stop();
+                GamepadService.StopPolling();
                 ClearActiveDwmThumbnails();
                 Dispatcher.Invoke(this.Hide);
             };
             _viewModel.RequestLayoutUpdate += () => Dispatcher.Invoke(() => RenderLayout(false));
+
+            WireGamepadEvents();
 
             this.PreviewMouseDown += Window_PreviewMouseDown;
             this.PreviewMouseMove += Window_PreviewMouseMove;
@@ -110,6 +162,8 @@ namespace RadialLauncher.UI.Windows
             Closed += (s, e) => 
             {
                 _autoCloseGraceTimer.Stop();
+                _markingDwellTimer.Stop();
+                GamepadService.StopPolling();
                 ClearActiveDwmThumbnails();
             };
             IsVisibleChanged += (s, e) =>
@@ -117,6 +171,8 @@ namespace RadialLauncher.UI.Windows
                 if (!IsVisible)
                 {
                     _autoCloseGraceTimer.Stop();
+                    _markingDwellTimer.Stop();
+                    GamepadService.StopPolling();
                     ClearActiveDwmThumbnails();
                     HideContextActionCard();
                 }
@@ -216,6 +272,11 @@ namespace RadialLauncher.UI.Windows
                 this.Top = clamped.Y;
 
                 _keyboardFocusIndex = -1;
+                _lastSoundHoverIndex = -1;
+                _markingDwellSlot = -1;
+                _markingDwellTimer.Stop();
+                if (HubVolumeArc != null) HubVolumeArc.Opacity = 0;
+
                 _viewModel.InitializeForDisplay();
                 UpdateHudStatus();
                 RenderLayout(true);
@@ -224,6 +285,9 @@ namespace RadialLauncher.UI.Windows
                 this.Show();
                 this.Activate();
                 this.Focus();
+
+                SoundService.PlayBloomOpen();
+                GamepadService.StartPolling();
 
                 RadialMotionSystem.AnimateWindowOpen(RootGrid, _viewModel.ActiveTheme.ReduceMotion, cursorVelocity);
             }
@@ -249,8 +313,210 @@ namespace RadialLauncher.UI.Windows
                     else
                         HudBatteryText.Text = "⚡ AC";
                 }
+
+                if (HudProfileBadgeText != null)
+                {
+                    HudProfileBadgeText.Text = _viewModel.ActiveProfileTitle;
+                }
+
+                _ = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        var media = AudioService.GetCurrentMediaInfo();
+                        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                        {
+                            if (HudNowPlayingPanel != null && HudMediaTitleText != null)
+                            {
+                                HudNowPlayingPanel.Visibility = Visibility.Visible;
+                                HudMediaTitleText.Text = media.HasMedia
+                                    ? $"🎵 {(string.IsNullOrWhiteSpace(media.Artist) ? media.Title : $"{media.Artist} - {media.Title}")}"
+                                    : "🎵 Medya";
+                            }
+                        }));
+                    }
+                    catch { }
+                });
             }
             catch { }
+        }
+
+        private void BtnHudMediaPrev_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            SoundService.PlayHoverTick();
+            AudioService.PreviousTrack();
+            ShowActionToast("⏮ Önceki Parça", Color.FromRgb(16, 185, 129));
+        }
+
+        private void BtnHudMediaPlayPause_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            SoundService.PlayLaunchConfirm();
+            AudioService.PlayPause();
+            ShowActionToast("⏯ Oynat / Duraklat", Color.FromRgb(16, 185, 129));
+        }
+
+        private void BtnHudMediaNext_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            SoundService.PlayHoverTick();
+            AudioService.NextTrack();
+            ShowActionToast("⏭ Sonraki Parça", Color.FromRgb(16, 185, 129));
+        }
+
+        public void ShowActionToast(string text, Color borderColor)
+        {
+            if (ActionToastBadge == null || ActionToastText == null) return;
+            ActionToastText.Text = text;
+            ActionToastBadge.BorderBrush = new SolidColorBrush(Color.FromArgb(200, borderColor.R, borderColor.G, borderColor.B));
+            ActionToastBadge.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 18,
+                ShadowDepth = 2,
+                Color = borderColor,
+                Opacity = 0.72
+            };
+            RadialMotionSystem.AnimateToastBadge(ActionToastBadge, true, _viewModel.ActiveTheme.ReduceMotion);
+            _toastHideTimer.Stop();
+            _toastHideTimer.Start();
+        }
+
+        public void UpdateHubArcProgress(double ratio0To1, Color arcColor)
+        {
+            if (HubVolumeArc == null) return;
+            double clamped = Math.Clamp(ratio0To1, 0.0, 0.999);
+            if (clamped <= 0.01)
+            {
+                HubVolumeArc.Opacity = 0;
+                return;
+            }
+
+            double cx = 250.0, cy = 250.0, r = 34.0;
+            double startAngle = -Math.PI / 2.0;
+            double endAngle = startAngle + (clamped * 2.0 * Math.PI);
+
+            Point pStart = new Point(cx + r * Math.Cos(startAngle), cy + r * Math.Sin(startAngle));
+            Point pEnd = new Point(cx + r * Math.Cos(endAngle), cy + r * Math.Sin(endAngle));
+
+            var fig = new PathFigure { StartPoint = pStart, IsClosed = false, IsFilled = false };
+            fig.Segments.Add(new ArcSegment(pEnd, new Size(r, r), 0, clamped > 0.5, SweepDirection.Clockwise, true));
+            var geo = new PathGeometry();
+            geo.Figures.Add(fig);
+
+            HubVolumeArc.Data = geo;
+            HubVolumeArc.Stroke = new SolidColorBrush(arcColor);
+            HubVolumeArc.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 12,
+                ShadowDepth = 0,
+                Color = arcColor,
+                Opacity = 0.85
+            };
+            HubVolumeArc.Opacity = 1.0;
+        }
+
+        private void MarkingDwellTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!IsHoldGestureActive || _markingDwellSlot < 0 || _markingDwellSlot >= _visibleButtons.Count)
+            {
+                _markingDwellTimer.Stop();
+                _markingDwellSlot = -1;
+                if (HubVolumeArc != null) HubVolumeArc.Opacity = 0;
+                return;
+            }
+
+            double elapsedMs = (DateTime.UtcNow - _markingDwellStartUtc).TotalMilliseconds;
+            double progress = Math.Clamp(elapsedMs / 240.0, 0.0, 1.0);
+            UpdateHubArcProgress(progress, _viewModel.ActiveTheme.AccentColor);
+
+            if (progress >= 1.0)
+            {
+                int slotToOpen = _markingDwellSlot;
+                _markingDwellTimer.Stop();
+                _markingDwellSlot = -1;
+                if (HubVolumeArc != null) HubVolumeArc.Opacity = 0;
+
+                if (slotToOpen >= 0 && slotToOpen < _visibleButtons.Count)
+                {
+                    var folderItem = _visibleButtons[slotToOpen].item;
+                    ShowActionToast($"📂 {folderItem.Name} Açıldı", _viewModel.ActiveTheme.AccentColor);
+                    _viewModel.LaunchItem(folderItem);
+                    RenderLayout(true);
+                }
+            }
+        }
+
+        private void WireGamepadEvents()
+        {
+            GamepadService.OnStickAimChanged += (angleRad, isActive) =>
+            {
+                if (!this.IsVisible) return;
+                Dispatcher.Invoke(() =>
+                {
+                    if (!isActive || _visibleButtons.Count == 0)
+                    {
+                        return;
+                    }
+                    double fakeX = 250.0 + 150.0 * Math.Cos(angleRad);
+                    double fakeY = 250.0 + 150.0 * Math.Sin(angleRad);
+                    int slot = RadialLayoutCalculator.ResolveAimSlot(new Point(fakeX, fakeY), _visibleButtons.Count, "angle", 250, 250, 48.0, 320.0);
+                    if (slot >= 0 && slot != _keyboardFocusIndex)
+                    {
+                        _keyboardFocusIndex = slot;
+                        _currentAimSlot = slot;
+                        HighlightKeyboardFocused();
+                    }
+                });
+            };
+
+            GamepadService.OnConfirmPressed += () =>
+            {
+                if (!this.IsVisible) return;
+                Dispatcher.Invoke(() =>
+                {
+                    if (_keyboardFocusIndex >= 0 && _keyboardFocusIndex < _visibleButtons.Count)
+                    {
+                        _viewModel.LaunchItem(_visibleButtons[_keyboardFocusIndex].item);
+                    }
+                });
+            };
+
+            GamepadService.OnCancelPressed += () =>
+            {
+                if (!this.IsVisible) return;
+                Dispatcher.Invoke(() =>
+                {
+                    bool wasSubmenu = _viewModel.IsSubmenu;
+                    _viewModel.CenterButtonClick();
+                    if (wasSubmenu) RenderLayout(true);
+                });
+            };
+
+            GamepadService.OnShoulderPressed += (dir) =>
+            {
+                if (!this.IsVisible) return;
+                Dispatcher.Invoke(() =>
+                {
+                    if (dir > 0) _viewModel.NavigateNextGlobal();
+                    else _viewModel.NavigatePrevGlobal();
+                    SoundService.PlaySubmenuDive();
+                    RenderLayout(true);
+                });
+            };
+        }
+
+        private static Color ParseHexColor(string hex)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(hex) && ColorConverter.ConvertFromString(hex) is Color c)
+                {
+                    return c;
+                }
+            }
+            catch { }
+            return Color.FromRgb(16, 185, 129);
         }
 
         private static Color GetReadableForeground(Color bg)
@@ -805,7 +1071,9 @@ namespace RadialLauncher.UI.Windows
 
         private ImageSource? ResolveItemIconUncached(LauncherItem item)
         {
-            var actionIcon = _iconExtractor.GetActionIcon(item.Target) ?? _iconExtractor.GetActionIcon(item.Name);
+            var actionIcon = _iconExtractor.GetActionIcon(item.Target)
+                          ?? _iconExtractor.GetActionIcon(item.Name)
+                          ?? _iconExtractor.GetActionIcon(item.Type);
             if (actionIcon != null) return actionIcon;
 
             if (item.Type == "URL" && (item.Name.Contains("gmail", StringComparison.OrdinalIgnoreCase) || item.Target.Contains("mail.google", StringComparison.OrdinalIgnoreCase)))
@@ -1076,14 +1344,34 @@ namespace RadialLauncher.UI.Windows
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
+            var canvasPos = e.GetPosition(ItemsCanvas);
+            double distCenter = Math.Sqrt(Math.Pow(canvasPos.X - 250.0, 2) + Math.Pow(canvasPos.Y - 250.0, 2));
+            bool isVolumeScroll = distCenter < 72.0 ||
+                                  (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None;
+
+            if (isVolumeScroll)
+            {
+                int delta = e.Delta > 0 ? 4 : -4;
+                int vol = AudioService.AdjustMasterVolume(delta);
+                SoundService.PlayHoverTick();
+                UpdateHubArcProgress(vol / 100.0, Color.FromRgb(16, 185, 129));
+                ShowActionToast($"🔊 Sistem Sesi: %{vol}", Color.FromRgb(16, 185, 129));
+                e.Handled = true;
+                return;
+            }
+
             if (e.Delta > 0)
             {
+                SoundService.PlaySubmenuDive();
                 _viewModel.NavigatePrevGlobal();
+                UpdateHudStatus();
                 RenderLayout(true);
             }
             else if (e.Delta < 0)
             {
+                SoundService.PlaySubmenuDive();
                 _viewModel.NavigateNextGlobal();
+                UpdateHudStatus();
                 RenderLayout(true);
             }
         }
@@ -1187,6 +1475,34 @@ namespace RadialLauncher.UI.Windows
             var regularBorder = new SolidColorBrush(Color.FromArgb(72, 255, 255, 255));
             var neighborBorder = new SolidColorBrush(Color.FromArgb(128, 255, 255, 255));
 
+            if (_keyboardFocusIndex != _lastSoundHoverIndex)
+            {
+                _lastSoundHoverIndex = _keyboardFocusIndex;
+                if (_keyboardFocusIndex >= 0 && _keyboardFocusIndex < _visibleButtons.Count)
+                {
+                    SoundService.PlayHoverTick();
+                    var fItem = _visibleButtons[_keyboardFocusIndex].item;
+                    bool isFolder = string.Equals(fItem.Type, "SUBMENU", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(fItem.Type, "FOLDER", StringComparison.OrdinalIgnoreCase);
+                    if (IsHoldGestureActive && isFolder)
+                    {
+                        _markingDwellSlot = _keyboardFocusIndex;
+                        _markingDwellStartUtc = DateTime.UtcNow;
+                        _markingDwellTimer.Start();
+                    }
+                    else
+                    {
+                        _markingDwellTimer.Stop();
+                        _markingDwellSlot = -1;
+                    }
+                }
+                else
+                {
+                    _markingDwellTimer.Stop();
+                    _markingDwellSlot = -1;
+                }
+            }
+
             if (_keyboardFocusIndex < 0)
             {
                 _viewModel.HoveredItemTitle = string.Empty;
@@ -1231,7 +1547,10 @@ namespace RadialLauncher.UI.Windows
                         txt.Foreground = readableFg;
                         txt.FontWeight = FontWeights.SemiBold;
                     }
-                    _viewModel.HoveredItemTitle = item.Name;
+                    string playtimeBadge = PlaytimeService.GetPlaytimeBadge(item.Name, item.Target);
+                    _viewModel.HoveredItemTitle = string.IsNullOrWhiteSpace(playtimeBadge)
+                        ? item.Name
+                        : $"{item.Name}  ·  {playtimeBadge}";
                     UpdateAimIndicator(i, itemAccent);
                     RadialMotionSystem.AnimateHoverState(btn, lbl, 1.16, 1.0, true, theme.ReduceMotion);
                     ShowContextActions(item);

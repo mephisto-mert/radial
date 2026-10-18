@@ -370,5 +370,53 @@ namespace RadialLauncher.UI.Animations
                 card.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
             }
         }
+
+        public static void AnimateToastBadge(FrameworkElement toast, bool show, bool reduceMotion = false)
+        {
+            var tg = toast.RenderTransform as TransformGroup;
+            ScaleTransform? scale = null;
+            TranslateTransform? translate = null;
+            if (tg != null)
+            {
+                foreach (var c in tg.Children)
+                {
+                    if (c is ScaleTransform st) scale = st;
+                    else if (c is TranslateTransform tt) translate = tt;
+                }
+            }
+            if (scale == null || translate == null)
+            {
+                scale = new ScaleTransform(0.88, 0.88);
+                translate = new TranslateTransform(0, -6);
+                tg = new TransformGroup();
+                tg.Children.Add(scale);
+                tg.Children.Add(translate);
+                toast.RenderTransform = tg;
+                toast.RenderTransformOrigin = new Point(0.5, 0.5);
+            }
+
+            if (reduceMotion)
+            {
+                toast.Opacity = show ? 1.0 : 0.0;
+                scale.ScaleX = scale.ScaleY = 1.0;
+                translate.Y = 0.0;
+                return;
+            }
+
+            if (show)
+            {
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.86, 1.0, TimeSpan.FromMilliseconds(220)) { EasingFunction = SubtleSpring });
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.86, 1.0, TimeSpan.FromMilliseconds(220)) { EasingFunction = SubtleSpring });
+                translate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-8.0, 0.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = SoftQuartic });
+                toast.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150)) { EasingFunction = SoftCubic });
+            }
+            else
+            {
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.92, TimeSpan.FromMilliseconds(150)) { EasingFunction = SoftCubic });
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.92, TimeSpan.FromMilliseconds(150)) { EasingFunction = SoftCubic });
+                translate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-4.0, TimeSpan.FromMilliseconds(150)) { EasingFunction = SoftCubic });
+                toast.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(150)) { EasingFunction = SoftCubic });
+            }
+        }
     }
 }

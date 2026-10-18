@@ -311,6 +311,14 @@ namespace RadialLauncher
             services.AddSingleton<ILocalizationService>(sp => LocalizationService.Instance);
             services.AddSingleton<ICoverArtService, CoverArtService>();
             services.AddSingleton<ICommandPaletteService, CommandPaletteService>();
+            services.AddSingleton<RadialLauncher.Services.Input.IHotkeyAndSnippetService, RadialLauncher.Services.Input.HotkeyAndSnippetService>();
+            services.AddSingleton<RadialLauncher.Services.Input.IGamepadRadialService, RadialLauncher.Services.Input.GamepadRadialService>();
+            services.AddSingleton<RadialLauncher.Services.Audio.INowPlayingAndAudioService, RadialLauncher.Services.Audio.NowPlayingAndAudioService>();
+            services.AddSingleton<RadialLauncher.Services.Audio.IUiSoundEffectsService, RadialLauncher.Services.Audio.UiSoundEffectsService>();
+            services.AddSingleton<RadialLauncher.Services.SystemTools.IWindowTilingAndBoostService, RadialLauncher.Services.SystemTools.WindowTilingAndBoostService>();
+            services.AddSingleton<RadialLauncher.Services.SystemTools.IPlaytimeTrackerService, RadialLauncher.Services.SystemTools.PlaytimeTrackerService>();
+            services.AddSingleton<RadialLauncher.Services.Intelligence.IInlineCalculatorService, RadialLauncher.Services.Intelligence.InlineCalculatorService>();
+            services.AddSingleton<RadialLauncher.Services.Intelligence.IAppContextProfileService, RadialLauncher.Services.Intelligence.AppContextProfileService>();
 
             // ViewModels
             services.AddSingleton<RadialMenuViewModel>();
@@ -418,6 +426,8 @@ namespace RadialLauncher
                 _radialMenu.Hide();
                 return;
             }
+            ServiceProvider?.GetService<RadialLauncher.Services.Input.IHotkeyAndSnippetService>()?.CaptureTargetWindow();
+            ServiceProvider?.GetService<RadialLauncher.Services.SystemTools.IWindowTilingAndBoostService>()?.CaptureActiveWindow();
             if (pt.X == 0 && pt.Y == 0)
             {
                 GetCursorPos(out pt);

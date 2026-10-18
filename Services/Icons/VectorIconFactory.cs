@@ -60,7 +60,7 @@ namespace RadialLauncher.Services.Icons
                 return GetOrCache("act_media_next", CreateMediaNextIcon);
             if (key.Contains("MEDIA_PREV") || key.Contains("ONCEKI") || key.Contains("ÖNCEKİ"))
                 return GetOrCache("act_media_prev", CreateMediaPrevIcon);
-            if (key.Contains("SNIP") || key.Contains("EKRAN ALINTISI") || key.Contains("SCREENSHOT"))
+            if ((key.Contains("SNIP") && !key.Contains("SNIPPET")) || key.Contains("EKRAN ALINTISI") || key.Contains("SCREENSHOT"))
                 return GetOrCache("act_snip", CreateScreenshotIcon);
             if (key.Contains("TASK_MANAGER") || key.Contains("GÖREV YÖNETİCİSİ") || key.Contains("GÖREV YÖNETICISI") || key.Contains("TASKMGR"))
                 return GetOrCache("act_taskmgr", CreateTaskManagerIcon);
@@ -76,6 +76,20 @@ namespace RadialLauncher.Services.Icons
                 return GetOrCache("act_focus", CreateFocusTimerIcon);
             if (key.Contains("MACRO") || key.Contains("MAKRO"))
                 return GetOrCache("act_macro", CreateMacroIcon);
+            if (key.Contains("SNAP_LEFT") || key.Contains("SOLA YASLA"))
+                return GetOrCache("act_snap_left", () => CreateMonogramIcon("◧", Color.FromRgb(59, 130, 246)));
+            if (key.Contains("SNAP_RIGHT") || key.Contains("SAĞA YASLA"))
+                return GetOrCache("act_snap_right", () => CreateMonogramIcon("◨", Color.FromRgb(99, 102, 241)));
+            if (key.Contains("ALWAYS_ON_TOP") || key.Contains("ÜSTTE TUT"))
+                return GetOrCache("act_pin_top", () => CreateMonogramIcon("📌", Color.FromRgb(245, 158, 11)));
+            if (key.Contains("GLASS_OPACITY") || key.Contains("ŞEFFAFLI"))
+                return GetOrCache("act_glass", () => CreateMonogramIcon("🔮", Color.FromRgb(168, 85, 247)));
+            if (key.Contains("BOOST_RAM") || key.Contains("GAMING_BOOST") || key.Contains("GAMING BOOST"))
+                return GetOrCache("act_boost", () => CreateMonogramIcon("🚀", Color.FromRgb(239, 68, 68)));
+            if (key.Contains("HOTKEY") || key.Contains("CTRL+") || key.Contains("ALT+") || key.Contains("F12") || key.Contains("F5") || key.Contains("SEKME"))
+                return GetOrCache("act_hotkey_" + key, () => CreateMonogramIcon("⌨", Color.FromRgb(16, 185, 129)));
+            if (key.Contains("YAPIŞTIR") || key.Contains("SNIPPET") || key.Contains("METİN") || key.Contains("CALCULATOR_RESULT"))
+                return GetOrCache("act_snippet", () => CreateMonogramIcon("📋", Color.FromRgb(14, 165, 233)));
 
             return null;
         }

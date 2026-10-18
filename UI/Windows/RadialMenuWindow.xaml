@@ -46,30 +46,53 @@
             </Ellipse.Stroke>
         </Ellipse>
 
-        <!-- Top Status HUD Pill (Rovyl RadialHud: Clock + Battery) -->
-        <Border x:Name="TopHudPill" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,18,0,0"
-                Background="#D808090C" CornerRadius="14" Padding="12,5" BorderThickness="1" BorderBrush="#26FFFFFF"
-                IsHitTestVisible="False" Panel.ZIndex="40">
+        <!-- Top Status HUD Pill (Rovyl RadialHud: Clock + Battery + Context Profile + Live Now Playing Media Controls) -->
+        <Border x:Name="TopHudPill" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0"
+                Background="#E808090C" CornerRadius="15" Padding="13,5" BorderThickness="1" BorderBrush="#2CFFFFFF"
+                IsHitTestVisible="True" Panel.ZIndex="140">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Color="Black" Opacity="0.55"/>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Color="Black" Opacity="0.58"/>
             </Border.Effect>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="HudClockText" Text="00:00" FontSize="11" FontWeight="SemiBold" Foreground="#EAFFFFFF" Margin="0,0,8,0"/>
-                <TextBlock Text="·" FontSize="11" Foreground="#55FFFFFF" Margin="0,0,8,0"/>
-                <TextBlock x:Name="HudBatteryText" Text="⚡ 100%" FontSize="11" FontWeight="Medium" Foreground="#CCFFFFFF"/>
+                <TextBlock x:Name="HudClockText" Text="00:00" FontSize="11" FontWeight="SemiBold" Foreground="#EAFFFFFF" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                <TextBlock Text="·" FontSize="11" Foreground="#55FFFFFF" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="HudBatteryText" Text="⚡ 100%" FontSize="11" FontWeight="Medium" Foreground="#CCFFFFFF" VerticalAlignment="Center"/>
+                <TextBlock Text="·" FontSize="11" Foreground="#55FFFFFF" Margin="7,0,7,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="HudProfileBadgeText" Text="⚡ Akıllı" FontSize="10.5" FontWeight="SemiBold" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                <StackPanel x:Name="HudNowPlayingPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <Border Width="1" Height="13" Background="#28FFFFFF" Margin="8,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="HudMediaTitleText" Text="♫ Medya" FontSize="10.5" FontWeight="SemiBold" Foreground="#10B981" MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Button x:Name="BtnHudPrev" Content="⏮" Width="18" Height="18" FontSize="9" Foreground="#DDFFFFFF" Background="#1EFFFFFF" BorderThickness="0" Cursor="Hand" Margin="1,0" Click="BtnHudMediaPrev_Click"/>
+                    <Button x:Name="BtnHudPlayPause" Content="⏯" Width="18" Height="18" FontSize="9" Foreground="#FFFFFF" Background="#2E10B981" BorderThickness="0" Cursor="Hand" Margin="1,0" Click="BtnHudMediaPlayPause_Click"/>
+                    <Button x:Name="BtnHudNext" Content="⏭" Width="18" Height="18" FontSize="9" Foreground="#DDFFFFFF" Background="#1EFFFFFF" BorderThickness="0" Cursor="Hand" Margin="1,0" Click="BtnHudMediaNext_Click"/>
+                </StackPanel>
             </StackPanel>
+        </Border>
+
+        <!-- Animated Floating Action / Volume / Boost / Calculator Toast Badge -->
+        <Border x:Name="ActionToastBadge" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0"
+                Background="#F20D1117" CornerRadius="12" Padding="12,4" BorderThickness="1" BorderBrush="#5538BDF8"
+                Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5" Panel.ZIndex="210">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="0.88" ScaleY="0.88"/>
+                    <TranslateTransform Y="-6"/>
+                </TransformGroup>
+            </Border.RenderTransform>
+            <TextBlock x:Name="ActionToastText" Text="🔊 Ses: %75" FontSize="11.5" FontWeight="SemiBold" Foreground="#F8FAFC"/>
         </Border>
 
         <!-- Hidden legacy HoverInfoText (kept for code-behind compatibility; labels now open as outer pills) -->
         <TextBlock x:Name="HoverInfoText" Text="{Binding HoveredItemTitle}" Visibility="Collapsed"/>
 
-        <!-- Directional Aim Ray & Active Sector Arc (Rovyl Aim Pointer) -->
+        <!-- Directional Aim Ray, Active Sector Arc & Radial Volume/Dwell Ring -->
         <Canvas x:Name="AimIndicatorCanvas" Width="500" Height="500"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
                 IsHitTestVisible="False" Panel.ZIndex="10">
             <Path x:Name="AimSectorWedge" Opacity="0" IsHitTestVisible="False"/>
             <Line x:Name="AimRayLine" StrokeThickness="2.0" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
             <Path x:Name="AimHubArc" StrokeThickness="3.0" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
+            <Path x:Name="HubVolumeArc" StrokeThickness="3.4" Stroke="#10B981" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0" IsHitTestVisible="False"/>
         </Canvas>
 
         <!-- Rovyl Central Hub (Dead Center 56x56 Circle with Vector Ring) -->

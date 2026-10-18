@@ -16,6 +16,11 @@ using RadialLauncher.Services.Processes;
 using RadialLauncher.Services.Themes;
 using RadialLauncher.Services.VirtualDesktop;
 using RadialLauncher.Services.Windows;
+using RadialLauncher.Services.Input;
+using RadialLauncher.Services.Audio;
+using RadialLauncher.Services.SystemTools;
+using RadialLauncher.Services.Intelligence;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace RadialLauncher.UI.ViewModels
@@ -35,6 +40,23 @@ namespace RadialLauncher.UI.ViewModels
         private readonly IPluginService _pluginService;
         private readonly IContextualActionService _contextualActionService;
         private List<LauncherItem> _contextualItems = new();
+
+        private IHotkeyAndSnippetService HotkeyService => App.ServiceProvider?.GetService<IHotkeyAndSnippetService>() ?? _fallbackHotkeyService;
+        private IWindowTilingAndBoostService TilingService => App.ServiceProvider?.GetService<IWindowTilingAndBoostService>() ?? _fallbackTilingService;
+        private IPlaytimeTrackerService PlaytimeService => App.ServiceProvider?.GetService<IPlaytimeTrackerService>() ?? _fallbackPlaytimeService;
+        private IInlineCalculatorService CalculatorService => App.ServiceProvider?.GetService<IInlineCalculatorService>() ?? _fallbackCalculatorService;
+        private IAppContextProfileService ProfileService => App.ServiceProvider?.GetService<IAppContextProfileService>() ?? _fallbackProfileService;
+        private IUiSoundEffectsService SoundService => App.ServiceProvider?.GetService<IUiSoundEffectsService>() ?? _fallbackSoundService;
+
+        private static readonly IHotkeyAndSnippetService _fallbackHotkeyService = new HotkeyAndSnippetService();
+        private static readonly IWindowTilingAndBoostService _fallbackTilingService = new WindowTilingAndBoostService();
+        private static readonly IPlaytimeTrackerService _fallbackPlaytimeService = new PlaytimeTrackerService();
+        private static readonly IInlineCalculatorService _fallbackCalculatorService = new InlineCalculatorService();
+        private static readonly IAppContextProfileService _fallbackProfileService = new AppContextProfileService();
+        private static readonly IUiSoundEffectsService _fallbackSoundService = new UiSoundEffectsService();
+
+        public string ActiveProfileTitle { get; private set; } = "⚡ Akıllı Aksiyonlar";
+        public event Action<string, string>? RequestShowToast;
 
         public IVirtualDesktopService DesktopService => _desktopService;
         public IContextualActionService ContextualActionService => _contextualActionService;
@@ -211,11 +233,24 @@ namespace RadialLauncher.UI.ViewModels
             // 2b. Clipboard History category
             var clipboardCat = new Category { Id = -98, Name = "📋 Clipboard History", SystemKey = "Cat_ClipboardHistory", Color = "#e67e22", Position = 2 };
 
-            var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat };
+            // 2c. Context-Aware Smart Profile category
+            string fgProc = GetTargetProcessName();
+            var activeProfile = ProfileService.GetProfileForProcess(fgProc);
+            ActiveProfileTitle = activeProfile.ProfileTitle;
+            var smartProfileCat = new Category
+            {
+                Id = -97,
+                Name = "⚡ Akıllı Profil",
+                SystemKey = "Cat_SmartProfile",
+                Color = string.IsNullOrEmpty(activeProfile.AccentHex) ? "#38BDF8" : activeProfile.AccentHex,
+                Position = 3
+            };
+
+            var validCats = new List<Category> { mostUsedCat, openWinCat, clipboardCat, smartProfileCat };
 
             foreach (var c in allDbCats)
             {
-                if (c.Id == mostUsedCat.Id || c.SystemKey == "Cat_MostUsed" || c.SystemKey == "Cat_OpenWindows" || c.SystemKey == "Cat_ClipboardHistory") continue;
+                if (c.Id == mostUsedCat.Id || c.SystemKey == "Cat_MostUsed" || c.SystemKey == "Cat_OpenWindows" || c.SystemKey == "Cat_ClipboardHistory" || c.SystemKey == "Cat_SmartProfile") continue;
                 if (_allItems.Any(i => i.CategoryId == c.Id && i.ParentId == 0))
                 {
                     validCats.Add(c);
@@ -241,6 +276,27 @@ namespace RadialLauncher.UI.ViewModels
             CurrentCategory = Categories.Count > 0 ? Categories[CurrentCategoryIndex] : null;
 
             RefreshPageItems(notifyLayout: false);
+        }
+
+        private string GetTargetProcessName()
+        {
+            try
+            {
+                var openWins = _windowSwitcher?.GetOpenWindows();
+                if (openWins != null && openWins.Count > 0)
+                {
+                    IntPtr targetHwnd = TilingService.LastActiveWindow;
+                    if (targetHwnd != IntPtr.Zero)
+                    {
+                        var match = openWins.FirstOrDefault(w => w.Handle == targetHwnd);
+                        if (match != null && !string.IsNullOrWhiteSpace(match.ProcessName))
+                            return match.ProcessName;
+                    }
+                    return openWins[0].ProcessName ?? string.Empty;
+                }
+            }
+            catch { }
+            return string.Empty;
         }
 
         public void LoadDefaultQuickActions()
@@ -274,6 +330,21 @@ namespace RadialLauncher.UI.ViewModels
                         i.Target.ToLowerInvariant().Contains(q) ||
                         (i.Tags != null && i.Tags.ToLowerInvariant().Contains(q))
                     ).ToList();
+
+                    var calc = CalculatorService.TryEvaluate(SearchQuery);
+                    if (calc.IsValid)
+                    {
+                        filtered.Insert(0, new LauncherItem
+                        {
+                            Id = -888,
+                            Name = $"🧮 {calc.Expression} = {calc.FormattedResult}",
+                            Type = "CALCULATOR_RESULT",
+                            Target = calc.RawValue,
+                            CategoryId = -1,
+                            Position = -1
+                        });
+                        RequestShowToast?.Invoke($"🧮 {calc.Expression} = {calc.FormattedResult}", "#10B981");
+                    }
                 }
             }
             else if (IsSubmenu && _navStack.Count > 0)
@@ -319,6 +390,13 @@ namespace RadialLauncher.UI.ViewModels
                         CategoryId = cat.Id,
                         Position = idx
                     }).ToList();
+                }
+                else if (cat.SystemKey == "Cat_SmartProfile" || cat.Id == -97)
+                {
+                    string fgProc = GetTargetProcessName();
+                    var profile = ProfileService.GetProfileForProcess(fgProc);
+                    ActiveProfileTitle = profile.ProfileTitle;
+                    filtered = profile.QuickItems ?? new List<LauncherItem>();
                 }
                 else if (cat.Id <= -200)
                 {
@@ -407,9 +485,10 @@ namespace RadialLauncher.UI.ViewModels
         {
             if (item == null) return;
 
-            if (string.Equals(item.Type, "SUBMENU", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(item.Type, "SUBMENU", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.Type, "FOLDER", StringComparison.OrdinalIgnoreCase))
             {
-                // Enter submenu
+                SoundService.PlaySubmenuDive();
                 _navStack.Push((item.Id, item.Name));
                 IsSubmenu = true;
                 BreadcrumbTitle = item.Name;
@@ -418,8 +497,66 @@ namespace RadialLauncher.UI.ViewModels
                 return;
             }
 
+            if (string.Equals(item.Type, "CALCULATOR_RESULT", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                _clipboardService?.PasteItem(item.Target);
+                RequestShowToast?.Invoke($"✅ Sonuç Kopyalandı: {item.Target}", "#10B981");
+                return;
+            }
+
+            if (string.Equals(item.Type, "HOTKEY", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                RequestClose?.Invoke();
+                HotkeyService.SimulateHotkey(item.Target);
+                return;
+            }
+
+            if (string.Equals(item.Type, "SNIPPET", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                RequestClose?.Invoke();
+                HotkeyService.PasteSnippet(item.Target);
+                return;
+            }
+
+            if (string.Equals(item.Type, "WINDOW_TILING", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayLaunchConfirm();
+                switch (item.Target)
+                {
+                    case "SNAP_LEFT":
+                        TilingService.SnapActiveWindowLeft();
+                        RequestShowToast?.Invoke("⬅️ Pencere Sola Yaslandı", "#38BDF8");
+                        break;
+                    case "SNAP_RIGHT":
+                        TilingService.SnapActiveWindowRight();
+                        RequestShowToast?.Invoke("➡️ Pencere Sağa Yaslandı", "#38BDF8");
+                        break;
+                    case "ALWAYS_ON_TOP":
+                        bool pinned = TilingService.ToggleAlwaysOnTop();
+                        RequestShowToast?.Invoke(pinned ? "📌 Pencere Üste Sabitlendi" : "📌 Üste Sabitleme Kaldırıldı", "#F59E0B");
+                        break;
+                    case "GLASS_OPACITY":
+                        bool glass = TilingService.ToggleGlassTransparency();
+                        RequestShowToast?.Invoke(glass ? "🔮 Cam Şeffaflığı (%84) Aktif" : "🔮 Pencere Opaklığı (%100) Normal", "#A855F7");
+                        break;
+                }
+                return;
+            }
+
+            if (string.Equals(item.Type, "GAMING_BOOST", StringComparison.OrdinalIgnoreCase))
+            {
+                SoundService.PlayGamingBoost();
+                var boost = TilingService.RunGamingBoost();
+                RequestShowToast?.Invoke($"🚀 Gaming Boost: +{boost.FreedMegabytes} MB RAM Temizlendi ({boost.TrimmedProcessCount} süreç)", "#10B981");
+                return;
+            }
+
             if (string.Equals(item.Type, "CLIPBOARD", StringComparison.OrdinalIgnoreCase))
             {
+                SoundService.PlayLaunchConfirm();
                 RequestClose?.Invoke();
                 _clipboardService?.PasteItem(item.Target);
                 return;
@@ -427,6 +564,7 @@ namespace RadialLauncher.UI.ViewModels
 
             if (string.Equals(item.Type, "WINDOW", StringComparison.OrdinalIgnoreCase) && long.TryParse(item.Target, out long hWndVal))
             {
+                SoundService.PlayLaunchConfirm();
                 _windowSwitcher.SwitchToWindow((IntPtr)hWndVal);
                 RequestClose?.Invoke();
                 return;
@@ -434,6 +572,7 @@ namespace RadialLauncher.UI.ViewModels
 
             if (string.Equals(item.Type, "COMMAND_THEME", StringComparison.OrdinalIgnoreCase))
             {
+                SoundService.PlayLaunchConfirm();
                 _themeService.SetCurrentTheme(item.Target);
                 ActiveTheme = _themeService.GetCurrentTheme();
                 RequestLayoutUpdate?.Invoke();
@@ -464,6 +603,14 @@ namespace RadialLauncher.UI.ViewModels
                     ((App)RadialLauncher.App.Current).OpenSettings();
                 });
                 return;
+            }
+
+            SoundService.PlayLaunchConfirm();
+            if (item.CategoryId == 2 ||
+                string.Equals(item.Type, "GAME", StringComparison.OrdinalIgnoreCase) ||
+                (CurrentCategory?.Name?.Contains("Oyun", StringComparison.OrdinalIgnoreCase) == true))
+            {
+                PlaytimeService.RecordGameLaunch(item.Name, item.Target);
             }
 
             _processRunner.Launch(item);
