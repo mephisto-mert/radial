@@ -297,6 +297,18 @@
                                     </StackPanel>
                                 </Border>
 
+                                <!-- Pro Visual, Audio & Telemetry Card -->
+                                <Border Background="#14141E" CornerRadius="10" Padding="16" Margin="0,0,0,14" BorderBrush="#28588CEC" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock x:Name="TxtProFeaturesTitle" Text="✨ Pro Visual, Audio &amp; Telemetry Features" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="TxtProFeaturesSub" Text="Customize interactive sound effects, neon cursor trail, live CPU/RAM rings, and orbital sub-ring previews." FontSize="11.5" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                        <CheckBox x:Name="EnableSoundEffectsCheck" Content="🔊 Tactile UI Sound Effects (Hover, Bloom &amp; Action Chimes)" Foreground="White" Margin="0,0,0,8" Click="ProFeatureCheck_Click"/>
+                                        <CheckBox x:Name="EnableCursorTrailCheck" Content="✨ Dynamic Neon Cursor Ribbon Trail" Foreground="White" Margin="0,0,0,8" Click="ProFeatureCheck_Click"/>
+                                        <CheckBox x:Name="EnableTelemetryRingsCheck" Content="📊 Live CPU / RAM / Battery Central Telemetry Rings" Foreground="White" Margin="0,0,0,8" Click="ProFeatureCheck_Click"/>
+                                        <CheckBox x:Name="EnableOrbitalPeekCheck" Content="🔍 Orbital Sub-Ring Magnifier Peek" Foreground="White" Margin="0,0,0,2" Click="ProFeatureCheck_Click"/>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- Accessibility & Performance Card -->
                                 <Border Background="#14141E" CornerRadius="10" Padding="16" Margin="0,0,0,14" BorderBrush="#20FFFFFF" BorderThickness="1">
                                     <StackPanel>

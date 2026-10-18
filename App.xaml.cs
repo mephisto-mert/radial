@@ -180,6 +180,13 @@ namespace RadialLauncher
                 notifyIcon.TrayMouseDoubleClick += (s, args) => OpenLauncher();
 
                 // 5. Setup Global Mouse Hook
+                var soundFx = ServiceProvider.GetService<RadialLauncher.Services.Audio.IUiSoundEffectsService>();
+                if (soundFx != null) soundFx.IsEnabled = themeService.GetEnableSoundEffects();
+                themeService.OnThemeChanged += (t) =>
+                {
+                    if (soundFx != null) soundFx.IsEnabled = t.EnableSoundEffects;
+                };
+
                 mouseHook = new Hooks.GlobalMouseHook();
                 mouseHook.TriggerMode = themeService.GetActivationShortcut();
                 mouseHook.OnMiddleMouseDown += (s, pt) => 
@@ -188,7 +195,7 @@ namespace RadialLauncher
                     Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Send, new Action(() =>
                     {
                         var gameFocus = ServiceProvider?.GetService<IGameFocusDetector>();
-                        if (gameFocus != null && gameFocus.IsFullscreenGameOrBusy())
+                        if (themeService.GetGameFocusProtection() && gameFocus != null && gameFocus.IsFullscreenGameOrBusy())
                         {
                             Log.Debug("Suppressed Radial Launcher trigger because a fullscreen game/D3D app is active");
                             return;

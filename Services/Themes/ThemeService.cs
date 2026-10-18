@@ -186,6 +186,10 @@ namespace RadialLauncher.Services.Themes
                     : _builtinThemes[0];
 
                 selected.BackgroundOpacity = Math.Clamp(settings.RadialOpacity, 0.20, 1.0);
+                selected.EnableSoundEffects = settings.EnableSoundEffects;
+                selected.EnableCursorTrail = settings.EnableCursorTrail;
+                selected.EnableTelemetryRings = settings.EnableTelemetryRings;
+                selected.EnableOrbitalPeek = settings.EnableOrbitalPeek;
                 return selected;
             }
             catch (Exception ex)
@@ -507,13 +511,53 @@ namespace RadialLauncher.Services.Themes
             SaveSettings(settings);
         }
 
+        public bool GetEnableSoundEffects() => LoadSettings().EnableSoundEffects;
+
+        public void SetEnableSoundEffects(bool enable)
+        {
+            var settings = LoadSettings();
+            settings.EnableSoundEffects = enable;
+            SaveSettings(settings);
+            NotifyThemeChanged(GetCurrentTheme());
+        }
+
+        public bool GetEnableCursorTrail() => LoadSettings().EnableCursorTrail;
+
+        public void SetEnableCursorTrail(bool enable)
+        {
+            var settings = LoadSettings();
+            settings.EnableCursorTrail = enable;
+            SaveSettings(settings);
+            NotifyThemeChanged(GetCurrentTheme());
+        }
+
+        public bool GetEnableTelemetryRings() => LoadSettings().EnableTelemetryRings;
+
+        public void SetEnableTelemetryRings(bool enable)
+        {
+            var settings = LoadSettings();
+            settings.EnableTelemetryRings = enable;
+            SaveSettings(settings);
+            NotifyThemeChanged(GetCurrentTheme());
+        }
+
+        public bool GetEnableOrbitalPeek() => LoadSettings().EnableOrbitalPeek;
+
+        public void SetEnableOrbitalPeek(bool enable)
+        {
+            var settings = LoadSettings();
+            settings.EnableOrbitalPeek = enable;
+            SaveSettings(settings);
+            NotifyThemeChanged(GetCurrentTheme());
+        }
+
         public AppSettings GetSettings() => LoadSettings();
 
         public void UpdateSettings(AppSettings settings)
         {
             if (settings == null) return;
             SaveSettings(settings);
-            var updated = GetTheme(settings.ThemeName);
+            var updated = GetCurrentTheme();
             NotifyThemeChanged(updated);
         }
 
@@ -550,6 +594,10 @@ namespace RadialLauncher.Services.Themes
             public string? SteamGridDbApiKey { get; set; } = string.Empty;
             public string AimMode { get; set; } = "angle"; // "angle" (gesture direction) or "cursor" (point-on-icon)
             public bool GameFocusProtection { get; set; } = true; // Supress opening when in full-screen D3D game
+            public bool EnableSoundEffects { get; set; } = true;
+            public bool EnableCursorTrail { get; set; } = true;
+            public bool EnableTelemetryRings { get; set; } = true;
+            public bool EnableOrbitalPeek { get; set; } = true;
         }
     }
 }

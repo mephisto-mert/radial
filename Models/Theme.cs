@@ -65,6 +65,10 @@ namespace RadialLauncher.Models
         public bool EnableBlurBackdrop { get; set; } = true;
         public bool ReduceMotion { get; set; } = false;
         public string DensityMode { get; set; } = "Expanded"; // "Compact" or "Expanded"
+        public bool EnableSoundEffects { get; set; } = true;
+        public bool EnableCursorTrail { get; set; } = true;
+        public bool EnableTelemetryRings { get; set; } = true;
+        public bool EnableOrbitalPeek { get; set; } = true;
 
         // Computed Wpf Colors & Brushes (Not Serialized)
         [JsonIgnore]

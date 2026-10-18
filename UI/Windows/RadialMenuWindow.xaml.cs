@@ -308,6 +308,7 @@ namespace RadialLauncher.UI.Windows
                 this.Activate();
                 this.Focus();
 
+                SoundService.IsEnabled = _viewModel.ActiveTheme.EnableSoundEffects;
                 SoundService.PlayBloomOpen();
                 GamepadService.StartPolling();
 
@@ -370,6 +371,16 @@ namespace RadialLauncher.UI.Windows
 
         private void UpdateTelemetryRings(SystemTelemetrySnapshot snap)
         {
+            if (!_viewModel.ActiveTheme.EnableTelemetryRings)
+            {
+                if (TelemetryCpuArc != null) TelemetryCpuArc.Opacity = 0;
+                if (TelemetryRamArc != null) TelemetryRamArc.Opacity = 0;
+                if (TelemetryBatArc != null) TelemetryBatArc.Opacity = 0;
+                return;
+            }
+            if (TelemetryCpuArc != null) TelemetryCpuArc.Opacity = 0.85;
+            if (TelemetryRamArc != null) TelemetryRamArc.Opacity = 0.85;
+            if (TelemetryBatArc != null) TelemetryBatArc.Opacity = 0.80;
             DrawRingArc(TelemetryCpuArc, 35.8, Math.Max(0.05, snap.CpuPercent / 100.0), -Math.PI / 2.0);
             DrawRingArc(TelemetryRamArc, 38.2, Math.Max(0.05, snap.RamPercent / 100.0), -Math.PI / 2.0);
             DrawRingArc(TelemetryBatArc, 40.6, Math.Max(0.05, snap.BatteryPercent / 100.0), -Math.PI / 2.0);
@@ -1300,7 +1311,7 @@ namespace RadialLauncher.UI.Windows
             }
 
             // 1c. Dynamic Cursor Neon Ribbon Trail
-            if (!inCenterHub && distCenter < 245.0 && !_viewModel.ActiveTheme.ReduceMotion)
+            if (!inCenterHub && distCenter < 245.0 && !_viewModel.ActiveTheme.ReduceMotion && _viewModel.ActiveTheme.EnableCursorTrail)
             {
                 if (_cursorTrailPoints.Count == 0 ||
                     (canvasPos - _cursorTrailPoints[^1]).Length >= 3.5)
@@ -1744,6 +1755,9 @@ namespace RadialLauncher.UI.Windows
         {
             if (OrbitalPeekCanvas == null) return;
             OrbitalPeekCanvas.Children.Clear();
+
+            if (!_viewModel.ActiveTheme.EnableOrbitalPeek)
+                return;
 
             if (focusedIndex < 0 || focusedIndex >= _visibleButtons.Count || focusedIndex >= _currentPlacements.Count)
                 return;

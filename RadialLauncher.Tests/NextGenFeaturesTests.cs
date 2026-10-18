@@ -135,5 +135,36 @@ namespace RadialLauncher.Tests
             int adjusted = audio.AdjustAppVolume(999999, -15);
             Assert.Equal(85, adjusted);
         }
+
+        [Fact]
+        public void ThemeService_PersistsAndRestoresProFeatureToggles()
+        {
+            var svc = RadialLauncher.Services.Themes.ThemeService.Instance;
+            svc.SetEnableSoundEffects(false);
+            svc.SetEnableCursorTrail(false);
+            svc.SetEnableTelemetryRings(false);
+            svc.SetEnableOrbitalPeek(false);
+            svc.SetGameFocusProtection(false);
+
+            var current = svc.GetCurrentTheme();
+            Assert.False(current.EnableSoundEffects);
+            Assert.False(current.EnableCursorTrail);
+            Assert.False(current.EnableTelemetryRings);
+            Assert.False(current.EnableOrbitalPeek);
+            Assert.False(svc.GetGameFocusProtection());
+
+            svc.SetEnableSoundEffects(true);
+            svc.SetEnableCursorTrail(true);
+            svc.SetEnableTelemetryRings(true);
+            svc.SetEnableOrbitalPeek(true);
+            svc.SetGameFocusProtection(true);
+
+            var restored = svc.GetCurrentTheme();
+            Assert.True(restored.EnableSoundEffects);
+            Assert.True(restored.EnableCursorTrail);
+            Assert.True(restored.EnableTelemetryRings);
+            Assert.True(restored.EnableOrbitalPeek);
+            Assert.True(svc.GetGameFocusProtection());
+        }
     }
 }

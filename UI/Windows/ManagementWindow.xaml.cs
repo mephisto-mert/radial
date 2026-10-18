@@ -336,6 +336,22 @@ namespace RadialLauncher.UI.Windows
             {
                 ReduceMotionCheck.IsChecked = _viewModel.SelectedTheme?.ReduceMotion ?? false;
             }
+            if (EnableSoundEffectsCheck != null)
+            {
+                EnableSoundEffectsCheck.IsChecked = _themeService.GetEnableSoundEffects();
+            }
+            if (EnableCursorTrailCheck != null)
+            {
+                EnableCursorTrailCheck.IsChecked = _themeService.GetEnableCursorTrail();
+            }
+            if (EnableTelemetryRingsCheck != null)
+            {
+                EnableTelemetryRingsCheck.IsChecked = _themeService.GetEnableTelemetryRings();
+            }
+            if (EnableOrbitalPeekCheck != null)
+            {
+                EnableOrbitalPeekCheck.IsChecked = _themeService.GetEnableOrbitalPeek();
+            }
         }
 
         private void LoadOpacityState()
@@ -779,6 +795,25 @@ namespace RadialLauncher.UI.Windows
             {
                 t.ReduceMotion = reduce;
                 _themeService.SaveCustomTheme(t);
+            }
+        }
+
+        private void ProFeatureCheck_Click(object sender, RoutedEventArgs e)
+        {
+            if (_themeService == null) return;
+            var s = _themeService.GetSettings();
+            if (EnableSoundEffectsCheck != null) s.EnableSoundEffects = EnableSoundEffectsCheck.IsChecked ?? true;
+            if (EnableCursorTrailCheck != null) s.EnableCursorTrail = EnableCursorTrailCheck.IsChecked ?? true;
+            if (EnableTelemetryRingsCheck != null) s.EnableTelemetryRings = EnableTelemetryRingsCheck.IsChecked ?? true;
+            if (EnableOrbitalPeekCheck != null) s.EnableOrbitalPeek = EnableOrbitalPeekCheck.IsChecked ?? true;
+            _themeService.UpdateSettings(s);
+
+            if (StatusText != null)
+            {
+                bool isTr = string.Equals(LocalizationService.Instance.CurrentLanguage, "tr", StringComparison.OrdinalIgnoreCase);
+                StatusText.Text = isTr
+                    ? "✨ Profesyonel görsel, ses ve telemetri tercihleri kaydedildi."
+                    : "✨ Pro visual, audio, and telemetry preferences saved.";
             }
         }
 
@@ -1230,6 +1265,13 @@ namespace RadialLauncher.UI.Windows
             if (TxtAccessTitle != null) TxtAccessTitle.Text = loc.GetString("Access_Title", "Accessibility & Performance");
             if (TxtAccessSub != null) TxtAccessSub.Text = loc.GetString("Access_Sub", "Reduce motion and simplify animations for low-spec systems.");
             if (ReduceMotionCheck != null) ReduceMotionCheck.Content = loc.GetString("Reduce_Motion", "Reduce Motion / Simplified Animations");
+            bool isTr = string.Equals(loc.CurrentLanguage, "tr", StringComparison.OrdinalIgnoreCase);
+            if (TxtProFeaturesTitle != null) TxtProFeaturesTitle.Text = isTr ? "✨ Profesyonel Görsel, Ses ve Telemetri Özellikleri" : "✨ Pro Visual, Audio & Telemetry Features";
+            if (TxtProFeaturesSub != null) TxtProFeaturesSub.Text = isTr ? "Dokunsal ses efektlerini, neon imleç izini, canlı CPU/RAM halkalarını ve yörünge önizlemesini özelleştirin." : "Customize interactive sound effects, neon cursor trail, live CPU/RAM rings, and orbital sub-ring previews.";
+            if (EnableSoundEffectsCheck != null) EnableSoundEffectsCheck.Content = isTr ? "🔊 Dokunsal Arayüz Ses Efektleri (Hover, Açılış ve Aksiyon Sesleri)" : "🔊 Tactile UI Sound Effects (Hover, Bloom & Action Chimes)";
+            if (EnableCursorTrailCheck != null) EnableCursorTrailCheck.Content = isTr ? "✨ Dinamik Neon İmleç Hareket İzi" : "✨ Dynamic Neon Cursor Ribbon Trail";
+            if (EnableTelemetryRingsCheck != null) EnableTelemetryRingsCheck.Content = isTr ? "📊 Canlı CPU / RAM / Pil Merkez Telemetri Halkaları" : "📊 Live CPU / RAM / Battery Central Telemetry Rings";
+            if (EnableOrbitalPeekCheck != null) EnableOrbitalPeekCheck.Content = isTr ? "🔍 Büyüteçli Yörünge Alt-Halka Önizlemesi" : "🔍 Orbital Sub-Ring Magnifier Peek";
             if (TxtPaletteTitle != null) TxtPaletteTitle.Text = loc.GetString("Palette_Title", "Active Theme Color Palette");
             if (TxtAccent1Label != null) TxtAccent1Label.Text = loc.GetString("Primary_Accent", "Primary Accent");
             if (TxtAccent2Label != null) TxtAccent2Label.Text = loc.GetString("Secondary_Accent", "Secondary Accent");
@@ -1244,8 +1286,11 @@ namespace RadialLauncher.UI.Windows
             if (BtnAssignShortcut != null) BtnAssignShortcut.Content = loc.GetString("Assign_Shortcut", "🎯 Assign Custom Shortcut");
             if (TxtStartupCardTitle != null) TxtStartupCardTitle.Text = loc.GetString("Startup_Title", "Windows Startup");
             if (RunOnStartupCheck != null) RunOnStartupCheck.Content = loc.GetString("Startup_Check", "Automatically start Radial Launcher in tray on Windows startup");
+            if (TxtGestureCardTitle != null) TxtGestureCardTitle.Text = isTr ? "🎯 Basılı Tut-Nişan Al ve Tam Ekran Oyun Koruması" : "🎯 Hold-to-Aim & Fullscreen Game Protection";
+            if (TxtGestureCardSub != null) TxtGestureCardSub.Text = isTr ? "Orta tuşa basılı tutup bir ikona doğru kaydırarak bıraktığınızda anında başlatır; tam ekran oyunlarda menüyü otomatik askıya alır." : "Hold down the trigger button, flick or aim toward an app, and release to instantly launch.";
+            if (GameProtectionCheck != null) GameProtectionCheck.Content = isTr ? "🎮 Tam ekran DirectX oyunlarında ve sunumlarda dairesel menüyü otomatik askıya al" : "🎮 Suppress radial launcher during fullscreen DirectX games and presentations";
             if (TxtBehaviorTitle != null) TxtBehaviorTitle.Text = loc.GetString("Behavior_Title", "🎯 Menu Behavior & Navigation Guidelines");
-            if (TxtBehaviorBody != null) TxtBehaviorBody.Text = loc.GetString("Behavior_Body", "• Auto-Close: Menu closes automatically when cursor moves 330px away.\n• Global Navigation: Drag with middle-mouse or use scroll wheel to switch pages/categories.\n• Quick Actions: Hovering items reveals instant actions at the center.");
+            if (TxtBehaviorBody != null) TxtBehaviorBody.Text = loc.GetString("Behavior_Body", "• Auto-Close: Menu closes automatically when cursor moves 330px away.\n• Global Navigation: Drag with middle-mouse or use scroll wheel to switch pages/categories.\n• Quick Actions: Hovering items reveals instant actions at the center.").Replace("\\n", "\n");
 
             // Tab 4: Backup & Data
             if (TxtTab4Title != null) TxtTab4Title.Text = loc.GetString("Tab4_Title", "Backup & Data Management");

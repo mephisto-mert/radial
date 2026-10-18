@@ -29,6 +29,14 @@ namespace RadialLauncher.Services.Themes
         void SetAimMode(string aimMode);
         bool GetGameFocusProtection();
         void SetGameFocusProtection(bool enable);
+        bool GetEnableSoundEffects();
+        void SetEnableSoundEffects(bool enable);
+        bool GetEnableCursorTrail();
+        void SetEnableCursorTrail(bool enable);
+        bool GetEnableTelemetryRings();
+        void SetEnableTelemetryRings(bool enable);
+        bool GetEnableOrbitalPeek();
+        void SetEnableOrbitalPeek(bool enable);
         ThemeService.AppSettings GetSettings();
         void UpdateSettings(ThemeService.AppSettings settings);
 
