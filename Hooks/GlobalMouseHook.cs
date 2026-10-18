@@ -172,11 +172,6 @@ namespace RadialLauncher.Hooks
                     }
                     else if (triggeredUp && _isTriggerHeld)
                     {
-                        long holdDuration = Environment.TickCount64 - _triggerDownTimestamp;
-                        double dx = hookStruct.pt.x - _triggerDownPoint.x;
-                        double dy = hookStruct.pt.y - _triggerDownPoint.y;
-                        double moveDist = Math.Sqrt(dx * dx + dy * dy);
-
                         _isTriggerHeld = false;
 
                         try
@@ -186,13 +181,6 @@ namespace RadialLauncher.Hooks
                         catch (Exception listenerEx)
                         {
                             Log.Error(listenerEx, "Exception inside OnMiddleMouseUp event handler");
-                        }
-
-                        // Tap behavior: If held for very short time without significant movement,
-                        // and trigger was MButton, synthesize a real middle click back so browser tabs close!
-                        if (holdDuration < TAP_THRESHOLD_MS && moveDist < DRAG_DEADZONE_PX && TriggerMode.Contains("Middle", StringComparison.OrdinalIgnoreCase))
-                        {
-                            SynthesizeMiddleClick(hookStruct.pt.x, hookStruct.pt.y);
                         }
 
                         if (!IsPassThroughEnabled)

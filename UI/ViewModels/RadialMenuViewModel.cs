@@ -135,15 +135,21 @@ namespace RadialLauncher.UI.ViewModels
             _itemRepo.OnItemsChanged += () =>
             {
                 _allItems = _itemRepo.GetAll();
+                _cachedDbCategories = _categoryRepo.GetAll();
                 RefreshPageItems();
             };
 
+            _allItems = _itemRepo.GetAll();
+            _cachedDbCategories = _categoryRepo.GetAll();
             LoadDefaultQuickActions();
         }
 
+        private List<Category> _cachedDbCategories = new();
+        private DateTime _lastPruneUtc = DateTime.MinValue;
+        private bool _isPruningInBackground = false;
+
         public void InitializeForDisplay()
         {
-            var loc = LocalizationService.Instance;
             SearchQuery = string.Empty;
             IsSearchMode = false;
             _navStack.Clear();
@@ -156,23 +162,37 @@ namespace RadialLauncher.UI.ViewModels
 
             ActiveTheme = _themeService.GetCurrentTheme();
 
-            try
+            if (_allItems.Count == 0)
             {
-                string fgProc = _windowSwitcher.GetForegroundProcessName();
-                _contextualItems = _contextualActionService.GetContextualItems(fgProc);
+                _allItems = _itemRepo.GetAll();
             }
-            catch (Exception ex)
+            if (_cachedDbCategories.Count == 0)
             {
-                Log.Debug(ex, "Failed loading contextual items for foreground process");
-                _contextualItems = new List<LauncherItem>();
+                _cachedDbCategories = _categoryRepo.GetAll();
             }
+            var allDbCats = _cachedDbCategories;
 
-            // Automatically remove uninstalled apps/games before loading menu
-            _itemRepo.PruneUninstalledItems();
-
-            // Load data
-            _allItems = _itemRepo.GetAll();
-            var allDbCats = _categoryRepo.GetAll();
+            // Prune uninstalled apps/games asynchronously in the background (never block UI open!)
+            if (!_isPruningInBackground && (DateTime.UtcNow - _lastPruneUtc).TotalSeconds >= 30)
+            {
+                _isPruningInBackground = true;
+                _lastPruneUtc = DateTime.UtcNow;
+                _ = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        _itemRepo.PruneUninstalledItems();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Background prune failed");
+                    }
+                    finally
+                    {
+                        _isPruningInBackground = false;
+                    }
+                });
+            }
 
             // 1. Most Used / Favorites is first category
             var mostUsedCat = allDbCats.FirstOrDefault(c => c.SystemKey == "Cat_MostUsed");
@@ -220,11 +240,7 @@ namespace RadialLauncher.UI.ViewModels
             if (CurrentCategoryIndex >= Categories.Count) CurrentCategoryIndex = 0;
             CurrentCategory = Categories.Count > 0 ? Categories[CurrentCategoryIndex] : null;
 
-            // Load recent clipboard
-            var recentClips = _clipboardService?.GetRecentHistory(5) ?? new List<ClipboardItem>();
-            RecentClipboards = new ObservableCollection<ClipboardItem>(recentClips);
-
-            RefreshPageItems();
+            RefreshPageItems(notifyLayout: false);
         }
 
         public void LoadDefaultQuickActions()
@@ -240,7 +256,7 @@ namespace RadialLauncher.UI.ViewModels
             };
         }
 
-        public void RefreshPageItems()
+        public void RefreshPageItems(bool notifyLayout = true)
         {
             List<LauncherItem> filtered;
 
@@ -330,7 +346,10 @@ namespace RadialLauncher.UI.ViewModels
             var pageItems = filtered.Skip(CurrentPageIndex * pageSize).Take(pageSize).ToList();
             CurrentPageItems = new ObservableCollection<LauncherItem>(pageItems);
 
-            RequestLayoutUpdate?.Invoke();
+            if (notifyLayout)
+            {
+                RequestLayoutUpdate?.Invoke();
+            }
         }
 
         public void ReorderCurrentPageItems(int sourceIndex, int targetIndex)

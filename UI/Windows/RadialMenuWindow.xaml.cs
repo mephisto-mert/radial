@@ -28,6 +28,8 @@ namespace RadialLauncher.UI.Windows
         private readonly List<IntPtr> _activeDwmThumbs = new();
         private List<RadialItemPlacement> _currentPlacements = new();
         private readonly List<Color> _itemAccentColors = new();
+        private readonly Dictionary<string, ImageSource?> _resolvedIconCache = new();
+        private readonly Dictionary<string, Color> _dominantColorCache = new();
         private int _keyboardFocusIndex = -1;
 
         // Middle & Left Mouse Drag Navigation
@@ -125,6 +127,17 @@ namespace RadialLauncher.UI.Windows
                 Dispatcher.Invoke(ApplyLocalization);
             };
             ApplyLocalization();
+
+            // Pre-warm icons, dominant colors, and visual tree in idle time so first middle-click opens in <5ms
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+            {
+                try
+                {
+                    _viewModel.InitializeForDisplay();
+                    RenderLayout(false);
+                }
+                catch { }
+            }));
         }
 
         public void ApplyLocalization()
@@ -166,17 +179,11 @@ namespace RadialLauncher.UI.Windows
                     Log.Information("Hold-and-Aim gesture: Launching item {Name} at slot {Slot}", itemToLaunch.Name, slot);
                     _viewModel.LaunchItem(itemToLaunch);
                 }
-                else if (slot == -1)
-                {
-                    // Released in dead center or outside -> dismiss without launching
-                    Log.Debug("Hold-and-Aim gesture: Released in deadzone/outside, dismissing");
-                    this.Hide();
-                }
+                // If slot == -1 (user tapped middle mouse button in center deadzone), keep menu open in interactive mode!
             }
             catch (Exception ex)
             {
                 Log.Debug(ex, "Error resolving hold-and-aim release target");
-                this.Hide();
             }
         }
 
@@ -211,10 +218,7 @@ namespace RadialLauncher.UI.Windows
                 _keyboardFocusIndex = -1;
                 _viewModel.InitializeForDisplay();
                 UpdateHudStatus();
-
-                ApplyThemeVisuals(_viewModel.ActiveTheme);
                 RenderLayout(true);
-                HideContextActionCard();
 
                 this.Opacity = 1;
                 this.Show();
@@ -366,14 +370,7 @@ namespace RadialLauncher.UI.Windows
                     Cursor = Cursors.Hand,
                     UseLayoutRounding = true,
                     SnapsToDevicePixels = true,
-                    RenderTransformOrigin = new Point(0.5, 0.5),
-                    Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    {
-                        BlurRadius = 18,
-                        ShadowDepth = 4,
-                        Color = Colors.Black,
-                        Opacity = 0.58
-                    }
+                    RenderTransformOrigin = new Point(0.5, 0.5)
                 };
                 Canvas.SetLeft(btn, tileX);
                 Canvas.SetTop(btn, tileY);
@@ -396,9 +393,14 @@ namespace RadialLauncher.UI.Windows
                     VisualTree = borderFactory
                 };
 
-                // Icon content + Rounded squircle clipping + Dominant color extraction
+                // Icon content + Rounded squircle clipping + Cached Dominant color extraction
                 var iconImg = ResolveItemIcon(item);
-                Color itemAccent = RadialLayoutCalculator.ExtractDominantAccentColor(iconImg, theme.AccentColor);
+                string colorKey = $"{item.Id}:{item.Target}:{theme.AccentColor}";
+                if (!_dominantColorCache.TryGetValue(colorKey, out Color itemAccent))
+                {
+                    itemAccent = RadialLayoutCalculator.ExtractDominantAccentColor(iconImg, theme.AccentColor);
+                    _dominantColorCache[colorKey] = itemAccent;
+                }
                 _itemAccentColors.Add(itemAccent);
 
                 if (iconImg != null)
@@ -454,14 +456,7 @@ namespace RadialLauncher.UI.Windows
                     IsHitTestVisible = false,
                     Opacity = 0.0,
                     RenderTransformOrigin = new Point(0.5, 0.5),
-                    Child = txt,
-                    Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    {
-                        BlurRadius = 16,
-                        ShadowDepth = 2,
-                        Color = itemAccent,
-                        Opacity = 0.65
-                    }
+                    Child = txt
                 };
                 lblBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 double pillW = Math.Max(44.0, lblBorder.DesiredSize.Width);
@@ -794,6 +789,22 @@ namespace RadialLauncher.UI.Windows
                 return _iconExtractor.CreateMonogramIcon(item.Name, Color.FromRgb(155, 89, 182));
             }
 
+            string cacheKey = $"{item.Id}:{item.Type}:{item.Name}:{item.Target}:{item.IconPath}";
+            if (_resolvedIconCache.TryGetValue(cacheKey, out var cachedIcon) && cachedIcon != null)
+            {
+                return cachedIcon;
+            }
+
+            var resolved = ResolveItemIconUncached(item);
+            if (resolved != null)
+            {
+                _resolvedIconCache[cacheKey] = resolved;
+            }
+            return resolved;
+        }
+
+        private ImageSource? ResolveItemIconUncached(LauncherItem item)
+        {
             var actionIcon = _iconExtractor.GetActionIcon(item.Target) ?? _iconExtractor.GetActionIcon(item.Name);
             if (actionIcon != null) return actionIcon;
 
@@ -1208,6 +1219,13 @@ namespace RadialLauncher.UI.Windows
                     };
                     lbl.Background = accentBrush;
                     lbl.BorderBrush = new SolidColorBrush(Color.FromArgb(225, 255, 255, 255));
+                    lbl.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius = 16,
+                        ShadowDepth = 2,
+                        Color = itemAccent,
+                        Opacity = 0.65
+                    };
                     if (txt != null)
                     {
                         txt.Foreground = readableFg;
@@ -1223,13 +1241,8 @@ namespace RadialLauncher.UI.Windows
                     Panel.SetZIndex(btn, 15);
                     Panel.SetZIndex(lbl, 250);
                     btn.Background = idleTileBg;
-                    btn.Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    {
-                        BlurRadius = 18,
-                        ShadowDepth = 4,
-                        Color = Colors.Black,
-                        Opacity = 0.58
-                    };
+                    btn.Effect = null;
+                    lbl.Effect = null;
 
                     if (_keyboardFocusIndex < 0 || total <= 2)
                     {

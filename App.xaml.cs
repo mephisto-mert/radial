@@ -184,19 +184,21 @@ namespace RadialLauncher
                 mouseHook.TriggerMode = themeService.GetActivationShortcut();
                 mouseHook.OnMiddleMouseDown += (s, pt) => 
                 {
-                    var gameFocus = ServiceProvider?.GetService<IGameFocusDetector>();
-                    if (gameFocus != null && gameFocus.IsFullscreenGameOrBusy())
-                    {
-                        Log.Debug("Suppressed Radial Launcher trigger because a fullscreen game/D3D app is active");
-                        return;
-                    }
-
                     double vel = mouseHook?.LastCursorVelocity ?? 0.0;
-                    Current.Dispatcher.BeginInvoke(new Action(() => OpenLauncher(pt, vel)));
+                    Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Send, new Action(() =>
+                    {
+                        var gameFocus = ServiceProvider?.GetService<IGameFocusDetector>();
+                        if (gameFocus != null && gameFocus.IsFullscreenGameOrBusy())
+                        {
+                            Log.Debug("Suppressed Radial Launcher trigger because a fullscreen game/D3D app is active");
+                            return;
+                        }
+                        OpenLauncher(pt, vel);
+                    }));
                 };
                 mouseHook.OnMiddleMouseUp += (s, pt) =>
                 {
-                    Current.Dispatcher.BeginInvoke(new Action(() =>
+                    Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Send, new Action(() =>
                     {
                         _radialMenu?.HandleGlobalTriggerUp(pt.X, pt.Y);
                     }));
@@ -411,6 +413,11 @@ namespace RadialLauncher
         public void OpenLauncher(Hooks.Point pt = default, double velocity = 0.0)
         {
             if (_radialMenu == null) return;
+            if (_radialMenu.IsVisible)
+            {
+                _radialMenu.Hide();
+                return;
+            }
             if (pt.X == 0 && pt.Y == 0)
             {
                 GetCursorPos(out pt);
