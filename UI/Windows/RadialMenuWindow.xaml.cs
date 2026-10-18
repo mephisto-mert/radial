@@ -140,7 +140,7 @@ namespace RadialLauncher.UI.Windows
 
             _trailDecayTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(22)
+                Interval = TimeSpan.FromMilliseconds(45)
             };
             _trailDecayTimer.Tick += TrailDecayTimer_Tick;
 
@@ -1755,19 +1755,19 @@ namespace RadialLauncher.UI.Windows
                 ? _contextualActionService.GetItemQuickActions(parentItem)
                 : new List<RadialLauncher.Services.Context.ItemContextAction>();
 
-            int count = subItems.Count > 0 ? subItems.Count : Math.Min(3, quickActions.Count);
-            if (count == 0) return;
+            string[] fallbackBadges = new[] { "⚡", "📌", "📋" };
+            int count = subItems.Count > 0 ? subItems.Count : Math.Max(3, Math.Min(3, quickActions.Count));
 
             double cx = 250.0, cy = 250.0;
-            double orbitR = Math.Min(232.0, p.DynamicRadius + 46.0);
-            double stepRad = 0.21;
+            double orbitR = Math.Max(82.0, p.DynamicRadius - 42.0);
+            double stepRad = 0.28;
             double startRad = p.AngleRadians - ((count - 1) * stepRad / 2.0);
             double endRad = p.AngleRadians + ((count - 1) * stepRad / 2.0);
 
             if (count > 1)
             {
-                Point arcStart = new Point(cx + orbitR * Math.Cos(startRad - 0.08), cy + orbitR * Math.Sin(startRad - 0.08));
-                Point arcEnd = new Point(cx + orbitR * Math.Cos(endRad + 0.08), cy + orbitR * Math.Sin(endRad + 0.08));
+                Point arcStart = new Point(cx + orbitR * Math.Cos(startRad - 0.10), cy + orbitR * Math.Sin(startRad - 0.10));
+                Point arcEnd = new Point(cx + orbitR * Math.Cos(endRad + 0.10), cy + orbitR * Math.Sin(endRad + 0.10));
                 var arcFig = new PathFigure { StartPoint = arcStart, IsClosed = false, IsFilled = false };
                 arcFig.Segments.Add(new ArcSegment(arcEnd, new Size(orbitR, orbitR), 0, false, SweepDirection.Clockwise, true));
                 var arcGeo = new PathGeometry();
@@ -1775,8 +1775,8 @@ namespace RadialLauncher.UI.Windows
                 var guidePath = new System.Windows.Shapes.Path
                 {
                     Data = arcGeo,
-                    Stroke = new SolidColorBrush(Color.FromArgb(145, activeColor.R, activeColor.G, activeColor.B)),
-                    StrokeThickness = 1.6,
+                    Stroke = new SolidColorBrush(Color.FromArgb(170, activeColor.R, activeColor.G, activeColor.B)),
+                    StrokeThickness = 1.8,
                     StrokeDashArray = new DoubleCollection { 2.5, 2.0 },
                     IsHitTestVisible = false
                 };
@@ -1786,7 +1786,7 @@ namespace RadialLauncher.UI.Windows
             for (int k = 0; k < count; k++)
             {
                 double ang = startRad + (k * stepRad);
-                double satSize = 26.0;
+                double satSize = 24.0;
                 double sx = cx + orbitR * Math.Cos(ang) - (satSize / 2.0);
                 double sy = cy + orbitR * Math.Sin(ang) - (satSize / 2.0);
 
@@ -1794,9 +1794,9 @@ namespace RadialLauncher.UI.Windows
                 {
                     Width = satSize,
                     Height = satSize,
-                    CornerRadius = new CornerRadius(8.5),
-                    Background = new SolidColorBrush(Color.FromArgb(242, 14, 16, 22)),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(215, activeColor.R, activeColor.G, activeColor.B)),
+                    CornerRadius = new CornerRadius(8.0),
+                    Background = new SolidColorBrush(Color.FromArgb(245, 14, 16, 22)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(225, activeColor.R, activeColor.G, activeColor.B)),
                     BorderThickness = new Thickness(1.3),
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     Effect = new System.Windows.Media.Effects.DropShadowEffect
@@ -1804,7 +1804,7 @@ namespace RadialLauncher.UI.Windows
                         BlurRadius = 10,
                         ShadowDepth = 1,
                         Color = activeColor,
-                        Opacity = 0.65
+                        Opacity = 0.72
                     }
                 };
 
@@ -1813,19 +1813,21 @@ namespace RadialLauncher.UI.Windows
                     var sub = subItems[k];
                     satBorder.Child = new Image
                     {
-                        Width = 15,
-                        Height = 15,
+                        Width = 14,
+                        Height = 14,
                         Source = ResolveItemIcon(sub),
                         Stretch = Stretch.Uniform
                     };
                 }
                 else
                 {
-                    var qa = quickActions[k];
+                    string iconText = (k < quickActions.Count && !string.IsNullOrWhiteSpace(quickActions[k].Icon))
+                        ? quickActions[k].Icon
+                        : fallbackBadges[k % fallbackBadges.Length];
                     satBorder.Child = new TextBlock
                     {
-                        Text = string.IsNullOrWhiteSpace(qa.Icon) ? "⚡" : qa.Icon,
-                        FontSize = 11,
+                        Text = iconText,
+                        FontSize = 10.5,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center,
                         Foreground = new SolidColorBrush(Colors.White)
