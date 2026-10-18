@@ -38,7 +38,17 @@ namespace RadialLauncher.Services.Audio
 
         private int _currentVolumePercent = 70;
 
-        public int CurrentVolumePercent => _currentVolumePercent;
+        public int CurrentVolumePercent
+        {
+            get
+            {
+                if (TryGetCoreAudioVolumePercent(out int realVol))
+                {
+                    _currentVolumePercent = realVol;
+                }
+                return _currentVolumePercent;
+            }
+        }
 
         public NowPlayingInfo GetCurrentMediaInfo()
         {
@@ -76,8 +86,11 @@ namespace RadialLauncher.Services.Audio
 
         public int AdjustMasterVolume(int deltaPercent)
         {
-            _currentVolumePercent = Math.Clamp(_currentVolumePercent + deltaPercent, 0, 100);
-            if (deltaPercent != 0)
+            int baseVol = CurrentVolumePercent;
+            int targetVol = Math.Clamp(baseVol + deltaPercent, 0, 100);
+            _currentVolumePercent = targetVol;
+
+            if (!TrySetCoreAudioVolumePercent(targetVol) && deltaPercent != 0)
             {
                 byte vk = deltaPercent > 0 ? VK_VOLUME_UP : VK_VOLUME_DOWN;
                 int steps = Math.Clamp(Math.Abs(deltaPercent) / 2, 1, 10);
@@ -88,6 +101,56 @@ namespace RadialLauncher.Services.Audio
             }
 
             return _currentVolumePercent;
+        }
+
+        private static bool TryGetCoreAudioVolumePercent(out int volumePercent)
+        {
+            volumePercent = 70;
+            try
+            {
+                var endpointVol = GetEndpointVolumeInterface();
+                if (endpointVol != null && endpointVol.GetMasterVolumeLevelScalar(out float level) == 0)
+                {
+                    volumePercent = Math.Clamp((int)Math.Round(level * 100.0f), 0, 100);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static bool TrySetCoreAudioVolumePercent(int volumePercent)
+        {
+            try
+            {
+                var endpointVol = GetEndpointVolumeInterface();
+                if (endpointVol != null)
+                {
+                    float scalar = Math.Clamp(volumePercent / 100.0f, 0.0f, 1.0f);
+                    Guid ctx = Guid.Empty;
+                    if (volumePercent > 0)
+                    {
+                        endpointVol.SetMute(false, ref ctx);
+                    }
+                    return endpointVol.SetMasterVolumeLevelScalar(scalar, ref ctx) == 0;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static IAudioEndpointVolume? GetEndpointVolumeInterface()
+        {
+            var enumeratorType = Type.GetTypeFromCLSID(new Guid("BCDE0395-E52F-467C-8E3D-C4579291692E"));
+            if (enumeratorType == null) return null;
+            var enumerator = (IMMDeviceEnumerator?)Activator.CreateInstance(enumeratorType);
+            if (enumerator == null) return null;
+            if (enumerator.GetDefaultAudioEndpoint(0, 1, out IMMDevice device) != 0 || device == null)
+                return null;
+            Guid iid = typeof(IAudioEndpointVolume).GUID;
+            if (device.Activate(ref iid, 23, IntPtr.Zero, out object volObj) != 0)
+                return null;
+            return volObj as IAudioEndpointVolume;
         }
 
         public void PlayPause() => SendMediaKey(VK_MEDIA_PLAY_PAUSE);
@@ -150,5 +213,45 @@ namespace RadialLauncher.Services.Audio
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [ComImport]
+        [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IMMDeviceEnumerator
+        {
+            [PreserveSig]
+            int EnumAudioEndpoints(int dataFlow, int dwStateMask, out IntPtr ppDevices);
+            [PreserveSig]
+            int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice ppEndpoint);
+        }
+
+        [ComImport]
+        [Guid("D666063F-1587-4E43-81F1-B948E807363F")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IMMDevice
+        {
+            [PreserveSig]
+            int Activate(ref Guid iid, int dwClsCtx, IntPtr pActivationParams, [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface);
+        }
+
+        [ComImport]
+        [Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IAudioEndpointVolume
+        {
+            [PreserveSig] int RegisterControlChangeNotify(IntPtr pNotify);
+            [PreserveSig] int UnregisterControlChangeNotify(IntPtr pNotify);
+            [PreserveSig] int GetChannelCount(out uint pnChannelCount);
+            [PreserveSig] int SetMasterVolumeLevel(float fLevelDB, ref Guid pguidEventContext);
+            [PreserveSig] int SetMasterVolumeLevelScalar(float fLevel, ref Guid pguidEventContext);
+            [PreserveSig] int GetMasterVolumeLevel(out float pfLevelDB);
+            [PreserveSig] int GetMasterVolumeLevelScalar(out float pfLevel);
+            [PreserveSig] int SetChannelVolumeLevel(uint nChannel, float fLevelDB, ref Guid pguidEventContext);
+            [PreserveSig] int SetChannelVolumeLevelScalar(uint nChannel, float fLevel, ref Guid pguidEventContext);
+            [PreserveSig] int GetChannelVolumeLevel(uint nChannel, out float pfLevelDB);
+            [PreserveSig] int GetChannelVolumeLevelScalar(uint nChannel, out float pfLevel);
+            [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, ref Guid pguidEventContext);
+            [PreserveSig] int GetMute(out bool pbMute);
+        }
     }
 }
