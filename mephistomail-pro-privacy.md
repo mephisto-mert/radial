@@ -1,21 +1,34 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="utf-8">
-<title>Gizlilik Politikası / Privacy Policy — MephistoMail Pro — E-Posta Koruma & AI Yanıt</title>
-<style>body{font-family:system-ui,sans-serif;max-width:820px;margin:40px auto;padding:0 20px;line-height:1.6;color:#0f172a;}h1,h2{color:#1e3a8a;}.box{background:#f8fafc;border:1px solid #cbd5e1;padding:16px;border-radius:10px;}</style>
-</head>
-<body>
-  <h1>Gizlilik Politikası (Privacy Policy) — MephistoMail Pro — E-Posta Koruma & AI Yanıt</h1>
-  <p><strong>Son Güncelleme / Last Updated:</strong> 2026-10-23</p>
-  <div class="box">
-    <strong>Özet (Chrome Web Store Limited Use Compliance):</strong> Bu eklenti kullanıcı verilerini <strong>satmaz</strong>, reklam ağlarına <strong>aktarmaz</strong> ve tüm yerel işlemlerini doğrudan kullanıcının tarayıcısında gerçekleştirir.
-  </div>
-  <h2>1. Yerel İşleme (Keyless Local Engine)</h2>
-  <p>Varsayılan <em>Keyless</em> modda tüm analiz, dönüştürme ve filtreleme işlemleri %100 tarayıcı içinde (Client-Side) çalışır; dış sunuculara hiçbir veri gönderilmez.</p>
-  <h2>2. Kendi API Anahtarınız (BYOK — Bring Your Own Key)</h2>
-  <p>Kullanıcı isteğe bağlı olarak kendi OpenAI, Google Gemini, DeepSeek, Anthropic Claude veya yerel Ollama anahtarını girdiğinde, bu anahtar yalnızca tarayıcının yerel <code>chrome.storage.local</code> alanında saklanır ve yalnızca kullanıcının seçtiği resmi AI sağlayıcısına doğrudan HTTPS isteği göndermek için kullanılır.</p>
-  <h2>3. İzin Kullanımı (Permissions)</h2>
-  <p>storage (stores local mail privacy rules and BYOK key), activeTab (scans visible email headers/links for phishing indicators).</p>
-</body>
-</html>
+# Privacy Policy — MephistoMail — Instant Temp Mail & Auto-OTP Assistant
+**Official Chrome Web Store Privacy Disclosure**  
+*Extension ID:* `kolhhealinebomlncflljopkphaoilob`  
+*Last Updated:* October 2026  
+*Developer:* Mert Can Yıldız (Mephisto Tools) &bull; [jokallame0@gmail.com](mailto:jokallame0@gmail.com)  
+*Repository & Support:* [https://github.com/mephisto-mert/radial](https://github.com/mephisto-mert/radial)
+
+---
+
+## 1. Single Purpose Specification
+- **English:** Generate secure disposable email addresses to shield primary inboxes from spam and automatically detect authentication OTP codes.
+- **Türkçe:** Kullanıcının birincil gelen kutusunu spam ve bültenlerden korumak için güvenli, anlık geçici e-posta adresleri üretmek ve doğrulama kodlarını doldurmak.
+
+---
+
+## 2. Chrome Web Store User Data Policy Compliance
+This extension strictly complies with the Google Chrome Web Store User Data Policy and Limited Use requirements:
+1. **No External Data Sale:** We do NOT sell, rent, lease, or monetize user data under any circumstances.
+2. **No Unrelated Data Usage:** We do NOT use or transfer user data for purposes unrelated to the item's single purpose described above.
+3. **No Creditworthiness / Lending:** We do NOT use or transfer user data to determine creditworthiness or for lending purposes.
+4. **Local Execution:** 100% of data processing executes locally within your browser sandbox via `chrome.storage.local`. No external tracking or telemetry servers are contacted.
+
+---
+
+## 3. Permissions Justification
+- `storage`: Preserves user preferences and session caches locally inside the browser.
+- `activeTab` / `scripting`: Required only to perform the core extension feature on the current webpage when activated by the user.
+
+---
+
+## 4. Developer & Support Contact
+- **Email:** jokallame0@gmail.com
+- **Bug Reports & Issues:** [https://github.com/mephisto-mert/radial/issues](https://github.com/mephisto-mert/radial/issues)
+- **Live Hosted Policy:** [https://mephisto-mert.github.io/radial/mephistomail-pro-privacy.html](https://mephisto-mert.github.io/radial/mephistomail-pro-privacy.html)
